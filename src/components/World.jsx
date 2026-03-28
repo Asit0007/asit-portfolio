@@ -30,18 +30,28 @@ function GradientFloor() {
   )
 }
 
+// ── Fix: lip is now a plain mesh OUTSIDE RigidBody — purely visual ────────────
 function ZonePad({ position, size, color }) {
+  const lipY = position[1] + size[1] / 2 + 0.09
   return (
-    <RigidBody type="fixed" colliders="cuboid" position={position}>
-      <mesh receiveShadow castShadow>
-        <boxGeometry args={size} />
-        <meshStandardMaterial color={color} roughness={0.7} metalness={0} />
-      </mesh>
-      <mesh receiveShadow position={[0, size[1] / 2 + 0.09, 0]}>
-        <boxGeometry args={[size[0] + 0.5, 0.14, size[2] + 0.5]} />
+    <group>
+      {/* Physics collider — only the main box, no lip */}
+      <RigidBody type="fixed" colliders="cuboid" position={position}>
+        <mesh receiveShadow castShadow>
+          <boxGeometry args={size} />
+          <meshStandardMaterial color={color} roughness={0.7} metalness={0} />
+        </mesh>
+      </RigidBody>
+
+      {/* Visual lip — no physics, just decoration */}
+      <mesh
+        receiveShadow
+        position={[position[0], lipY, position[2]]}
+      >
+        <boxGeometry args={[size[0] + 0.5, 0.13, size[2] + 0.5]} />
         <meshStandardMaterial color="#e8d8c4" roughness={0.8} />
       </mesh>
-    </RigidBody>
+    </group>
   )
 }
 
@@ -59,25 +69,17 @@ function TilePaths() {
   const toCloud    = useMemo(() => makePath(0,  8,  0,  -42, 14), [])
   const toProjects = useMemo(() => makePath(8,  0,  42,   0, 14), [])
   const toHobbies  = useMemo(() => makePath(-8, 0, -42,   0, 14), [])
-
   const all = [...toCloud, ...toProjects, ...toHobbies]
-
   return (
     <group>
       {all.map(([x, z], i) => (
-        <mesh
-          key={i}
-          receiveShadow
+        <mesh key={i} receiveShadow
           rotation={[-Math.PI / 2, 0, (i * 1.3) % Math.PI]}
           position={[x, 0.04, z]}
         >
           <planeGeometry args={[3, 3]} />
-          <meshStandardMaterial
-            color="#f0e0c8"
-            roughness={0.8}
-            transparent
-            opacity={0.55}
-          />
+          <meshStandardMaterial color="#f0e0c8" roughness={0.8}
+            transparent opacity={0.55} />
         </mesh>
       ))}
     </group>
@@ -96,7 +98,8 @@ function Roads() {
         <planeGeometry args={[220, 8]} />
         <meshStandardMaterial color="#4a4030" roughness={1} />
       </mesh>
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, Y + 0.001, 0]}>
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, Y + 0.001, 0]}>
         <planeGeometry args={[9, 9]} />
         <meshStandardMaterial color="#4a4030" roughness={1} />
       </mesh>
