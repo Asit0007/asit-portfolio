@@ -1,13 +1,15 @@
 import { useRef } from 'react'
 import { Physics } from '@react-three/rapier'
 import useGameStore from '../store/useGameStore'
-import Lights    from './Lights'
-import World     from './World'
-import Trees     from './Trees'
-import Vehicle   from './Vehicle'
-import Zones     from './Zones'
-import SkyBox    from './Sky'
-import NameTitle from './NameTitle'
+import Lights           from './Lights'
+import World            from './World'
+import Trees            from './Trees'
+import Vehicle          from './Vehicle'
+import Zones            from './Zones'
+import SkyBox           from './Sky'
+import NameTitle        from './NameTitle'
+import ZoneDecorations  from './ZoneDecorations'
+import SignPosts        from './SignPosts'
 
 export default function Scene() {
   const vehicleRef = useRef()
@@ -20,6 +22,8 @@ export default function Scene() {
       <World />
       <Trees />
       <NameTitle />
+      <ZoneDecorations />
+      <SignPosts />
       <Vehicle ref={vehicleRef} joystick={joystick} />
       <Zones vehicleRef={vehicleRef} />
       <fog attach="fog" args={['#f0a050', 120, 300]} />
