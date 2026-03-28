@@ -9,29 +9,31 @@ import useGameStore from '../store/useGameStore'
 // ── Tuning ────────────────────────────────────────────────────────────────────
 const MAX_SPEED     = 20
 const MAX_REV_SPEED = 8
-const ACCEL_FORCE   = 28
-const BRAKE_DAMPING = 0.92
-const COAST_DAMPING = 0.994
-const LATERAL_GRIP  = 0.82
+const ACCEL_FORCE   = 30
+const REV_FORCE     = 18     // ← dedicated reverse force, stronger than before
+const BRAKE_DAMPING = 0.88
+const COAST_DAMPING = 0.995  // very gentle — car glides nicely
+const LATERAL_GRIP  = 0.80
 const STEER_SPEED   = 2.4
-const CAM_LERP      = 6
+// ── Camera — Bruno style ──────────────────────────────────────────────────────
+const CAM_HEIGHT    = 14     // how high above the car
+const CAM_DIST      = 14     // how far behind the car
+const CAM_LOOK_AHEAD = 2     // look slightly ahead of car center
+const CAM_LERP      = 4      // spring smoothness — lower = dreamier
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Pre-allocated — never allocate inside useFrame
-const _fwd   = new THREE.Vector3()
-const _right = new THREE.Vector3()
-const _vel   = new THREE.Vector3()
-const _quat  = new THREE.Quaternion()
-const _cam   = new THREE.Vector3()
-const _look  = new THREE.Vector3()
-const _ideal = new THREE.Vector3()
+const _fwd    = new THREE.Vector3()
+const _right  = new THREE.Vector3()
+const _vel    = new THREE.Vector3()
+const _quat   = new THREE.Quaternion()
+const _cam    = new THREE.Vector3()
+const _look   = new THREE.Vector3()
+const _ideal  = new THREE.Vector3()
 
-// Defined as a named function outside forwardRef — fixes Vite Fast Refresh bug
 function VehicleInner(props, ref) {
-  const bodyRef    = useRef()
-  const steer      = useRef(0)
-  const bodySet    = useRef(false)
-
+  const bodyRef  = useRef()
+  const steer    = useRef(0)
+  const bodySet  = useRef(false)
   const [, getKeys] = useKeyboardControls()
 
   const getInput = () => {
@@ -51,7 +53,7 @@ function VehicleInner(props, ref) {
     const body = bodyRef.current
     const dt   = Math.min(delta, 0.05)
 
-    // Expose body to store once
+    // Register body in store once
     if (!bodySet.current) {
       bodySet.current = true
       useGameStore.getState().setVehicleBody(body)
@@ -60,34 +62,40 @@ function VehicleInner(props, ref) {
 
     const { forward, backward, left, right, brake } = getInput()
 
-    // 1. Facing direction from physics rotation
+    // ── 1. World-space forward/right ─────────────────────────────────────────
     const rot = body.rotation()
     _quat.set(rot.x, rot.y, rot.z, rot.w)
     _fwd  .set(0, 0, -1).applyQuaternion(_quat).setY(0).normalize()
     _right.set(1, 0,  0).applyQuaternion(_quat).setY(0).normalize()
 
-    // 2. Current velocity
+    // ── 2. Current velocity ───────────────────────────────────────────────────
     const lv = body.linvel()
     _vel.set(lv.x, lv.y, lv.z)
 
     const fwdSpeed = _fwd.dot(_vel)
     const latSpeed = _right.dot(_vel)
 
-    // 3. Kill lateral drift (Bruno's key trick) — isolated, won't eat forward speed
-    const latKill = latSpeed * (1 - LATERAL_GRIP)
-    _vel.addScaledVector(_right, -latKill)
+    // ── 3. Kill lateral drift ─────────────────────────────────────────────────
+    _vel.addScaledVector(_right, -latSpeed * (1 - LATERAL_GRIP))
 
-    // 4. Additive acceleration — holding forward ALWAYS works
+    // ── 4. Forward acceleration ───────────────────────────────────────────────
     if (forward && fwdSpeed < MAX_SPEED) {
-      const accel = Math.min(ACCEL_FORCE * dt, MAX_SPEED - fwdSpeed)
-      _vel.addScaledVector(_fwd, accel)
-    }
-    if (backward && fwdSpeed > -MAX_REV_SPEED) {
-      const accel = Math.min(ACCEL_FORCE * 0.55 * dt, fwdSpeed + MAX_REV_SPEED)
-      _vel.addScaledVector(_fwd, -accel)
+      _vel.addScaledVector(_fwd, ACCEL_FORCE * dt)
     }
 
-    // 5. Braking / coasting
+    // ── 5. Reverse — FIXED: simple direct force, no Math.min clamping ────────
+    if (backward) {
+      if (fwdSpeed > 0.5) {
+        // Still moving forward — brake hard first
+        _vel.x *= 0.85
+        _vel.z *= 0.85
+      } else if (fwdSpeed > -MAX_REV_SPEED) {
+        // Apply reverse thrust directly
+        _vel.addScaledVector(_fwd, -REV_FORCE * dt)
+      }
+    }
+
+    // ── 6. Braking / coasting ─────────────────────────────────────────────────
     if (brake) {
       _vel.x *= BRAKE_DAMPING
       _vel.z *= BRAKE_DAMPING
@@ -96,18 +104,19 @@ function VehicleInner(props, ref) {
       _vel.z *= COAST_DAMPING
     }
 
-    // 6. Hard speed cap
+    // ── 7. Speed cap ──────────────────────────────────────────────────────────
     const horizSq = _vel.x * _vel.x + _vel.z * _vel.z
-    if (horizSq > MAX_SPEED * MAX_SPEED) {
+    const maxSq   = MAX_SPEED * MAX_SPEED
+    if (horizSq > maxSq) {
       const inv = MAX_SPEED / Math.sqrt(horizSq)
       _vel.x *= inv
       _vel.z *= inv
     }
 
-    // 7. Commit velocity
+    // ── 8. Apply velocity ─────────────────────────────────────────────────────
     body.setLinvel({ x: _vel.x, y: _vel.y, z: _vel.z }, true)
 
-    // 8. Steering — speed-gated
+    // ── 9. Steering ───────────────────────────────────────────────────────────
     const speedFactor = Math.min(Math.abs(fwdSpeed) / 5, 1)
     const steerDir    = (left ? 1 : 0) - (right ? 1 : 0)
     const steerSign   = fwdSpeed < -0.3 ? -1 : 1
@@ -122,21 +131,32 @@ function VehicleInner(props, ref) {
       true
     )
 
-    // 9. Spring camera
-    const pos     = body.translation()
-    const camDist = 9 + Math.abs(fwdSpeed) * 0.25
-    const camH    = 5 + Math.abs(fwdSpeed) * 0.05
+    // ── 10. Bruno-style camera ────────────────────────────────────────────────
+    // High angle, slightly behind and above — isometric feel
+    // Camera position is NOT behind the car's facing direction
+    // but at a FIXED world angle with slight follow lag
+    const pos   = body.translation()
+    const speed = Math.sqrt(lv.x * lv.x + lv.z * lv.z)
 
+    // Ideal camera: above and slightly behind the car in world space
+    // The slight -_fwd offset makes it feel like it follows direction of travel
     _ideal.set(
-      pos.x - _fwd.x * camDist,
-      pos.y + camH,
-      pos.z - _fwd.z * camDist
+      pos.x - _fwd.x * CAM_DIST * 0.5,
+      pos.y + CAM_HEIGHT,
+      pos.z - _fwd.z * CAM_DIST * 0.5
     )
+
+    // Smooth spring follow
     _cam.copy(state.camera.position)
     _cam.lerp(_ideal, 1 - Math.exp(-CAM_LERP * dt))
     state.camera.position.copy(_cam)
 
-    _look.set(pos.x, pos.y + 0.8, pos.z)
+    // Look slightly ahead of the car — Bruno's camera looks at ground ahead
+    _look.set(
+      pos.x + _fwd.x * CAM_LOOK_AHEAD,
+      pos.y,
+      pos.z + _fwd.z * CAM_LOOK_AHEAD
+    )
     state.camera.lookAt(_look)
   })
 
@@ -156,13 +176,11 @@ function VehicleInner(props, ref) {
         <boxGeometry args={[1.8, 0.5, 3.4]} />
         <meshStandardMaterial color="#00d4ff" metalness={0.5} roughness={0.25} />
       </mesh>
-
       {/* Cab */}
       <mesh castShadow position={[0, 0.52, -0.3]}>
         <boxGeometry args={[1.3, 0.45, 1.8]} />
         <meshStandardMaterial color="#0099bb" metalness={0.3} roughness={0.4} />
       </mesh>
-
       {/* Windshield */}
       <mesh position={[0, 0.53, 0.62]}>
         <boxGeometry args={[1.28, 0.42, 0.05]} />
@@ -171,7 +189,6 @@ function VehicleInner(props, ref) {
           roughness={0} metalness={0}
         />
       </mesh>
-
       {/* Wheels */}
       {[
         [-0.95, -0.18,  1.1],
@@ -184,7 +201,6 @@ function VehicleInner(props, ref) {
           <meshStandardMaterial color="#1a1a1a" roughness={1} />
         </mesh>
       ))}
-
       {/* Headlights */}
       {[[-0.5, 0, 1.72], [0.5, 0, 1.72]].map(([x, y, z], i) => (
         <mesh key={i} position={[x, y, z]}>
@@ -194,7 +210,6 @@ function VehicleInner(props, ref) {
           />
         </mesh>
       ))}
-
       {/* Taillights */}
       {[[-0.55, 0, -1.71], [0.55, 0, -1.71]].map(([x, y, z], i) => (
         <mesh key={i} position={[x, y, z]}>
