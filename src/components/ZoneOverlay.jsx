@@ -153,7 +153,7 @@ function ContactOverlay({ zone }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {contacts.map(({ icon, label, value, href }) => (
-            
+            <a /* <--- ADDED MISSING 'a' TAG HERE */
               key={label}
               href={href}
               target={href.startsWith('http') ? '_blank' : undefined}
@@ -345,7 +345,7 @@ export default function ZoneOverlay() {
             { label: 'GitHub',   url: 'https://github.com/Asit0007' },
             { label: 'LinkedIn', url: 'https://linkedin.com/in/asitminz' },
           ].map(({ label: lbl, url }) => (
-            
+            <a /* <--- ADDED MISSING 'a' TAG HERE */
               key={lbl}
               href={url}
               target="_blank"
