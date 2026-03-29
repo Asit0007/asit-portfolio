@@ -147,7 +147,7 @@ export default function App() {
                 powerPreference: 'high-performance',
                 failIfMajorPerformanceCaveat: false,
               }}
-              dpr={isMobile ? [1, 1.5] : [1, 2]}
+              dpr={[1, Math.min(window.devicePixelRatio, 2)]}
               style={{ width: '100%', height: '100%' }}
             >
               <Scene />
