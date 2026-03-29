@@ -1,21 +1,22 @@
 import { Suspense } from 'react'
 import { Text3D, Center } from '@react-three/drei'
 
-function GroundText({ text, position, rotationY = 0, size = 2, color = '#e8d5b0' }) {
+// rotation breakdown:
+// -PI/2 = lie flat on ground
+// Math.PI = flip to face -Z direction (toward camera which is at -Z)
+// tiltZ  = slight angle for visual interest
+function GroundText({ text, position, tiltZ = 0, size = 2, color = '#ffffff' }) {
   return (
-    <Center
-      position={position}
-      rotation={[-Math.PI / 2, 0, rotationY]}
-    >
+    <Center position={position} rotation={[-Math.PI / 2, Math.PI, tiltZ]}>
       <Text3D
         font="/fonts/helvetiker_bold.typeface.json"
         size={size}
-        height={0.2}
+        height={0.22}
         curveSegments={4}
         bevelEnabled={false}
       >
         {text}
-        <meshStandardMaterial color={color} roughness={0.5} metalness={0.05} />
+        <meshStandardMaterial color={color} roughness={0.45} metalness={0.08} />
       </Text3D>
     </Center>
   )
@@ -25,44 +26,45 @@ export default function NameTitle() {
   return (
     <Suspense fallback={null}>
       <group>
-        {/* Name — positioned to the LEFT of spawn so car drives past it
-            Sized to match Bruno's scale (his letters are ~3-4 units) */}
+        {/* "ASIT" — large, left of path, visible as car approaches */}
         <GroundText
           text="ASIT"
-          position={[-20, 0.58, 22]}
-          rotationY={-0.2}
-          size={4}
-          color="#ffffff"
-        />
-        <GroundText
-          text="MINZ"
-          position={[-8, 0.58, 30]}
-          rotationY={-0.2}
-          size={4}
+          position={[-18, 0.58, 22]}
+          tiltZ={-0.18}
+          size={4.2}
           color="#ffffff"
         />
 
-        {/* Instructions — smaller, placed near start pad edge */}
+        {/* "MINZ" — offset right to create rhythmic layout like Bruno */}
+        <GroundText
+          text="MINZ"
+          position={[-4, 0.58, 30]}
+          tiltZ={-0.18}
+          size={4.2}
+          color="#ffffff"
+        />
+
+        {/* Instructions — close to start, first thing player reads */}
         <GroundText
           text="USE ARROW KEYS"
-          position={[8, 0.58, 14]}
-          rotationY={0.1}
-          size={0.75}
+          position={[8, 0.58, 10]}
+          tiltZ={0.1}
+          size={0.78}
           color="#f0c060"
         />
         <GroundText
           text="TO EXPLORE"
-          position={[9, 0.58, 16.2]}
-          rotationY={0.1}
-          size={0.75}
+          position={[9, 0.58, 12.4]}
+          tiltZ={0.1}
+          size={0.78}
           color="#f0c060"
         />
         <GroundText
           text="R = RESET CAR"
-          position={[8, 0.58, 18.4]}
-          rotationY={0.1}
-          size={0.6}
-          color="#f0c060"
+          position={[8.5, 0.58, 14.8]}
+          tiltZ={0.1}
+          size={0.62}
+          color="rgba(240,192,96,0.7)"
         />
       </group>
     </Suspense>

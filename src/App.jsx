@@ -1,12 +1,14 @@
 import { Suspense, useEffect, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { KeyboardControls } from '@react-three/drei'
-import Scene from './components/Scene'
-import ZoneOverlay from './components/ZoneOverlay'
-import Minimap from './components/Minimap'
+import Scene        from './components/Scene'
+import ZoneOverlay  from './components/ZoneOverlay'
+import Minimap      from './components/Minimap'
 import MobileJoystick from './components/MobileJoystick'
+import StartScreen  from './components/StartScreen'
 import useGameStore from './store/useGameStore'
-import { keyMap } from './Controls'
+import { keyMap }   from './Controls'
+import { toggleMusic } from './audio'
 
 function handleContextLost(e) {
   e.preventDefault()
@@ -23,45 +25,45 @@ function LoadingScreen() {
       alignItems: 'center', justifyContent: 'center', gap: 24,
     }}>
       <p style={{
-        fontFamily: 'monospace', fontSize: 28, fontWeight: 900,
-        letterSpacing: '0.2em', color: '#f0c060',
-        textTransform: 'uppercase',
+        fontFamily: 'monospace', fontSize: 26, fontWeight: 900,
+        letterSpacing: '0.22em', color: '#f0c060', textTransform: 'uppercase',
       }}>
         ASIT MINZ
       </p>
-      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, fontFamily: 'monospace' }}>
+      <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, fontFamily: 'monospace' }}>
         Loading world...
       </p>
       <div style={{
-        width: 220, height: 3, background: 'rgba(255,255,255,0.1)',
+        width: 200, height: 2, background: 'rgba(255,255,255,0.08)',
         borderRadius: 99, overflow: 'hidden',
       }}>
         <div style={{
           height: '100%', background: '#f0c060', borderRadius: 99,
-          width: '60%', animation: 'pulse 1.5s ease-in-out infinite',
+          width: '55%', animation: 'ldpulse 1.4s ease-in-out infinite',
         }} />
       </div>
+      <style>{`@keyframes ldpulse { 0%,100%{opacity:.4} 50%{opacity:1} }`}</style>
     </div>
   )
 }
 
-// Animated page title — like Bruno
 function useTitleAnimation(vehicleBody) {
   useEffect(() => {
     if (!vehicleBody) return
-    let lastTitle = ''
-    const interval = setInterval(() => {
+    let last = ''
+    const id = setInterval(() => {
       try {
-        const lv = vehicleBody.linvel()
+        const lv    = vehicleBody.linvel()
         const speed = Math.sqrt(lv.x*lv.x + lv.z*lv.z)
-        let title = 'Asit Minz | Portfolio'
-        if (speed > 1) title  = '🚗 Asit Minz | Portfolio'
-        if (speed > 8) title  = '💨 Asit Minz | Portfolio'
-        if (speed > 15) title = '🔥 Asit Minz | Portfolio'
-        if (title !== lastTitle) { document.title = lastTitle = title }
+        const title =
+          speed > 15 ? '🔥 Asit Minz | Portfolio' :
+          speed > 8  ? '💨 Asit Minz | Portfolio' :
+          speed > 1  ? '🚗 Asit Minz | Portfolio' :
+                       'Asit Minz | Portfolio'
+        if (title !== last) { document.title = last = title }
       } catch (_) {}
     }, 500)
-    return () => clearInterval(interval)
+    return () => clearInterval(id)
   }, [vehicleBody])
 }
 
@@ -72,10 +74,9 @@ export default function App() {
   const vehicleRef  = useRef()
 
   if (vehicleBody) vehicleRef.current = vehicleBody
-
   useTitleAnimation(vehicleBody)
 
-  // Canvas context lost
+  // Canvas context lost handler
   useEffect(() => {
     let cleanup = () => {}
     const attach = () => {
@@ -92,10 +93,11 @@ export default function App() {
     return () => cleanup()
   }, [])
 
-  // R key — reset car
+  // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e) => {
       if (e.code === 'KeyR') window.__resetCar = true
+      if (e.code === 'KeyM') toggleMusic()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -110,13 +112,13 @@ export default function App() {
         flexDirection: 'column', alignItems: 'center',
         justifyContent: 'center', gap: 16,
       }}>
-        <p style={{ fontSize: 22, fontWeight: 700 }}>⚠️ Graphics context lost</p>
+        <p style={{ fontSize: 20, fontWeight: 700 }}>⚠️ Graphics context lost</p>
         <button onClick={() => window.location.reload()} style={{
-          padding: '10px 28px', background: '#f0c060',
-          color: '#1a0a00', borderRadius: 8, fontWeight: 700,
-          border: 'none', cursor: 'pointer', fontSize: 15,
+          padding: '10px 28px', background: '#f0c060', color: '#1a0a00',
+          borderRadius: 8, fontWeight: 700, border: 'none',
+          cursor: 'pointer', fontSize: 15,
         }}>
-          Reload Page
+          Reload
         </button>
       </div>
 
@@ -124,26 +126,22 @@ export default function App() {
       <div style={{ position:'absolute', width:1, height:1, overflow:'hidden', opacity:0 }}
         aria-label="Portfolio resume content">
         <h1>Asit Minz — Infrastructure & Cloud Engineer</h1>
-        <p>Bangalore, India. 4 years IT experience. B.Tech CS, IIIT Bhubaneswar.</p>
+        <p>Bangalore. 4 years experience. B.Tech CS, IIIT Bhubaneswar. AZ-104 certified.</p>
         <h2>Experience</h2>
-        <p>Senior Engineer – Wintel & Virtualization at Microland Limited (Sep 2022–Present)</p>
-        <h2>Skills</h2>
-        <p>Azure, AWS, Terraform, Ansible, Docker, GitHub Actions, Linux, Windows Server, Python, Bash</p>
-        <h2>Certifications</h2>
-        <p>Azure Administrator Associate (AZ-104), Ansible for Beginners, Postman Essential</p>
+        <p>Senior Engineer, Microland Limited, Sep 2022–Present. Azure, VMware, PowerShell.</p>
         <h2>Projects</h2>
-        <p>CloudPulse: Go, Docker, Terraform, GitHub Actions CI/CD.</p>
-        <p>Automated Trading System: Python, SQLite, Streamlit.</p>
-        <p>Magento 2: Debian, NGINX, PHP 8.3.</p>
+        <p>CloudPulse: Go, AWS ECS Fargate, Terraform, GitHub Actions.</p>
+        <p>QuantBot: Python, OCI, Docker Compose, Cloudflare Tunnel.</p>
+        <p>Magento DeployKit: Bash, NGINX, PHP-FPM, Varnish.</p>
       </div>
 
-      {/* Canvas */}
+      {/* 3D Canvas — fullscreen */}
       <div style={{ position: 'fixed', inset: 0 }}>
         <Suspense fallback={<LoadingScreen />}>
           <KeyboardControls map={keyMap}>
             <Canvas
               shadows={!isMobile}
-              camera={{ fov: 50, near: 0.1, far: 600, position: [-8, 18, 20] }}
+              camera={{ fov: 50, near: 0.1, far: 600, position: [-8, 18, -20] }}
               gl={{
                 antialias: !isMobile,
                 powerPreference: 'high-performance',
@@ -158,30 +156,28 @@ export default function App() {
         </Suspense>
       </div>
 
-      {/* Overlays */}
+      {/* HTML overlays */}
       <ZoneOverlay />
       <Minimap vehicleRef={vehicleRef} />
       <MobileJoystick onInput={setJoystick} />
 
-      {/* HUD — proper visibility */}
+      {/* Click to start — shows on top of everything */}
+      <StartScreen />
+
+      {/* HUD */}
       <div style={{
         position: 'fixed', bottom: 20, left: '50%',
         transform: 'translateX(-50%)',
-        background: 'rgba(10,5,0,0.65)',
-        backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(240,180,80,0.2)',
-        borderRadius: 99,
-        padding: '7px 20px',
-        color: 'rgba(255,220,120,0.85)',
-        fontSize: 11,
-        fontFamily: 'monospace',
-        letterSpacing: '0.12em',
-        pointerEvents: 'none',
-        userSelect: 'none',
-        textTransform: 'uppercase',
-        whiteSpace: 'nowrap',
+        background: 'rgba(8,4,0,0.7)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(240,180,80,0.18)',
+        borderRadius: 99, padding: '7px 22px',
+        color: 'rgba(255,220,120,0.8)', fontSize: 11,
+        fontFamily: 'monospace', letterSpacing: '0.12em',
+        pointerEvents: 'none', userSelect: 'none',
+        textTransform: 'uppercase', whiteSpace: 'nowrap',
       }}>
-        ↑↓← → &nbsp;Drive &nbsp;·&nbsp; Space &nbsp;Brake &nbsp;·&nbsp; R &nbsp;Reset
+        ↑↓←→ Drive &nbsp;·&nbsp; Space Brake &nbsp;·&nbsp; R Reset &nbsp;·&nbsp; M Mute
       </div>
     </>
   )

@@ -24,22 +24,30 @@ const ZONES = {
         'Certified: Azure Administrator Associate (AZ-104)',
       ],
       tags: ['Azure', 'AWS', 'Terraform', 'VMware', 'PowerShell', 'Linux'],
+      links: {
+        github: 'https://github.com/Asit0007',
+        linkedin: 'https://linkedin.com/in/asitminz',
+      },
     },
   },
   projects: {
     id: 'projects',
     label: '🛠️ Projects',
-    sublabel: 'CloudPulse · Trading Bot · Magento',
+    sublabel: 'CloudPulse · QuantBot · Magento',
     color: '#10b981',
     content: {
       title: 'Personal Projects',
-      company: 'Open Source & Personal Lab',
+      company: 'Open Source · github.com/Asit0007',
       points: [
-        'CloudPulse: Real-time cloud dashboard — Go API, Docker, Terraform, GitHub Actions CI/CD',
-        'Automated Trading System: Python, SQLite, Streamlit, fully containerized with CI/CD',
-        'Magento DeployKit: Bash toolkit to bootstrap Linux LEMP stacks (NGINX, PHP 8.3, Redis)',
+        'CloudPulse: Real-time cloud dashboard — Go API, AWS ECS Fargate, Terraform, GitHub Actions',
+        'QuantBot: Automated Trading System — Python, OCI Terraform, Docker Compose, Cloudflare Tunnel',
+        'Magento DeployKit: 7 idempotent Bash scripts, Varnish/NGINX/PHP-FPM 3-layer caching',
       ],
-      tags: ['Docker', 'GitHub Actions', 'Python', 'Go', 'Bash', 'NGINX'],
+      tags: ['Go', 'Python', 'Docker', 'Terraform', 'GitHub Actions', 'Bash'],
+      links: {
+        github: 'https://github.com/Asit0007',
+        linkedin: 'https://linkedin.com/in/asitminz',
+      },
     },
   },
   hobbies: {
@@ -49,14 +57,18 @@ const ZONES = {
     color: '#a855f7',
     content: {
       title: 'Life Beyond the Terminal',
-      company: 'Fun Facts',
+      company: 'Fun Facts — you found the easter egg!',
       points: [
         '🥊 Muay Thai practitioner — discipline from the gym carries into debugging sessions',
         '🎮 PS2 nostalgia — where problem-solving instincts were first forged',
         '🏸 Badminton player — fast reflexes on and off the court',
-        '📚 Currently studying: HashiCorp Terraform Associate certification',
+        '📚 In progress: HashiCorp Terraform Associate certification',
       ],
       tags: ['Muay Thai', 'Gaming', 'Badminton', 'Terraform (WIP)'],
+      links: {
+        github: 'https://github.com/Asit0007',
+        linkedin: 'https://linkedin.com/in/asitminz',
+      },
     },
   },
 }
@@ -67,10 +79,17 @@ const useGameStore = create((set) => ({
   activeZone:     null,
   setActiveZone:  (zoneId) => set({ activeZone: zoneId ? ZONES[zoneId] : null }),
 
-  isLoaded:       false,
-  setIsLoaded:    (val) => set({ isLoaded: val }),
+  // Game flow
+  gameStarted:    false,
+  setGameStarted: (v) => set({ gameStarted: v }),
 
-  isMobile:       /iPhone|iPad|Android/i.test(navigator.userAgent),
+  musicOn:        true,
+  setMusicOn:     (v) => set({ musicOn: v }),
+
+  isLoaded:       false,
+  setIsLoaded:    (v) => set({ isLoaded: v }),
+
+  isMobile: /iPhone|iPad|Android/i.test(navigator.userAgent),
 
   joystick: {
     forward: false, backward: false,
