@@ -9,56 +9,46 @@ const ZONE_DEFS = [
   { id: 'cloud',    position: [0,   0, -55],  radius: 15, color: '#f59e0b', label: 'CLOUD & INFRA' },
   { id: 'projects', position: [55,  0,   0],  radius: 15, color: '#10b981', label: 'PROJECTS'      },
   { id: 'hobbies',  position: [-55, 0,   0],  radius: 13, color: '#a855f7', label: 'EASTER EGG'    },
+  { id: 'contact',  position: [0,   0,  55],  radius: 14, color: '#f43f5e', label: 'CONTACT'       },
 ]
 
 function ZoneMarker({ id, position, radius, color, label }) {
-  const ringRef  = useRef()
+  const ringRef    = useRef()
   const activeZone = useGameStore((s) => s.activeZone)
   const isActive   = activeZone?.id === id
 
   useFrame((state) => {
     if (!ringRef.current) return
     const t = state.clock.elapsedTime
-    // Pulse opacity only — no rotation (rotation made it look like tree)
     ringRef.current.material.opacity = isActive
       ? 0.5 + Math.sin(t * 4) * 0.2
-      : 0.15 + Math.sin(t * 1.2) * 0.05
+      : 0.14 + Math.sin(t * 1.2) * 0.04
   })
 
   return (
     <group position={position}>
-      {/* Flat ground ring only — NO vertical beam (that was the Xmas tree) */}
-      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.5, 0]}>
         <ringGeometry args={[radius - 1.2, radius, 48]} />
         <meshStandardMaterial
-          color={color}
-          transparent
-          opacity={0.18}
-          side={THREE.DoubleSide}
-          depthWrite={false}
+          color={color} transparent opacity={0.16}
+          side={THREE.DoubleSide} depthWrite={false}
         />
       </mesh>
-
-      {/* Inner fill — subtle */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.48, 0]}>
         <circleGeometry args={[radius - 1.2, 48]} />
         <meshStandardMaterial
-          color={color}
-          transparent
-          opacity={isActive ? 0.06 : 0.03}
-          depthWrite={false}
+          color={color} transparent
+          opacity={isActive ? 0.05 : 0.02} depthWrite={false}
         />
       </mesh>
-
-      {/* Floating label — only show when active */}
       {isActive && (
         <Text
-          position={[0, 5, 0]}
-          fontSize={1.4}
+          position={[0, 7, 0]}
+          fontSize={1.5}
           color={color}
           anchorX="center"
           anchorY="middle"
-          outlineWidth={0.07}
+          outlineWidth={0.08}
           outlineColor="#000"
         >
           {label}
