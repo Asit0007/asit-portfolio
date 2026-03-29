@@ -149,7 +149,6 @@ function Boundaries() {
   )
 }
 
-// ── ScatterProps — NOW WITH PHYSICS so car can bump them ─────────────────────
 const SCATTER_DATA = [
   { x: -32, z: -28, sx: 1.2, sy: 0.8,  sz: 1.0, ry: 0.4  },
   { x:  42, z: -22, sx: 0.9, sy: 1.2,  sz: 0.9, ry: 1.1  },
@@ -173,18 +172,18 @@ function ScatterProps() {
   return (
     <group>
       {SCATTER_DATA.map((r, i) => (
-        // Dynamic RigidBody — car can now push these!
         <RigidBody
           key={i}
           position={[r.x, r.sy * 0.5 + 0.1, r.z]}
+          rotation={[0, r.ry, 0]}
           colliders="cuboid"
-          mass={0.6}           // Light enough to scatter, heavy enough to feel solid
-          linearDamping={0.8}  // Slow down quickly after being hit
+          mass={0.6}
+          linearDamping={0.8}
           angularDamping={0.8}
-          restitution={0.3}    // Small bounce
+          restitution={0.3}
           friction={0.8}
         >
-          <mesh castShadow receiveShadow rotation={[0, r.ry, 0]}>
+          <mesh castShadow receiveShadow>
             <boxGeometry args={[r.sx, r.sy, r.sz]} />
             <meshStandardMaterial color="#ddd0b8" roughness={0.9} flatShading />
           </mesh>
@@ -205,6 +204,7 @@ export default function World() {
       <ZonePad position={[55,  -0.6,  0]}  size={[30, 1.2, 30]} color="#f5efe6" />
       <ZonePad position={[-55, -0.6,  0]}  size={[30, 1.2, 30]} color="#f5efe6" />
       <ZonePad position={[0,   -0.6,  0]}  size={[18, 1.2, 18]} color="#ffffff" />
+      <ZonePad position={[0, -0.6, 55]} size={[30, 1.2, 30]} color="#f5e6e8" />
       <ScatterProps />
     </group>
   )
