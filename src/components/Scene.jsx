@@ -11,6 +11,7 @@ import NameTitle       from './NameTitle'
 import ZoneDecorations from './ZoneDecorations'
 import SignPosts       from './SignPosts'
 import AudioManager    from './AudioManager'
+import ContactZone     from './ContactZone'
 
 export default function Scene() {
   const vehicleRef = useRef()
@@ -25,6 +26,7 @@ export default function Scene() {
       <NameTitle />
       <ZoneDecorations />
       <SignPosts />
+      <ContactZone />
       <Vehicle ref={vehicleRef} joystick={joystick} />
       <Zones vehicleRef={vehicleRef} />
       <AudioManager />
