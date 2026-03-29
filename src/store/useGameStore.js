@@ -24,10 +24,6 @@ const ZONES = {
         'Certified: Azure Administrator Associate (AZ-104)',
       ],
       tags: ['Azure', 'AWS', 'Terraform', 'VMware', 'PowerShell', 'Linux'],
-      links: {
-        github: 'https://github.com/Asit0007',
-        linkedin: 'https://linkedin.com/in/asitminz',
-      },
     },
   },
   projects: {
@@ -39,15 +35,17 @@ const ZONES = {
       title: 'Personal Projects',
       company: 'Open Source · github.com/Asit0007',
       points: [
-        'CloudPulse: Real-time cloud dashboard — Go API, AWS ECS Fargate, Terraform, GitHub Actions',
-        'QuantBot: Automated Trading System — Python, OCI Terraform, Docker Compose, Cloudflare Tunnel',
-        'Magento DeployKit: 7 idempotent Bash scripts, Varnish/NGINX/PHP-FPM 3-layer caching',
+        'CloudPulse: Real-time cloud dashboard — Go, AWS ECS Fargate, Terraform, GitHub Actions CI/CD',
+        'QuantBot: Automated Trading Bot — Python, OCI, Docker Compose, Cloudflare Tunnel HTTPS',
+        'Magento DeployKit: 7 Bash scripts, Varnish/NGINX/PHP-FPM 3-layer caching, DigitalOcean',
       ],
       tags: ['Go', 'Python', 'Docker', 'Terraform', 'GitHub Actions', 'Bash'],
-      links: {
-        github: 'https://github.com/Asit0007',
-        linkedin: 'https://linkedin.com/in/asitminz',
-      },
+      // Add your actual screenshot filenames here
+      slides: [
+        { image: '/images/cloudpulse.png',  title: 'CloudPulse',         url: 'https://github.com/Asit0007' },
+        { image: '/images/quantbot.png',    title: 'QuantBot',           url: 'https://github.com/Asit0007' },
+        { image: '/images/magento.png',     title: 'Magento DeployKit',  url: 'https://github.com/Asit0007' },
+      ],
     },
   },
   hobbies: {
@@ -57,18 +55,32 @@ const ZONES = {
     color: '#a855f7',
     content: {
       title: 'Life Beyond the Terminal',
-      company: 'Fun Facts — you found the easter egg!',
+      company: 'You found the easter egg! 🎉',
       points: [
-        '🥊 Muay Thai practitioner — discipline from the gym carries into debugging sessions',
+        '🥊 Muay Thai practitioner — discipline from the gym carries into debugging',
         '🎮 PS2 nostalgia — where problem-solving instincts were first forged',
         '🏸 Badminton player — fast reflexes on and off the court',
         '📚 In progress: HashiCorp Terraform Associate certification',
       ],
       tags: ['Muay Thai', 'Gaming', 'Badminton', 'Terraform (WIP)'],
-      links: {
-        github: 'https://github.com/Asit0007',
-        linkedin: 'https://linkedin.com/in/asitminz',
-      },
+    },
+  },
+  contact: {
+    id: 'contact',
+    label: '📬 Contact',
+    sublabel: 'Let\'s work together',
+    color: '#f43f5e',
+    content: {
+      title: 'Get In Touch',
+      company: 'Open to Cloud & DevOps opportunities',
+      points: [
+        '📧 asitminz007@gmail.com',
+        '💼 linkedin.com/in/asitminz',
+        '🐙 github.com/Asit0007',
+        '📱 +91-7978004721',
+        '📍 Bangalore, India',
+      ],
+      tags: ['Available', 'Cloud Engineer', 'DevOps', 'Open to Relocate'],
     },
   },
 }
@@ -79,12 +91,15 @@ const useGameStore = create((set) => ({
   activeZone:     null,
   setActiveZone:  (zoneId) => set({ activeZone: zoneId ? ZONES[zoneId] : null }),
 
-  // Game flow
   gameStarted:    false,
   setGameStarted: (v) => set({ gameStarted: v }),
 
   musicOn:        true,
   setMusicOn:     (v) => set({ musicOn: v }),
+
+  // Project billboard slide index
+  slideIndex:     0,
+  setSlideIndex:  (v) => set({ slideIndex: v }),
 
   isLoaded:       false,
   setIsLoaded:    (v) => set({ isLoaded: v }),
@@ -93,8 +108,7 @@ const useGameStore = create((set) => ({
 
   joystick: {
     forward: false, backward: false,
-    left: false,    right: false,
-    brake: false,
+    left: false, right: false, brake: false,
   },
   setJoystick: (j) => set((s) => ({
     joystick: typeof j === 'function' ? j(s.joystick) : j,
