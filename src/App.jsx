@@ -140,18 +140,18 @@ export default function App() {
         <Suspense fallback={<LoadingScreen />}>
           <KeyboardControls map={keyMap}>
             <Canvas
-              shadows={!isMobile}
-              camera={{ fov: 50, near: 0.1, far: 600, position: [-8, 18, -20] }}
-              gl={{
-                antialias: !isMobile,
-                powerPreference: 'high-performance',
-                failIfMajorPerformanceCaveat: false,
-              }}
-              dpr={[1, Math.min(window.devicePixelRatio, 2)]}
-              style={{ width: '100%', height: '100%' }}
-            >
-              <Scene />
-            </Canvas>
+                shadows={!isMobile}
+                camera={{ fov: 50, near: 0.1, far: 600, position: [-8, 18, -20] }}
+                gl={{
+                  antialias: true,
+                  powerPreference: 'high-performance',
+                  failIfMajorPerformanceCaveat: false,
+                }}
+                dpr={[1, Math.min(window.devicePixelRatio, 2)]}
+                style={{ width: '100%', height: '100%' }}
+              >
+                <Scene />
+              </Canvas>
           </KeyboardControls>
         </Suspense>
       </div>
