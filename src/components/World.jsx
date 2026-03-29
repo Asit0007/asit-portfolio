@@ -30,24 +30,17 @@ function GradientFloor() {
   )
 }
 
-// ── Fix: lip is now a plain mesh OUTSIDE RigidBody — purely visual ────────────
 function ZonePad({ position, size, color }) {
   const lipY = position[1] + size[1] / 2 + 0.09
   return (
     <group>
-      {/* Physics collider — only the main box, no lip */}
       <RigidBody type="fixed" colliders="cuboid" position={position}>
         <mesh receiveShadow castShadow>
           <boxGeometry args={size} />
           <meshStandardMaterial color={color} roughness={0.7} metalness={0} />
         </mesh>
       </RigidBody>
-
-      {/* Visual lip — no physics, just decoration */}
-      <mesh
-        receiveShadow
-        position={[position[0], lipY, position[2]]}
-      >
+      <mesh receiveShadow position={[position[0], lipY, position[2]]}>
         <boxGeometry args={[size[0] + 0.5, 0.13, size[2] + 0.5]} />
         <meshStandardMaterial color="#e8d8c4" roughness={0.8} />
       </mesh>
@@ -156,30 +149,46 @@ function Boundaries() {
   )
 }
 
-function ScatterProps() {
-  const items = useMemo(() => [
-    [-32,-28], [42,-22], [-46,26], [32,42],
-    [-62,-48], [66,38],  [-36,68], [52,-62],
-    [-72,12],  [22,-72], [62,-16], [-16,62],
-    [45, 70],  [-68,-30],[28, 58], [-50, -70],
-  ].map(([x, z]) => ({
-    x, z,
-    sx: 0.8 + Math.random() * 1.6,
-    sy: 0.6 + Math.random() * 1.2,
-    sz: 0.7 + Math.random() * 1.4,
-    ry: Math.random() * Math.PI,
-  })), [])
+// ── ScatterProps — NOW WITH PHYSICS so car can bump them ─────────────────────
+const SCATTER_DATA = [
+  { x: -32, z: -28, sx: 1.2, sy: 0.8,  sz: 1.0, ry: 0.4  },
+  { x:  42, z: -22, sx: 0.9, sy: 1.2,  sz: 0.9, ry: 1.1  },
+  { x: -46, z:  26, sx: 1.4, sy: 0.7,  sz: 1.2, ry: 2.3  },
+  { x:  32, z:  42, sx: 1.0, sy: 1.0,  sz: 1.1, ry: 0.8  },
+  { x: -62, z: -48, sx: 1.1, sy: 1.4,  sz: 0.8, ry: 1.6  },
+  { x:  66, z:  38, sx: 0.8, sy: 0.9,  sz: 1.3, ry: 2.8  },
+  { x: -36, z:  68, sx: 1.3, sy: 0.6,  sz: 1.0, ry: 0.2  },
+  { x:  52, z: -62, sx: 0.7, sy: 1.1,  sz: 0.9, ry: 3.1  },
+  { x: -72, z:  12, sx: 1.5, sy: 0.8,  sz: 1.2, ry: 1.9  },
+  { x:  22, z: -72, sx: 1.0, sy: 1.3,  sz: 0.7, ry: 0.6  },
+  { x:  62, z: -16, sx: 0.9, sy: 0.7,  sz: 1.4, ry: 2.1  },
+  { x: -16, z:  62, sx: 1.2, sy: 1.0,  sz: 0.8, ry: 1.4  },
+  { x:  45, z:  70, sx: 0.8, sy: 1.2,  sz: 1.1, ry: 0.9  },
+  { x: -68, z: -30, sx: 1.1, sy: 0.9,  sz: 0.9, ry: 2.5  },
+  { x:  28, z:  58, sx: 1.4, sy: 0.7,  sz: 1.3, ry: 1.7  },
+  { x: -50, z: -70, sx: 0.9, sy: 1.1,  sz: 1.0, ry: 3.0  },
+]
 
+function ScatterProps() {
   return (
     <group>
-      {items.map((r, i) => (
-        <mesh key={i} castShadow receiveShadow
-          position={[r.x, r.sy * 0.4, r.z]}
-          rotation={[0, r.ry, 0]}
+      {SCATTER_DATA.map((r, i) => (
+        // Dynamic RigidBody — car can now push these!
+        <RigidBody
+          key={i}
+          position={[r.x, r.sy * 0.5 + 0.1, r.z]}
+          colliders="cuboid"
+          mass={0.6}           // Light enough to scatter, heavy enough to feel solid
+          linearDamping={0.8}  // Slow down quickly after being hit
+          angularDamping={0.8}
+          restitution={0.3}    // Small bounce
+          friction={0.8}
         >
-          <boxGeometry args={[r.sx, r.sy, r.sz]} />
-          <meshStandardMaterial color="#ddd0b8" roughness={0.9} flatShading />
-        </mesh>
+          <mesh castShadow receiveShadow rotation={[0, r.ry, 0]}>
+            <boxGeometry args={[r.sx, r.sy, r.sz]} />
+            <meshStandardMaterial color="#ddd0b8" roughness={0.9} flatShading />
+          </mesh>
+        </RigidBody>
       ))}
     </group>
   )

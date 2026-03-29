@@ -29,7 +29,7 @@ function LoadingScreen() {
       }}>
         ASIT MINZ
       </p>
-      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
+      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, fontFamily: 'monospace' }}>
         Loading world...
       </p>
       <div style={{
@@ -37,23 +37,45 @@ function LoadingScreen() {
         borderRadius: 99, overflow: 'hidden',
       }}>
         <div style={{
-          height: '100%', background: '#f0c060',
-          borderRadius: 99, width: '60%',
-          animation: 'pulse 1.5s ease-in-out infinite',
+          height: '100%', background: '#f0c060', borderRadius: 99,
+          width: '60%', animation: 'pulse 1.5s ease-in-out infinite',
         }} />
       </div>
     </div>
   )
 }
 
+// Animated page title — like Bruno
+function useTitleAnimation(vehicleBody) {
+  useEffect(() => {
+    if (!vehicleBody) return
+    let lastTitle = ''
+    const interval = setInterval(() => {
+      try {
+        const lv = vehicleBody.linvel()
+        const speed = Math.sqrt(lv.x*lv.x + lv.z*lv.z)
+        let title = 'Asit Minz | Portfolio'
+        if (speed > 1) title  = '🚗 Asit Minz | Portfolio'
+        if (speed > 8) title  = '💨 Asit Minz | Portfolio'
+        if (speed > 15) title = '🔥 Asit Minz | Portfolio'
+        if (title !== lastTitle) { document.title = lastTitle = title }
+      } catch (_) {}
+    }, 500)
+    return () => clearInterval(interval)
+  }, [vehicleBody])
+}
+
 export default function App() {
-  const isMobile   = useGameStore((s) => s.isMobile)
+  const isMobile    = useGameStore((s) => s.isMobile)
   const setJoystick = useGameStore((s) => s.setJoystick)
   const vehicleBody = useGameStore((s) => s.vehicleBody)
   const vehicleRef  = useRef()
 
   if (vehicleBody) vehicleRef.current = vehicleBody
 
+  useTitleAnimation(vehicleBody)
+
+  // Canvas context lost
   useEffect(() => {
     let cleanup = () => {}
     const attach = () => {
@@ -70,9 +92,18 @@ export default function App() {
     return () => cleanup()
   }, [])
 
+  // R key — reset car
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.code === 'KeyR') window.__resetCar = true
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   return (
     <>
-      {/* Context lost overlay */}
+      {/* Context lost */}
       <div id="context-lost-msg" style={{
         display: 'none', position: 'fixed', inset: 0, zIndex: 50,
         background: 'rgba(0,0,0,0.92)', color: 'white',
@@ -80,20 +111,17 @@ export default function App() {
         justifyContent: 'center', gap: 16,
       }}>
         <p style={{ fontSize: 22, fontWeight: 700 }}>⚠️ Graphics context lost</p>
-        <button
-          onClick={() => window.location.reload()}
-          style={{
-            padding: '10px 28px', background: '#f0c060',
-            color: '#1a0a00', borderRadius: 8, fontWeight: 700,
-            border: 'none', cursor: 'pointer', fontSize: 15,
-          }}
-        >
+        <button onClick={() => window.location.reload()} style={{
+          padding: '10px 28px', background: '#f0c060',
+          color: '#1a0a00', borderRadius: 8, fontWeight: 700,
+          border: 'none', cursor: 'pointer', fontSize: 15,
+        }}>
           Reload Page
         </button>
       </div>
 
-      {/* SEO / A11y hidden resume */}
-      <div style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0 }}
+      {/* A11y */}
+      <div style={{ position:'absolute', width:1, height:1, overflow:'hidden', opacity:0 }}
         aria-label="Portfolio resume content">
         <h1>Asit Minz — Infrastructure & Cloud Engineer</h1>
         <p>Bangalore, India. 4 years IT experience. B.Tech CS, IIIT Bhubaneswar.</p>
@@ -109,13 +137,13 @@ export default function App() {
         <p>Magento 2: Debian, NGINX, PHP 8.3.</p>
       </div>
 
-      {/* 3D Canvas — fullscreen */}
+      {/* Canvas */}
       <div style={{ position: 'fixed', inset: 0 }}>
         <Suspense fallback={<LoadingScreen />}>
           <KeyboardControls map={keyMap}>
             <Canvas
               shadows={!isMobile}
-              camera={{ fov: 55, near: 0.1, far: 600, position: [0, 10, 18] }}
+              camera={{ fov: 50, near: 0.1, far: 600, position: [-8, 18, 20] }}
               gl={{
                 antialias: !isMobile,
                 powerPreference: 'high-performance',
@@ -130,21 +158,30 @@ export default function App() {
         </Suspense>
       </div>
 
-      {/* HTML overlays */}
+      {/* Overlays */}
       <ZoneOverlay />
       <Minimap vehicleRef={vehicleRef} />
       <MobileJoystick onInput={setJoystick} />
 
-      {/* HUD */}
+      {/* HUD — proper visibility */}
       <div style={{
         position: 'fixed', bottom: 20, left: '50%',
         transform: 'translateX(-50%)',
-        color: 'rgba(255,220,120,0.5)', fontSize: 12,
-        fontFamily: 'monospace', letterSpacing: '0.1em',
-        pointerEvents: 'none', userSelect: 'none',
+        background: 'rgba(10,5,0,0.65)',
+        backdropFilter: 'blur(8px)',
+        border: '1px solid rgba(240,180,80,0.2)',
+        borderRadius: 99,
+        padding: '7px 20px',
+        color: 'rgba(255,220,120,0.85)',
+        fontSize: 11,
+        fontFamily: 'monospace',
+        letterSpacing: '0.12em',
+        pointerEvents: 'none',
+        userSelect: 'none',
         textTransform: 'uppercase',
+        whiteSpace: 'nowrap',
       }}>
-        WASD / Arrow Keys to drive &nbsp;·&nbsp; Space to brake
+        ↑↓← → &nbsp;Drive &nbsp;·&nbsp; Space &nbsp;Brake &nbsp;·&nbsp; R &nbsp;Reset
       </div>
     </>
   )

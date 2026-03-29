@@ -7,88 +7,164 @@ import { Controls } from '../Controls'
 import useGameStore from '../store/useGameStore'
 
 // ── Tuning ─────────────────────────────────────────────────────────────────
-const MAX_SPEED      = 20
-const MAX_REV_SPEED  = 8
-const ACCEL_FORCE    = 30
-const REV_FORCE      = 18
-const BRAKE_DAMPING  = 0.88
-const COAST_DAMPING  = 0.995
-const LATERAL_GRIP   = 0.80
-const STEER_SPEED    = 2.4
-const CAM_HEIGHT     = 14
-const CAM_DIST       = 14
-const CAM_LOOK_AHEAD = 2
-const CAM_LERP       = 4
-// ───────────────────────────────────────────────────────────────────────────
+const MAX_SPEED     = 20
+const MAX_REV_SPEED = 8
+const ACCEL_FORCE   = 30
+const REV_FORCE     = 18
+const BRAKE_DAMPING = 0.88
+const COAST_DAMPING = 0.995
+const LATERAL_GRIP  = 0.80
+const STEER_SPEED   = 2.4
 
-const _fwd   = new THREE.Vector3()
-const _right = new THREE.Vector3()
-const _vel   = new THREE.Vector3()
-const _quat  = new THREE.Quaternion()
-const _cam   = new THREE.Vector3()
-const _look  = new THREE.Vector3()
-const _ideal = new THREE.Vector3()
+// Camera sits behind car — car moves in +Z so camera at -Z offset
+const CAM_OFFSET = new THREE.Vector3(-8, 18, -20)
+const CAM_LERP   = 3.5
 
-// ── GLTF model loader — only used if file exists ──────────────────────────
-function GLTFCar({ scale = 1 }) {
+const HAS_GLTF = false // set true once public/models/car.glb exists
+// ──────────────────────────────────────────────────────────────────────────
+
+const _fwd    = new THREE.Vector3()
+const _right  = new THREE.Vector3()
+const _vel    = new THREE.Vector3()
+const _quat   = new THREE.Quaternion()
+const _cam    = new THREE.Vector3()
+const _look   = new THREE.Vector3()
+const _ideal  = new THREE.Vector3()
+const _carPos = new THREE.Vector3()
+
+function GLTFCar() {
   const { scene } = useGLTF('/models/car.glb')
+  const cloned = scene.clone()
+  cloned.traverse((child) => {
+    if (child.isMesh) {
+      child.castShadow    = true
+      child.receiveShadow = true
+    }
+  })
   return (
     <primitive
-      object={scene}
-      scale={scale}
-      position={[0, -0.3, 0]}
+      object={cloned}
+      scale={1}
+      position={[0, -0.25, 0]}
+      rotation={[0, 0, 0]}
     />
   )
 }
 
-// ── Fallback box car ──────────────────────────────────────────────────────
+// ── BoxCar — FIXED silhouette ──────────────────────────────────────────────
+// Car moves in +Z direction (forward = +Z, backward = -Z)
+// Layout (viewed from side, left = back -Z, right = front +Z):
+//   TAIL [-Z] ←─── body ───→ HOOD [+Z]
+//   taillights    cab  windshield   headlights
+//
+// Cab sits toward BACK (-Z side) leaving long hood visible at front (+Z)
+// This is the classic car silhouette — long hood, cab toward rear
 function BoxCar() {
   return (
     <>
-      <mesh castShadow>
+      {/* Main body — full length */}
+      <mesh castShadow receiveShadow>
         <boxGeometry args={[1.8, 0.5, 3.4]} />
         <meshStandardMaterial color="#00d4ff" metalness={0.5} roughness={0.25} />
       </mesh>
-      <mesh castShadow position={[0, 0.52, -0.3]}>
-        <boxGeometry args={[1.3, 0.45, 1.8]} />
+
+      {/* Hood detail — slightly raised at front */}
+      <mesh castShadow position={[0, 0.28, 0.8]}>
+        <boxGeometry args={[1.7, 0.06, 1.4]} />
+        <meshStandardMaterial color="#00bde0" metalness={0.4} roughness={0.3} />
+      </mesh>
+
+      {/* Cab — passenger section, sits toward BACK of car */}
+      <mesh castShadow position={[0, 0.52, -0.5]}>
+        <boxGeometry args={[1.3, 0.5, 1.6]} />
         <meshStandardMaterial color="#0099bb" metalness={0.3} roughness={0.4} />
       </mesh>
-      <mesh position={[0, 0.53, 0.62]}>
-        <boxGeometry args={[1.28, 0.42, 0.05]} />
+
+      {/* Windshield — front face of cab, angled toward hood */}
+      {/* Sits at the FRONT edge of the cab, facing +Z */}
+      <mesh castShadow position={[0, 0.54, 0.28]}>
+        <boxGeometry args={[1.26, 0.44, 0.06]} />
         <meshStandardMaterial
-          color="#88ddff" transparent opacity={0.4}
-          roughness={0} metalness={0}
+          color="#88ddff" transparent opacity={0.45}
+          roughness={0} metalness={0.1}
         />
       </mesh>
-      {[[-0.95,-0.18,1.1],[0.95,-0.18,1.1],
-        [-0.95,-0.18,-1.1],[0.95,-0.18,-1.1]].map(([x,y,z],i) => (
-        <mesh key={i} castShadow position={[x,y,z]}>
-          <boxGeometry args={[0.25,0.5,0.5]} />
+
+      {/* Rear window — back face of cab */}
+      <mesh position={[0, 0.54, -1.28]}>
+        <boxGeometry args={[1.26, 0.38, 0.05]} />
+        <meshStandardMaterial
+          color="#66bbdd" transparent opacity={0.35}
+          roughness={0} metalness={0.1}
+        />
+      </mesh>
+
+      {/* Roof rack — on top of cab */}
+      <mesh castShadow position={[0, 0.79, -0.5]}>
+        <boxGeometry args={[1.1, 0.06, 1.4]} />
+        <meshStandardMaterial color="#007799" roughness={0.6} />
+      </mesh>
+
+      {/* Wheels — 4 corners */}
+      {[
+        [-0.95, -0.18,  1.1],   // front-left
+        [ 0.95, -0.18,  1.1],   // front-right
+        [-0.95, -0.18, -1.1],   // rear-left
+        [ 0.95, -0.18, -1.1],   // rear-right
+      ].map(([x, y, z], i) => (
+        <mesh key={i} castShadow position={[x, y, z]}>
+          <boxGeometry args={[0.25, 0.5, 0.5]} />
           <meshStandardMaterial color="#1a1a1a" roughness={1} />
         </mesh>
       ))}
-      {[[-0.5,0,1.72],[0.5,0,1.72]].map(([x,y,z],i) => (
-        <mesh key={i} position={[x,y,z]}>
-          <boxGeometry args={[0.3,0.18,0.05]} />
+
+      {/* Wheel arches — subtle */}
+      {[
+        [-0.9, 0.0,  1.1],
+        [ 0.9, 0.0,  1.1],
+        [-0.9, 0.0, -1.1],
+        [ 0.9, 0.0, -1.1],
+      ].map(([x, y, z], i) => (
+        <mesh key={i} position={[x, y, z]}>
+          <boxGeometry args={[0.1, 0.2, 0.6]} />
+          <meshStandardMaterial color="#007799" roughness={0.5} />
+        </mesh>
+      ))}
+
+      {/* HEADLIGHTS — FRONT = +Z (direction the car drives toward) */}
+      {[[-0.55, 0.05, 1.71], [0.55, 0.05, 1.71]].map(([x, y, z], i) => (
+        <mesh key={i} position={[x, y, z]}>
+          <boxGeometry args={[0.32, 0.2, 0.05]} />
           <meshStandardMaterial
-            color="#ffffcc" emissive="#ffffaa" emissiveIntensity={2}
+            color="#ffffcc" emissive="#ffffaa" emissiveIntensity={2.5}
           />
         </mesh>
       ))}
-      {[[-0.55,0,-1.71],[0.55,0,-1.71]].map(([x,y,z],i) => (
-        <mesh key={i} position={[x,y,z]}>
-          <boxGeometry args={[0.28,0.16,0.05]} />
+
+      {/* Grille strip between headlights — visual front marker */}
+      <mesh position={[0, -0.05, 1.71]}>
+        <boxGeometry args={[1.0, 0.12, 0.04]} />
+        <meshStandardMaterial color="#004466" roughness={0.4} metalness={0.5} />
+      </mesh>
+
+      {/* TAILLIGHTS — BACK = -Z (toward camera, behind car) */}
+      {[[-0.55, 0.05, -1.71], [0.55, 0.05, -1.71]].map(([x, y, z], i) => (
+        <mesh key={i} position={[x, y, z]}>
+          <boxGeometry args={[0.3, 0.18, 0.05]} />
           <meshStandardMaterial
             color="#ff2200" emissive="#ff1100" emissiveIntensity={1.5}
           />
         </mesh>
       ))}
+
+      {/* Rear bumper detail */}
+      <mesh position={[0, -0.12, -1.71]}>
+        <boxGeometry args={[1.6, 0.14, 0.06]} />
+        <meshStandardMaterial color="#007799" roughness={0.5} />
+      </mesh>
     </>
   )
 }
-
-// ── Check if model file exists ─────────────────────────────────────────────
-const HAS_GLTF = false // ← set to true once you drop car.glb into /public/models/
 
 function VehicleInner(props, ref) {
   const bodyRef  = useRef()
@@ -119,38 +195,37 @@ function VehicleInner(props, ref) {
     }
     if (ref) ref.current = body
 
-    const { forward, backward, left, right, brake } = getInput()
-
-    // Reset car — press R
+    // R key reset
     if (typeof window !== 'undefined' && window.__resetCar) {
       window.__resetCar = false
-      body.setTranslation({ x: 0, y: 2, z: 0 }, true)
+      body.setTranslation({ x: 0, y: 2.5, z: 0 }, true)
       body.setLinvel({ x: 0, y: 0, z: 0 }, true)
       body.setAngvel({ x: 0, y: 0, z: 0 }, true)
       body.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
     }
 
-    // 1. Facing direction
+    const { forward, backward, left, right, brake } = getInput()
+
+    // Car local +Z = world direction of travel
     const rot = body.rotation()
     _quat.set(rot.x, rot.y, rot.z, rot.w)
-    _fwd  .set(0, 0, -1).applyQuaternion(_quat).setY(0).normalize()
+    _fwd  .set(0, 0,  1).applyQuaternion(_quat).setY(0).normalize()
     _right.set(1, 0,  0).applyQuaternion(_quat).setY(0).normalize()
 
-    // 2. Current velocity
     const lv = body.linvel()
     _vel.set(lv.x, lv.y, lv.z)
     const fwdSpeed = _fwd.dot(_vel)
     const latSpeed = _right.dot(_vel)
 
-    // 3. Kill lateral drift
+    // Kill lateral drift
     _vel.addScaledVector(_right, -latSpeed * (1 - LATERAL_GRIP))
 
-    // 4. Forward
+    // Forward acceleration
     if (forward && fwdSpeed < MAX_SPEED) {
       _vel.addScaledVector(_fwd, ACCEL_FORCE * dt)
     }
 
-    // 5. Reverse
+    // Reverse
     if (backward) {
       if (fwdSpeed > 0.5) {
         _vel.x *= 0.85
@@ -160,7 +235,7 @@ function VehicleInner(props, ref) {
       }
     }
 
-    // 6. Brake / coast
+    // Brake / coast
     if (brake) {
       _vel.x *= BRAKE_DAMPING
       _vel.z *= BRAKE_DAMPING
@@ -169,7 +244,7 @@ function VehicleInner(props, ref) {
       _vel.z *= COAST_DAMPING
     }
 
-    // 7. Speed cap
+    // Speed cap
     const horizSq = _vel.x * _vel.x + _vel.z * _vel.z
     if (horizSq > MAX_SPEED * MAX_SPEED) {
       const inv = MAX_SPEED / Math.sqrt(horizSq)
@@ -177,10 +252,9 @@ function VehicleInner(props, ref) {
       _vel.z *= inv
     }
 
-    // 8. Apply
     body.setLinvel({ x: _vel.x, y: _vel.y, z: _vel.z }, true)
 
-    // 9. Steering
+    // Steering — speed-gated
     const speedFactor = Math.min(Math.abs(fwdSpeed) / 5, 1)
     const steerDir    = (left ? 1 : 0) - (right ? 1 : 0)
     const steerSign   = fwdSpeed < -0.3 ? -1 : 1
@@ -190,43 +264,37 @@ function VehicleInner(props, ref) {
       1 - Math.exp(-10 * dt)
     )
     body.setAngvel(
-      { x: 0, y: steer.current * STEER_SPEED * steerSign, z: 0 },
-      true
+      { x: 0, y: steer.current * STEER_SPEED * steerSign, z: 0 }, true
     )
 
-    // 10. Bruno-style camera — high angle, smooth follow
+    // Fixed-angle camera — world-space offset, never rotates with car
     const pos = body.translation()
-    _ideal.set(
-      pos.x - _fwd.x * CAM_DIST * 0.5,
-      pos.y + CAM_HEIGHT,
-      pos.z - _fwd.z * CAM_DIST * 0.5
-    )
+    _carPos.set(pos.x, pos.y, pos.z)
+    _ideal.copy(_carPos).add(CAM_OFFSET)
+
     _cam.copy(state.camera.position)
     _cam.lerp(_ideal, 1 - Math.exp(-CAM_LERP * dt))
     state.camera.position.copy(_cam)
 
-    _look.set(
-      pos.x + _fwd.x * CAM_LOOK_AHEAD,
-      pos.y,
-      pos.z + _fwd.z * CAM_LOOK_AHEAD
-    )
+    _look.set(pos.x, pos.y + 0.5, pos.z)
     state.camera.lookAt(_look)
   })
 
   return (
     <RigidBody
       ref={bodyRef}
-      position={[0, 2.0, 0]}
+      position={[0, 2.5, 0]}
       colliders="cuboid"
-      mass={1}
+      mass={2}
       linearDamping={0}
       angularDamping={6}
       enabledRotations={[false, true, false]}
       ccd={true}
+      restitution={0.2}
     >
       {HAS_GLTF ? (
         <Suspense fallback={<BoxCar />}>
-          <GLTFCar scale={1} />
+          <GLTFCar />
         </Suspense>
       ) : (
         <BoxCar />
