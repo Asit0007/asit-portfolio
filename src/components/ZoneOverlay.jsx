@@ -145,15 +145,15 @@ function ContactOverlay({ zone }) {
         </div>
 
         <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
-          Let's Work Together
+          Let&apos;s Work Together
         </h2>
         <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginBottom: 18 }}>
-          Open to Cloud & DevOps opportunities
+          Open to Cloud &amp; DevOps opportunities
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {contacts.map(({ icon, label, value, href }) => (
-            <a /* <--- ADDED MISSING 'a' TAG HERE */
+            <a
               key={label}
               href={href}
               target={href.startsWith('http') ? '_blank' : undefined}
@@ -248,7 +248,7 @@ export default function ZoneOverlay() {
             Asit Minz
           </p>
           <p style={{ color: 'rgba(255,255,255,0.48)', fontSize: 11, marginTop: 4 }}>
-            Infrastructure & Cloud Engineer · Bangalore
+            Infrastructure &amp; Cloud Engineer · Bangalore
           </p>
           <p style={{
             color: 'rgba(255,220,100,0.32)', fontSize: 10,
@@ -345,7 +345,7 @@ export default function ZoneOverlay() {
             { label: 'GitHub',   url: 'https://github.com/Asit0007' },
             { label: 'LinkedIn', url: 'https://linkedin.com/in/asitminz' },
           ].map(({ label: lbl, url }) => (
-            <a /* <--- ADDED MISSING 'a' TAG HERE */
+            <a
               key={lbl}
               href={url}
               target="_blank"
