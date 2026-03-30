@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import useGameStore, { ZONES } from '../store/useGameStore'
+import useGameStore from '../store/useGameStore'
 
 const WORLD_SIZE = 200
 const MAP_SIZE   = 340
@@ -129,22 +129,45 @@ export default function MapOverlay({ vehicleRef }) {
 
   return (
     <>
-      {/* Map toggle button */}
+      {/* Map toggle button — replaces minimap entirely */}
       <button
+        id="map-btn"
         onClick={() => setOpen(o => !o)}
-        title="Map (Tab)"
         style={{
-          position: 'fixed', bottom: 20, right: 168,
-          zIndex: 35, width: 44, height: 44,
-          background: open ? 'rgba(240,192,96,0.25)' : 'rgba(8,4,0,0.75)',
-          backdropFilter: 'blur(10px)',
-          border: `1px solid ${open ? 'rgba(240,192,96,0.6)' : 'rgba(240,180,80,0.2)'}`,
-          borderRadius: 10, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 18, transition: 'all 0.2s',
+          position: 'fixed', bottom: 20, right: 20,
+          zIndex: 35,
+          width: 56, height: 56,
+          background: open
+            ? 'rgba(240,192,96,0.22)'
+            : 'rgba(8,4,0,0.78)',
+          backdropFilter: 'blur(12px)',
+          border: `1px solid ${open
+            ? 'rgba(240,192,96,0.55)'
+            : 'rgba(240,180,80,0.2)'}`,
+          borderRadius: 12,
+          cursor: 'pointer',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 2,
+          transition: 'all 0.2s',
+          boxShadow: open ? '0 0 16px rgba(240,192,96,0.2)' : 'none',
         }}
       >
-        🗺️
+        <span style={{ fontSize: 20, lineHeight: 1 }}>🗺️</span>
+        <span style={{
+          color: open
+            ? 'rgba(240,192,96,0.9)'
+            : 'rgba(240,192,96,0.5)',
+          fontSize: 8,
+          fontFamily: 'monospace',
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          lineHeight: 1,
+        }}>
+          MAP
+        </span>
       </button>
 
       {/* Map overlay panel */}
