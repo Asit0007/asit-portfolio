@@ -193,7 +193,7 @@ function ProjectBillboard({ position }) {
                 ))}
               </div>
 
-              
+              <a /* <--- ADDED THE MISSING TAG HERE */
                 href={slide.url}
                 target="_blank"
                 rel="noreferrer"
