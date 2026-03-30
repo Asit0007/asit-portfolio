@@ -31,7 +31,7 @@ const ZONE_CAMS = {
   contact:  { pos: new THREE.Vector3(0,  34,  70),  look: new THREE.Vector3(0, 0, 55)   },
 }
 
-const HAS_GLTF = false
+const HAS_GLTF = true
 
 const _fwd    = new THREE.Vector3()
 const _right  = new THREE.Vector3()
