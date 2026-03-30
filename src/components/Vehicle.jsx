@@ -8,7 +8,7 @@ import useGameStore from '../store/useGameStore'
 import { playCollision, playBrake } from '../audio'
 
 const MAX_SPEED     = 20
-const MAX_REV_SPEED = 8
+const MAX_REV_SPEED = 15
 const ACCEL_FORCE   = 30
 const REV_FORCE     = 18
 const BRAKE_DAMPING = 0.88

@@ -1,46 +1,46 @@
-import { Suspense, useRef } from 'react'
+import { Suspense } from 'react'
 import { Text3D, Center } from '@react-three/drei'
 import { RigidBody } from '@react-three/rapier'
 
-// Each letter is a separate upright RigidBody — car knocks them over!
-function PhysicsLetter({ char, position, color = '#ffffff', size = 3.5 }) {
+// Physics letter — stands upright, car can knock it over
+// rotation.y = PI so it faces the camera (camera is at -Z, text default faces +Z)
+function PhysicsLetter({ char, position, color = '#ffffff', size = 3.2 }) {
   return (
     <RigidBody
       type="dynamic"
       position={position}
       colliders="cuboid"
-      mass={12}           // Heavy — satisfying thud when hit
+      mass={14}
       linearDamping={0.6}
       angularDamping={0.8}
-      restitution={0.15}
+      restitution={0.12}
     >
-      <Center>
-        <Text3D
-          font="/fonts/helvetiker_bold.typeface.json"
-          size={size}
-          height={0.8}       // Depth of letter
-          curveSegments={4}
-          bevelEnabled
-          bevelSize={0.08}
-          bevelThickness={0.1}
-          bevelSegments={2}
-        >
-          {char}
-          <meshStandardMaterial
-            color={color}
-            roughness={0.25}
-            metalness={0.15}
-          />
-        </Text3D>
-      </Center>
+      <group rotation={[0, Math.PI, 0]}>
+        <Center>
+          <Text3D
+            font="/fonts/helvetiker_bold.typeface.json"
+            size={size}
+            height={0.85}
+            curveSegments={4}
+            bevelEnabled
+            bevelSize={0.08}
+            bevelThickness={0.1}
+            bevelSegments={2}
+          >
+            {char}
+            <meshStandardMaterial color={color} roughness={0.22} metalness={0.18} />
+          </Text3D>
+        </Center>
+      </group>
     </RigidBody>
   )
 }
 
-// Static flat ground text for instructions (not physics)
+// Flat ground text — readable from camera at negative Z looking toward +Z
+// KEY FIX: rotation.y = 0 (NOT Math.PI) — Math.PI was causing horizontal mirror
 function GroundText({ text, position, tiltZ = 0, size = 0.75, color = '#f0c060' }) {
   return (
-    <Center position={position} rotation={[-Math.PI / 2, Math.PI, tiltZ]}>
+    <Center position={position} rotation={[-Math.PI / 2, 0, tiltZ]}>
       <Text3D
         font="/fonts/helvetiker_bold.typeface.json"
         size={size}
@@ -49,25 +49,25 @@ function GroundText({ text, position, tiltZ = 0, size = 0.75, color = '#f0c060' 
         bevelEnabled={false}
       >
         {text}
-        <meshStandardMaterial color={color} roughness={0.5} metalness={0.05} />
+        <meshStandardMaterial
+          color={color}
+          roughness={0.5}
+          metalness={0.05}
+          side={2}
+        />
       </Text3D>
     </Center>
   )
 }
 
 export default function NameTitle() {
-  // Letter positions — laid out in a line near spawn
-  // Car spawns at [0,0,0], faces +Z, so letters are offset in X/Z
-  // Arranged so you naturally drive through/past them
   const letters = [
-    // "ASIT" — left side of spawn area
     { char: 'A', pos: [-22, 1.9, 18] },
     { char: 'S', pos: [-17, 1.9, 20] },
     { char: 'I', pos: [-13, 1.9, 21] },
     { char: 'T', pos: [-9,  1.9, 22] },
-    // "MINZ" — slightly further, staggered
-    { char: 'M', pos: [-5,  1.9, 28] },
-    { char: 'I', pos: [0,   1.9, 30] },
+    { char: 'M', pos: [-4,  1.9, 28] },
+    { char: 'I', pos: [0.5, 1.9, 30] },
     { char: 'N', pos: [5,   1.9, 31] },
     { char: 'Z', pos: [10,  1.9, 30] },
   ]
@@ -75,30 +75,23 @@ export default function NameTitle() {
   return (
     <Suspense fallback={null}>
       <group>
-        {/* Upright bumping letters — white */}
         {letters.map(({ char, pos }, i) => (
-          <PhysicsLetter
-            key={`${char}-${i}`}
-            char={char}
-            position={pos}
-            color="#ffffff"
-            size={3.2}
-          />
+          <PhysicsLetter key={`${char}-${i}`} char={char} position={pos} color="#ffffff" />
         ))}
 
-        {/* Instruction text flat on ground near start */}
+        {/* Ground instructions — near start pad, readable from camera */}
         <GroundText
           text="USE ARROW KEYS TO EXPLORE"
-          position={[6, 0.58, 10]}
-          tiltZ={0.08}
-          size={0.68}
+          position={[7, 0.58, 9]}
+          tiltZ={0.06}
+          size={0.65}
           color="#f0c060"
         />
         <GroundText
           text="R = RESET  |  M = MUTE"
-          position={[6, 0.58, 12.2]}
-          tiltZ={0.08}
-          size={0.58}
+          position={[7.5, 0.58, 11.2]}
+          tiltZ={0.06}
+          size={0.55}
           color="rgba(240,192,96,0.55)"
         />
       </group>
