@@ -8,7 +8,7 @@ import useGameStore from '../store/useGameStore'
 import { playCollision, playBrake } from '../audio'
 
 const MAX_SPEED     = 20
-const MAX_REV_SPEED = 15
+const MAX_REV_SPEED = 8
 const ACCEL_FORCE   = 30
 const REV_FORCE     = 18
 const BRAKE_DAMPING = 0.88
@@ -16,18 +16,22 @@ const COAST_DAMPING = 0.995
 const LATERAL_GRIP  = 0.80
 const STEER_SPEED   = 2.4
 
-const CAM_OFFSET    = new THREE.Vector3(-8, 18, -20)
+// ── Camera now sits at +Z (south-east) looking north-west ─────────────────
+// Car faces -Z (north), camera follows from +Z behind it
+// Ground text [-PI/2, 0, 0] will now read correctly from this angle
+const CAM_OFFSET = new THREE.Vector3(8, 18, 20)
 const CAM_LERP      = 3.5
 const CAM_LERP_ZONE = 1.8
 
+// Zone birds-eye cams — absolute world positions looking straight down
 const ZONE_CAMS = {
-  cloud:   { pos: new THREE.Vector3(0, 32, -55),  look: new THREE.Vector3(0, 0.5, -55)  },
-  projects:{ pos: new THREE.Vector3(55, 32, 0),   look: new THREE.Vector3(55, 0.5, 0)   },
-  hobbies: { pos: new THREE.Vector3(-55, 32, 0),  look: new THREE.Vector3(-55, 0.5, 0)  },
-  contact: { pos: new THREE.Vector3(0, 32, 55),   look: new THREE.Vector3(0, 0.5, 55)   },
+  cloud:    { pos: new THREE.Vector3(0,  34, -40),  look: new THREE.Vector3(0, 0, -55)  },
+  projects: { pos: new THREE.Vector3(70, 34,  0),   look: new THREE.Vector3(55, 0, 0)   },
+  hobbies:  { pos: new THREE.Vector3(-70,34,  0),   look: new THREE.Vector3(-55, 0, 0)  },
+  contact:  { pos: new THREE.Vector3(0,  34,  70),  look: new THREE.Vector3(0, 0, 55)   },
 }
 
-const HAS_GLTF = true
+const HAS_GLTF = false
 
 const _fwd    = new THREE.Vector3()
 const _right  = new THREE.Vector3()
@@ -50,57 +54,72 @@ function GLTFCar() {
 function BoxCar() {
   return (
     <>
+      {/* Body */}
       <mesh castShadow>
         <boxGeometry args={[1.8, 0.5, 3.4]} />
         <meshStandardMaterial color="#00d4ff" metalness={0.5} roughness={0.25} />
       </mesh>
-      <mesh castShadow position={[0, 0.28, 0.8]}>
+      {/* Hood — at -Z (front, direction of travel) */}
+      <mesh castShadow position={[0, 0.28, -0.8]}>
         <boxGeometry args={[1.7, 0.06, 1.4]} />
         <meshStandardMaterial color="#00bde0" metalness={0.4} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 0.52, -0.5]}>
+      {/* Cab — toward back (+Z) */}
+      <mesh castShadow position={[0, 0.52, 0.5]}>
         <boxGeometry args={[1.3, 0.5, 1.6]} />
         <meshStandardMaterial color="#0099bb" metalness={0.3} roughness={0.4} />
       </mesh>
-      <mesh position={[0, 0.54, 0.28]}>
+      {/* Windshield — front of cab toward -Z */}
+      <mesh position={[0, 0.54, -0.28]}>
         <boxGeometry args={[1.26, 0.44, 0.06]} />
-        <meshStandardMaterial color="#88ddff" transparent opacity={0.45} roughness={0} metalness={0.1} />
+        <meshStandardMaterial color="#88ddff" transparent opacity={0.45}
+          roughness={0} metalness={0.1} />
       </mesh>
-      <mesh position={[0, 0.54, -1.28]}>
+      {/* Rear window — back of cab +Z */}
+      <mesh position={[0, 0.54, 1.28]}>
         <boxGeometry args={[1.26, 0.38, 0.05]} />
-        <meshStandardMaterial color="#66bbdd" transparent opacity={0.35} roughness={0} metalness={0.1} />
+        <meshStandardMaterial color="#66bbdd" transparent opacity={0.35}
+          roughness={0} metalness={0.1} />
       </mesh>
-      <mesh castShadow position={[0, 0.79, -0.5]}>
+      {/* Roof rack */}
+      <mesh castShadow position={[0, 0.79, 0.5]}>
         <boxGeometry args={[1.1, 0.06, 1.4]} />
         <meshStandardMaterial color="#007799" roughness={0.6} />
       </mesh>
       {/* Wheels */}
-      {[[-0.95,-0.22,1.1],[0.95,-0.22,1.1],[-0.95,-0.22,-1.1],[0.95,-0.22,-1.1]].map(([x,y,z],i) => (
+      {[
+        [-0.95,-0.22,-1.1],
+        [ 0.95,-0.22,-1.1],
+        [-0.95,-0.22, 1.1],
+        [ 0.95,-0.22, 1.1],
+      ].map(([x,y,z],i) => (
         <mesh key={i} castShadow position={[x,y,z]}>
           <boxGeometry args={[0.28, 0.52, 0.52]} />
           <meshStandardMaterial color="#1a1a1a" roughness={1} />
         </mesh>
       ))}
-      {/* Headlights — FRONT = +Z */}
-      {[[-0.55,0.05,1.71],[0.55,0.05,1.71]].map(([x,y,z],i) => (
+      {/* Headlights — FRONT = -Z (direction of travel) */}
+      {[[-0.55, 0.05, -1.71], [0.55, 0.05, -1.71]].map(([x,y,z],i) => (
         <mesh key={i} position={[x,y,z]}>
-          <boxGeometry args={[0.32,0.2,0.05]} />
+          <boxGeometry args={[0.32, 0.2, 0.05]} />
           <meshStandardMaterial color="#ffffcc" emissive="#ffffaa" emissiveIntensity={2.5} />
         </mesh>
       ))}
-      <mesh position={[0,-0.05,1.71]}>
-        <boxGeometry args={[1.0,0.12,0.04]} />
+      {/* Grille — front visual marker at -Z */}
+      <mesh position={[0, -0.05, -1.71]}>
+        <boxGeometry args={[1.0, 0.12, 0.04]} />
         <meshStandardMaterial color="#004466" roughness={0.4} metalness={0.5} />
       </mesh>
-      {/* Taillights — BACK = -Z */}
-      {[[-0.55,0.05,-1.71],[0.55,0.05,-1.71]].map(([x,y,z],i) => (
+      {/* Taillights — BACK = +Z (toward camera) */}
+      {[[-0.55, 0.05, 1.71], [0.55, 0.05, 1.71]].map(([x,y,z],i) => (
         <mesh key={i} position={[x,y,z]}>
-          <boxGeometry args={[0.3,0.18,0.05]} />
+          <boxGeometry args={[0.3, 0.18, 0.05]} />
           <meshStandardMaterial color="#ff2200" emissive="#ff1100" emissiveIntensity={1.5} />
         </mesh>
       ))}
-      <mesh position={[0,-0.12,-1.71]}>
-        <boxGeometry args={[1.6,0.14,0.06]} />
+      {/* Rear bumper at +Z */}
+      <mesh position={[0, -0.12, 1.71]}>
+        <boxGeometry args={[1.6, 0.14, 0.06]} />
         <meshStandardMaterial color="#007799" roughness={0.5} />
       </mesh>
     </>
@@ -152,9 +171,10 @@ function VehicleInner(props, ref) {
     if (brake && !prevBrake.current && gameStarted) playBrake()
     prevBrake.current = brake
 
+    // ── Car faces -Z (north) ──────────────────────────────────────────────
     const rot = body.rotation()
     _quat.set(rot.x, rot.y, rot.z, rot.w)
-    _fwd  .set(0, 0,  1).applyQuaternion(_quat).setY(0).normalize()
+    _fwd  .set(0, 0, -1).applyQuaternion(_quat).setY(0).normalize()
     _right.set(1, 0,  0).applyQuaternion(_quat).setY(0).normalize()
 
     const lv = body.linvel()
@@ -166,13 +186,13 @@ function VehicleInner(props, ref) {
 
     _vel.addScaledVector(_right, -latSpeed * (1 - LATERAL_GRIP))
 
-    if (forward && fwdSpeed < MAX_SPEED) _vel.addScaledVector(_fwd, ACCEL_FORCE * dt)
-
+    if (forward && fwdSpeed < MAX_SPEED) {
+      _vel.addScaledVector(_fwd, ACCEL_FORCE * dt)
+    }
     if (backward) {
       if (fwdSpeed > 0.5) { _vel.x *= 0.85; _vel.z *= 0.85 }
       else if (fwdSpeed > -MAX_REV_SPEED) _vel.addScaledVector(_fwd, -REV_FORCE * dt)
     }
-
     if (brake) { _vel.x *= BRAKE_DAMPING; _vel.z *= BRAKE_DAMPING }
     else if (!forward && !backward) { _vel.x *= COAST_DAMPING; _vel.z *= COAST_DAMPING }
 
@@ -192,7 +212,7 @@ function VehicleInner(props, ref) {
     )
     body.setAngvel({ x:0, y: steer.current * STEER_SPEED * steerSign, z:0 }, true)
 
-    // Camera
+    // ── Camera follows from +Z (behind car that faces -Z) ─────────────────
     const pos    = body.translation()
     const zoneId = useGameStore.getState().activeZone?.id
     const zoneCam = zoneId && ZONE_CAMS[zoneId]
@@ -217,7 +237,7 @@ function VehicleInner(props, ref) {
     <RigidBody
       ref={bodyRef}
       position={[0, 2.5, 0]}
-      colliders={false}        // ← Manual collider for precise wheel alignment
+      colliders={false}
       mass={2}
       linearDamping={0}
       angularDamping={6}
@@ -229,14 +249,7 @@ function VehicleInner(props, ref) {
         if (spd > 4 && useGameStore.getState().gameStarted) playCollision(spd)
       }}
     >
-      {/* ── Manual cuboid collider — only the car body, NOT roof/wheels ─────
-          half-extents: [width/2=0.9, height/2=0.28, length/2=1.7]
-          position y=0 means collider spans -0.28 to +0.28
-          Wheels at y=-0.22, their bottom at -0.22-0.26=-0.48 visual only
-          Ground contact = physics bottom at -0.28 → center at y=0.28
-          Wheels visual at 0.28-0.22=0.06 above ground = correct! ───────── */}
       <CuboidCollider args={[0.9, 0.28, 1.7]} position={[0, 0, 0]} />
-
       {HAS_GLTF ? (
         <Suspense fallback={<BoxCar />}><GLTFCar /></Suspense>
       ) : (
