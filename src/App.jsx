@@ -3,7 +3,6 @@ import { Canvas } from '@react-three/fiber'
 import { KeyboardControls } from '@react-three/drei'
 import Scene          from './components/Scene'
 import ZoneOverlay    from './components/ZoneOverlay'
-import Minimap        from './components/Minimap'
 import MobileJoystick from './components/MobileJoystick'
 import StartScreen    from './components/StartScreen'
 import MapOverlay     from './components/MapOverlay'
@@ -148,7 +147,6 @@ export default function App() {
 
       {/* Overlays */}
       <ZoneOverlay />
-      <Minimap vehicleRef={vehicleRef} />
       <MapOverlay vehicleRef={vehicleRef} />
       <MobileJoystick onInput={setJoystick} />
       <StartScreen />
