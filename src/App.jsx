@@ -125,7 +125,7 @@ export default function App() {
         <h1>Asit Minz — Infrastructure & Cloud Engineer, Bangalore</h1>
       </div>
 
-      {/* 3D Canvas — always rendered, behind overlays */}
+      {/* 3D Canvas — always rendered, strictly 3D elements only */}
       <div style={{ position:'fixed', inset:0 }}>
         <Suspense fallback={<LoadingScreen />}>
           <KeyboardControls map={keyMap}>
@@ -141,23 +141,17 @@ export default function App() {
               style={{ width:'100%', height:'100%' }}
             >
               <Scene />
-              
-              {/* MOVED INSIDE THE CANVAS */}
-              {gameStarted && (
-                <>
-                  <ZoneOverlay />
-                  <MapOverlay vehicleRef={vehicleRef} />
-                  <NosHUD />
-                </>
-              )}
             </Canvas>
           </KeyboardControls>
         </Suspense>
       </div>
 
-      {/* Standard HTML Overlays — stay outside Canvas */}
+      {/* HTML OVERLAYS — Safely outside the Canvas */}
       {gameStarted && (
         <>
+          <ZoneOverlay />
+          <MapOverlay vehicleRef={vehicleRef} />
+          <NosHUD />
           <MobileJoystick onInput={setJoystick} />
 
           {/* HUD — responsive */}
