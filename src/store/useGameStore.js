@@ -40,11 +40,10 @@ const ZONES = {
         'Magento DeployKit: 7 Bash scripts, Varnish/NGINX/PHP-FPM 3-layer caching, DigitalOcean',
       ],
       tags: ['Go', 'Python', 'Docker', 'Terraform', 'GitHub Actions', 'Bash'],
-      // Add your actual screenshot filenames here
       slides: [
-        { image: '/images/cloudpulse.png',  title: 'CloudPulse',         url: 'https://github.com/Asit0007' },
-        { image: '/images/quantbot.png',    title: 'QuantBot',           url: 'https://github.com/Asit0007' },
-        { image: '/images/magento.png',     title: 'Magento DeployKit',  url: 'https://github.com/Asit0007' },
+        { image: '/images/cloudpulse.png',  title: 'CloudPulse',        url: 'https://github.com/Asit0007' },
+        { image: '/images/quantbot.png',    title: 'QuantBot',          url: 'https://github.com/Asit0007' },
+        { image: '/images/magento.png',     title: 'Magento DeployKit', url: 'https://github.com/Asit0007' },
       ],
     },
   },
@@ -68,7 +67,7 @@ const ZONES = {
   contact: {
     id: 'contact',
     label: '📬 Contact',
-    sublabel: 'Let\'s work together',
+    sublabel: "Let's work together",
     color: '#f43f5e',
     content: {
       title: 'Get In Touch',
@@ -97,25 +96,33 @@ const useGameStore = create((set) => ({
   musicOn:        true,
   setMusicOn:     (v) => set({ musicOn: v }),
 
-  // Project billboard slide index
   slideIndex:     0,
   setSlideIndex:  (v) => set({ slideIndex: v }),
 
   isLoaded:       false,
   setIsLoaded:    (v) => set({ isLoaded: v }),
 
-  isMobile: /iPhone|iPad|Android/i.test(navigator.userAgent),
+  // Safe navigator check — guards against SSR / non-browser environments
+  isMobile: typeof navigator !== 'undefined'
+    ? /iPhone|iPad|Android/i.test(navigator.userAgent)
+    : false,
 
   joystick: {
     forward: false, backward: false,
-    left: false, right: false, brake: false,
+    left: false, right: false, brake: false, boost: false,
   },
+  // Supports both direct value and functional updater: setJoystick(j) or setJoystick(prev => ...)
   setJoystick: (j) => set((s) => ({
     joystick: typeof j === 'function' ? j(s.joystick) : j,
   })),
 
   vehicleBody:    null,
   setVehicleBody: (b) => set({ vehicleBody: b }),
+
+  // ── Car reset — replaces window.__resetCar global ────────────────────────
+  needsReset: false,
+  resetCar:   () => set({ needsReset: true }),
+  clearReset: () => set({ needsReset: false }),
 }))
 
 export default useGameStore
