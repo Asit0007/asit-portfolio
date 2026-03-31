@@ -106,7 +106,7 @@ export default function App() {
 
   return (
     <>
-      {/* Context lost */}
+      {/* Context lost warning */}
       <div id="context-lost-msg" style={{
         display:'none', position:'fixed', inset:0, zIndex:50,
         background:'rgba(0,0,0,0.92)', color:'white',
@@ -125,7 +125,7 @@ export default function App() {
         <h1>Asit Minz — Infrastructure & Cloud Engineer, Bangalore</h1>
       </div>
 
-      {/* 3D Canvas — always rendered, strictly 3D elements only */}
+      {/* ── 3D WORLD: ONLY R3F COMPONENTS ALLOWED HERE ── */}
       <div style={{ position:'fixed', inset:0 }}>
         <Suspense fallback={<LoadingScreen />}>
           <KeyboardControls map={keyMap}>
@@ -141,20 +141,23 @@ export default function App() {
               style={{ width:'100%', height:'100%' }}
             >
               <Scene />
+              
+              {/* NosHUD uses R3F hooks, so it safely lives inside the Canvas */}
+              {gameStarted && <NosHUD />}
+              
             </Canvas>
           </KeyboardControls>
         </Suspense>
       </div>
 
-      {/* HTML OVERLAYS — Safely outside the Canvas */}
+      {/* ── 2D UI: ONLY STANDARD HTML COMPONENTS ALLOWED HERE ── */}
       {gameStarted && (
         <>
           <ZoneOverlay />
           <MapOverlay vehicleRef={vehicleRef} />
-          <NosHUD />
           <MobileJoystick onInput={setJoystick} />
 
-          {/* HUD — responsive */}
+          {/* HUD — responsive text */}
           <div style={{
             position:'fixed', bottom:20, left:'50%',
             transform:'translateX(-50%)',
@@ -199,7 +202,7 @@ export default function App() {
         </>
       )}
 
-      {/* StartScreen — always on top when game not started */}
+      {/* StartScreen — standard HTML overlay, lives outside Canvas */}
       <StartScreen />
 
       {/* Responsive HUD style injection */}
