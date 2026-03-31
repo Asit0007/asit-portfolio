@@ -141,17 +141,23 @@ export default function App() {
               style={{ width:'100%', height:'100%' }}
             >
               <Scene />
+              
+              {/* MOVED INSIDE THE CANVAS */}
+              {gameStarted && (
+                <>
+                  <ZoneOverlay />
+                  <MapOverlay vehicleRef={vehicleRef} />
+                  <NosHUD />
+                </>
+              )}
             </Canvas>
           </KeyboardControls>
         </Suspense>
       </div>
 
-      {/* 3D HTML overlays — only when game is running */}
+      {/* Standard HTML Overlays — stay outside Canvas */}
       {gameStarted && (
         <>
-          <ZoneOverlay />
-          <MapOverlay vehicleRef={vehicleRef} />
-          <NosHUD />
           <MobileJoystick onInput={setJoystick} />
 
           {/* HUD — responsive */}
