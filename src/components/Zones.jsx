@@ -12,6 +12,9 @@ const ZONE_DEFS = [
   { id: 'contact',  position: [0,   0,  55],  radius: 14, color: '#f43f5e', label: 'CONTACT'       },
 ]
 
+const _vPos = new THREE.Vector3()
+const _zPos = new THREE.Vector3()
+
 function ZoneMarker({ id, position, radius, color, label }) {
   const ringRef    = useRef()
   const activeZone = useGameStore((s) => s.activeZone)
@@ -34,6 +37,7 @@ function ZoneMarker({ id, position, radius, color, label }) {
           side={THREE.DoubleSide} depthWrite={false}
         />
       </mesh>
+
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.48, 0]}>
         <circleGeometry args={[radius - 1.2, 48]} />
         <meshStandardMaterial
@@ -41,18 +45,22 @@ function ZoneMarker({ id, position, radius, color, label }) {
           opacity={isActive ? 0.05 : 0.02} depthWrite={false}
         />
       </mesh>
+
+      {/* Only mount Text when active — safer on mobile */}
       {isActive && (
-        <Text
-          position={[0, 7, 0]}
-          fontSize={1.5}
-          color={color}
-          anchorX="center"
-          anchorY="middle"
-          outlineWidth={0.08}
-          outlineColor="#000"
-        >
-          {label}
-        </Text>
+        <group position={[0, 7, 0]}>
+          <Text
+            fontSize={1.5}
+            color={color}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.08}
+            outlineColor="#000"
+            // NO font prop — Troika's built-in font works everywhere
+          >
+            {label}
+          </Text>
+        </group>
       )}
     </group>
   )
@@ -61,8 +69,6 @@ function ZoneMarker({ id, position, radius, color, label }) {
 export default function Zones({ vehicleRef }) {
   const setActiveZone = useGameStore((s) => s.setActiveZone)
   const lastZone      = useRef(null)
-  const _vPos = new THREE.Vector3()
-  const _zPos = new THREE.Vector3()
 
   useFrame(() => {
     if (!vehicleRef?.current) return

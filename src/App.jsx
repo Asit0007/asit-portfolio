@@ -1,39 +1,50 @@
 import { Suspense, useEffect, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { KeyboardControls } from '@react-three/drei'
-import { ErrorBoundary } from 'react-error-boundary'
 import Scene          from './components/Scene'
 import ZoneOverlay    from './components/ZoneOverlay'
 import MapOverlay     from './components/MapOverlay'
 import MobileJoystick from './components/MobileJoystick'
 import StartScreen    from './components/StartScreen'
 import NosHUD         from './components/NosHUD'
+import MusicPlayer    from './components/MusicPlayer'
 import useGameStore   from './store/useGameStore'
 import { keyMap }     from './Controls'
 import { toggleMusic } from './audio'
 
-// ─── WebGL context-lost handler ──────────────────────────────────────────────
 function handleContextLost(e) {
   e.preventDefault()
   const el = document.getElementById('context-lost-msg')
   if (el) el.style.display = 'flex'
 }
 
-// ─── Loading screen ───────────────────────────────────────────────────────────
 function LoadingScreen() {
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 40, background: '#0d0500',
+      position: 'fixed', inset: 0, zIndex: 40,
+      background: '#0d0500',
       display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: 24,
+      alignItems: 'center', justifyContent: 'center',
+      gap: 'clamp(12px, 3vh, 24px)',
+      padding: '16px',
     }}>
       <p style={{
-        fontFamily: 'monospace', fontSize: 'clamp(16px,4vw,26px)', fontWeight: 900,
-        letterSpacing: '0.22em', color: '#f0c060', textTransform: 'uppercase',
+        fontFamily: 'monospace',
+        fontSize: 'clamp(14px, 3.5vw, 26px)',
+        fontWeight: 900,
+        letterSpacing: '0.22em',
+        color: '#f0c060',
+        textTransform: 'uppercase',
+        textAlign: 'center',
       }}>
         ASIT MINZ
       </p>
-      <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12, fontFamily: 'monospace' }}>
+      <p style={{
+        color: 'rgba(255,255,255,0.35)',
+        fontSize: 'clamp(10px, 1.5vw, 13px)',
+        fontFamily: 'monospace',
+        textAlign: 'center',
+      }}>
         Loading world...
       </p>
       <div style={{
@@ -42,49 +53,18 @@ function LoadingScreen() {
         borderRadius: 99, overflow: 'hidden',
       }}>
         <div style={{
-          height: '100%', background: '#f0c060', borderRadius: 99,
-          width: '55%', animation: 'ldpulse 1.4s ease-in-out infinite',
+          height: '100%', background: '#f0c060',
+          borderRadius: 99, width: '55%',
+          animation: 'ldpulse 1.4s ease-in-out infinite',
         }} />
       </div>
-      <style>{`@keyframes ldpulse{0%,100%{opacity:.4}50%{opacity:1}}`}</style>
+      <style>{`
+        @keyframes ldpulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+      `}</style>
     </div>
   )
 }
 
-// ─── WebGL not supported fallback ─────────────────────────────────────────────
-function WebGLFallback() {
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 50,
-      background: '#0d0500', color: 'white',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: 16,
-      fontFamily: 'monospace', textAlign: 'center', padding: '0 24px',
-    }}>
-      <p style={{ fontSize: 'clamp(18px,4vw,28px)', fontWeight: 900, color: '#f0c060', letterSpacing: '0.15em' }}>
-        ASIT MINZ
-      </p>
-      <p style={{ fontSize: 16, fontWeight: 700 }}>⚠️ WebGL not available</p>
-      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', maxWidth: 340 }}>
-        Your browser or device does not support WebGL.<br />
-        Try Chrome or Firefox with hardware acceleration enabled.
-      </p>
-      <button
-        onClick={() => window.location.reload()}
-        style={{
-          marginTop: 8, padding: '10px 28px',
-          background: '#f0c060', color: '#1a0a00',
-          borderRadius: 8, fontWeight: 700,
-          border: 'none', cursor: 'pointer', fontSize: 15,
-        }}
-      >
-        Retry
-      </button>
-    </div>
-  )
-}
-
-// ─── Title animation hook ─────────────────────────────────────────────────────
 function useTitleAnimation(vehicleBody) {
   useEffect(() => {
     if (!vehicleBody) return
@@ -93,10 +73,12 @@ function useTitleAnimation(vehicleBody) {
       try {
         const lv    = vehicleBody.linvel()
         const speed = Math.sqrt(lv.x * lv.x + lv.z * lv.z)
-        const title = speed > 15 ? '🔥 Asit Minz | Portfolio'
-          : speed > 8            ? '💨 Asit Minz | Portfolio'
-          : speed > 1            ? '🚗 Asit Minz | Portfolio'
-          :                        'Asit Minz | Portfolio'
+        const boost = window.__isBoosting
+        const title =
+          boost      ? '🔥 Asit Minz | Portfolio' :
+          speed > 15 ? '💨 Asit Minz | Portfolio' :
+          speed > 1  ? '🚗 Asit Minz | Portfolio' :
+                       'Asit Minz | Portfolio'
         if (title !== last) { document.title = last = title }
       } catch (_) {}
     }, 500)
@@ -104,22 +86,16 @@ function useTitleAnimation(vehicleBody) {
   }, [vehicleBody])
 }
 
-// ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const isMobile    = useGameStore((s) => s.isMobile)
   const setJoystick = useGameStore((s) => s.setJoystick)
   const vehicleBody = useGameStore((s) => s.vehicleBody)
   const gameStarted = useGameStore((s) => s.gameStarted)
+  const vehicleRef  = useRef()
 
-  // FIX 1: vehicleRef updated inside useEffect, not on every render
-  const vehicleRef = useRef()
-  useEffect(() => {
-    if (vehicleBody) vehicleRef.current = vehicleBody
-  }, [vehicleBody])
-
+  if (vehicleBody) vehicleRef.current = vehicleBody
   useTitleAnimation(vehicleBody)
 
-  // FIX 2: WebGL context-lost listener
   useEffect(() => {
     let cleanup = () => {}
     const attach = () => {
@@ -136,12 +112,9 @@ export default function App() {
     return () => cleanup()
   }, [])
 
-  // FIX 3: resetCar via Zustand store instead of window.__resetCar global
-  const resetCar = useGameStore((s) => s.resetCar)
-
   useEffect(() => {
     const onKey = (e) => {
-      if (e.code === 'KeyR' && typeof resetCar === 'function') resetCar()
+      if (e.code === 'KeyR') window.__resetCar = true
       if (e.code === 'KeyM') toggleMusic()
       if (e.code === 'Tab') {
         e.preventDefault()
@@ -150,131 +123,155 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [resetCar])
-
-  // FIX 4: Safe devicePixelRatio access (guards against SSR / missing window)
-  const dpr = typeof window !== 'undefined'
-    ? [1, Math.min(window.devicePixelRatio, 2)]
-    : [1, 1]
+  }, [])
 
   return (
     <>
+      {/* Global responsive styles */}
+      <style>{`
+        * { box-sizing: border-box; }
+        html, body, #root {
+          width: 100%; height: 100%;
+          margin: 0; padding: 0;
+          overflow: hidden;
+        }
+        /* Vertical viewport fix for mobile browsers with address bar */
+        #root {
+          height: 100dvh;
+          min-height: -webkit-fill-available;
+        }
+        @media (max-width: 640px) {
+          .hud-full { display: none !important; }
+          .hud-short { display: inline !important; }
+        }
+        @media (max-height: 500px) {
+          .nos-hud { bottom: 44px !important; }
+          .hud-bar { bottom: 6px !important; padding: 4px 12px !important; }
+        }
+      `}</style>
+
       {/* Context lost overlay */}
-      <div
-        id="context-lost-msg"
-        style={{
-          display: 'none', position: 'fixed', inset: 0, zIndex: 50,
-          background: 'rgba(0,0,0,0.92)', color: 'white',
-          flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
-        }}
-      >
+      <div id="context-lost-msg" style={{
+        display: 'none', position: 'fixed', inset: 0, zIndex: 50,
+        background: 'rgba(0,0,0,0.92)', color: 'white',
+        flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', gap: 16,
+      }}>
         <p style={{ fontSize: 20, fontWeight: 700 }}>⚠️ Graphics context lost</p>
-        <button
-          onClick={() => window.location.reload()}
-          style={{
-            padding: '10px 28px', background: '#f0c060', color: '#1a0a00',
-            borderRadius: 8, fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: 15,
-          }}
-        >
+        <button onClick={() => window.location.reload()} style={{
+          padding: '10px 28px', background: '#f0c060', color: '#1a0a00',
+          borderRadius: 8, fontWeight: 700, border: 'none',
+          cursor: 'pointer', fontSize: 15,
+        }}>
           Reload
         </button>
       </div>
 
       {/* A11y */}
-      <div
-        style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0 }}
-        aria-label="Asit Minz portfolio"
-      >
-        <h1>Asit Minz — Infrastructure &amp; Cloud Engineer, Bangalore</h1>
+      <div style={{ position:'absolute', width:1, height:1, overflow:'hidden', opacity:0 }}
+        aria-label="Asit Minz portfolio">
+        <h1>Asit Minz — Infrastructure & Cloud Engineer, Bangalore</h1>
       </div>
 
-      {/* FIX 5: ErrorBoundary catches WebGL init crash → shows WebGLFallback */}
+      {/* 3D Canvas — always mounted */}
       <div style={{ position: 'fixed', inset: 0 }}>
-        <ErrorBoundary FallbackComponent={WebGLFallback}>
-          <Suspense fallback={<LoadingScreen />}>
-            <KeyboardControls map={keyMap}>
-              <Canvas
-                shadows={!isMobile}
-                camera={{ fov: 50, near: 0.1, far: 600, position: [8, 18, 20] }}
-                gl={{
-                  // FIX 6: disable antialias on mobile — saves GPU
-                  antialias: !isMobile,
-                  powerPreference: 'high-performance',
-                  failIfMajorPerformanceCaveat: false,
-                }}
-                dpr={dpr}
-                style={{ width: '100%', height: '100%' }}
-              >
-                <Scene />
-              </Canvas>
-            </KeyboardControls>
-          </Suspense>
-        </ErrorBoundary>
+        <Suspense fallback={<LoadingScreen />}>
+          <KeyboardControls map={keyMap}>
+            <Canvas
+              shadows={!isMobile}
+              camera={{ fov: 50, near: 0.1, far: 600, position: [8, 18, 20] }}
+              gl={{
+                antialias: true,
+                powerPreference: 'high-performance',
+                failIfMajorPerformanceCaveat: false,
+              }}
+              dpr={[1, Math.min(window.devicePixelRatio, 2)]}
+              style={{ width: '100%', height: '100%' }}
+            >
+              <Scene />
+            </Canvas>
+          </KeyboardControls>
+        </Suspense>
       </div>
 
-      {/* HUD overlays — only when game is running */}
+      {/* Game overlays — only when active */}
       {gameStarted && (
         <>
           <ZoneOverlay />
-          <MapOverlay vehicleRef={vehicleRef} />
-          <NosHUD />
-          <MobileJoystick onInput={setJoystick} />
 
-          {/* Bottom HUD bar */}
-          <div style={{
-            position: 'fixed', bottom: 20, left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'rgba(8,4,0,0.72)', backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(240,180,80,0.18)',
-            borderRadius: 99, padding: 'clamp(5px,1vw,7px) clamp(12px,3vw,22px)',
-            color: 'rgba(255,220,120,0.8)',
-            fontSize: 'clamp(8px,1.2vw,11px)',
-            fontFamily: 'monospace', letterSpacing: '0.1em',
-            pointerEvents: 'none', userSelect: 'none',
-            textTransform: 'uppercase', whiteSpace: 'nowrap',
-          }}>
-            <span className="hud-desktop">
-              ↑↓←→ Drive &nbsp;·&nbsp; Space Brake &nbsp;·&nbsp; Shift Boost &nbsp;·&nbsp; R Reset &nbsp;·&nbsp; Tab Map
-            </span>
-            <span className="hud-mobile" style={{ display: 'none' }}>
-              Use controls below
-            </span>
+          {/* NOS gauge */}
+          <div className="nos-hud" style={{ position: 'fixed', bottom: 56, left: '50%',
+            transform: 'translateX(-50%)', zIndex: 30, pointerEvents: 'none' }}>
+            <NosHUD />
           </div>
+
+          <MapOverlay vehicleRef={vehicleRef} />
+          <MusicPlayer />
+          <MobileJoystick onInput={setJoystick} />
 
           {/* Mobile boost button */}
           {isMobile && (
             <button
-              onTouchStart={() => setJoystick((p) => ({ ...p, boost: true }))}
-              onTouchEnd={()   => setJoystick((p) => ({ ...p, boost: false }))}
+              onTouchStart={() => setJoystick(p => ({ ...p, boost: true }))}
+              onTouchEnd={()   => setJoystick(p => ({ ...p, boost: false }))}
               style={{
-                position: 'fixed', bottom: 80, right: 80, zIndex: 40,
-                width: 56, height: 56, borderRadius: '50%',
-                background: 'rgba(0,212,255,0.25)',
-                border: '2px solid rgba(0,212,255,0.6)',
+                position: 'fixed',
+                bottom: 'clamp(60px, 10vh, 80px)',
+                right:  'clamp(60px, 8vw, 80px)',
+                zIndex: 40,
+                width: 'clamp(44px, 7vw, 56px)',
+                height: 'clamp(44px, 7vw, 56px)',
+                borderRadius: '50%',
+                background: 'rgba(0,212,255,0.22)',
+                border: '2px solid rgba(0,212,255,0.55)',
                 color: '#00d4ff', fontFamily: 'monospace',
-                fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+                fontSize: 10, fontWeight: 700,
                 touchAction: 'none', userSelect: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexDirection: 'column', gap: 1,
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'center', flexDirection: 'column', gap: 1,
               }}
             >
-              <span style={{ fontSize: 16 }}>⚡</span>
+              <span style={{ fontSize: 18 }}>⚡</span>
               <span style={{ fontSize: 7 }}>BOOST</span>
             </button>
           )}
+
+          {/* HUD bar — responsive */}
+          <div
+            className="hud-bar"
+            style={{
+              position: 'fixed',
+              bottom: 'clamp(8px, 2vh, 20px)',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'rgba(8,4,0,0.75)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(240,180,80,0.18)',
+              borderRadius: 99,
+              padding: 'clamp(5px, 1vh, 7px) clamp(12px, 3vw, 22px)',
+              color: 'rgba(255,220,120,0.82)',
+              fontSize: 'clamp(8px, 1.1vw, 11px)',
+              fontFamily: 'monospace',
+              letterSpacing: '0.1em',
+              pointerEvents: 'none',
+              userSelect: 'none',
+              textTransform: 'uppercase',
+              whiteSpace: 'nowrap',
+              zIndex: 30,
+            }}
+          >
+            <span className="hud-full" style={{ display: 'inline' }}>
+              ↑↓←→ Drive · Space Brake · Shift Boost · R Reset · Tab Map
+            </span>
+            <span className="hud-short" style={{ display: 'none' }}>
+              Controls active
+            </span>
+          </div>
         </>
       )}
 
-      {/* Start screen — always on top when game not started */}
+      {/* StartScreen — always on top */}
       <StartScreen />
-
-      {/* Responsive HUD styles */}
-      <style>{`
-        @media (max-width: 640px) {
-          .hud-desktop { display: none !important; }
-          .hud-mobile  { display: inline !important; }
-        }
-      `}</style>
     </>
   )
 }

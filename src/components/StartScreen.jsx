@@ -564,7 +564,7 @@ function TraditionalPortfolio({ onBack, onGG }) {
           <SectionLabel>$ git log --work</SectionLabel>
 
           <TimelineItem
-            title="Senior Engineer – Wintel & Virtualization"
+            title="Senior Engineer – Cloud & Data Center"
             company="Microland Limited"
             location="Bangalore"
             period="Sep 2022 – Present"

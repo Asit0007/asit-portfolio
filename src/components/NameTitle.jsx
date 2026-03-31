@@ -2,9 +2,6 @@ import { Suspense } from 'react'
 import { Text3D, Center } from '@react-three/drei'
 import { RigidBody } from '@react-three/rapier'
 
-// Physics letter — stands upright, car can knock it over
-// Camera is now at +Z side, text faces +Z by default = readable ✓
-// NO rotation wrapper needed
 function PhysicsLetter({ char, position, color = '#ffffff', size = 3.2 }) {
   return (
     <RigidBody
@@ -28,20 +25,13 @@ function PhysicsLetter({ char, position, color = '#ffffff', size = 3.2 }) {
           bevelSegments={2}
         >
           {char}
-          <meshStandardMaterial
-            color={color}
-            roughness={0.22}
-            metalness={0.18}
-          />
+          <meshStandardMaterial color={color} roughness={0.22} metalness={0.18} />
         </Text3D>
       </Center>
     </RigidBody>
   )
 }
 
-// Ground text — camera at +Z, text faces +Z (default) = readable after -PI/2 X rotation
-// rotation[-PI/2, 0, 0]: lay flat, text face goes from +Z to +Y
-// From camera at +Z elevated, we look down-north and see the correct side ✓
 function GroundText({ text, position, tiltZ = 0, size = 0.75, color = '#f0c060' }) {
   return (
     <Center position={position} rotation={[-Math.PI / 2, 0, tiltZ]}>
@@ -65,8 +55,6 @@ function GroundText({ text, position, tiltZ = 0, size = 0.75, color = '#f0c060' 
 }
 
 export default function NameTitle() {
-  // Letters positioned so you drive through them heading -Z (north)
-  // Staggered in a line across the player's path
   const letters = [
     { char: 'A', pos: [-22, 1.9, -18] },
     { char: 'S', pos: [-17, 1.9, -20] },
@@ -90,7 +78,7 @@ export default function NameTitle() {
           />
         ))}
 
-        {/* Ground instructions — placed near start, readable from +Z camera */}
+        {/* FIX: no rgba() in Three.js color — use solid hex only */}
         <GroundText
           text="USE ARROW KEYS TO EXPLORE"
           position={[7, 0.58, -9]}
@@ -99,11 +87,11 @@ export default function NameTitle() {
           color="#f0c060"
         />
         <GroundText
-          text="R = RESET  |  M = MUTE  |  TAB = MAP"
+          text="R=RESET  M=MUTE  TAB=MAP  SHIFT=BOOST"
           position={[7.5, 0.58, -11.2]}
           tiltZ={-0.06}
-          size={0.5}
-          color="rgba(240,192,96,0.55)"
+          size={0.45}
+          color="#c49a30"   // ← solid hex, NOT rgba() — Three.js ignores alpha
         />
       </group>
     </Suspense>

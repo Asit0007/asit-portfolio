@@ -15,11 +15,10 @@ let engine      = null
 let initialized = false
 let lastBrake   = 0
 let lastCollide = 0
-
-// ── Playlist state ────────────────────────────────────────────────────────
+let musicEnabled  = true
 let currentTrack  = 0
 let currentHowl   = null
-let musicEnabled  = true
+let shuffledPlaylist = []
 
 function shuffle(arr) {
   const a = [...arr]
@@ -30,75 +29,66 @@ function shuffle(arr) {
   return a
 }
 
-let shuffledPlaylist = shuffle(PLAYLIST)
+function getTrackDisplayName(src) {
+  if (!src) return 'No track'
+  const name = src.split('/').pop().replace(/\.(mp3|ogg|wav)$/i, '')
+  return name.replace(/[-_]/g, ' ').toUpperCase()
+}
+
+export function getCurrentTrackName() {
+  return getTrackDisplayName(shuffledPlaylist[currentTrack])
+}
+
+export function isMusicPlaying() {
+  return musicEnabled && currentHowl?.playing()
+}
 
 function playNextTrack() {
   if (!musicEnabled || shuffledPlaylist.length === 0) return
-
-  if (currentHowl) {
-    currentHowl.stop()
-    currentHowl.unload()
-    currentHowl = null
-  }
-
+  if (currentHowl) { currentHowl.stop(); currentHowl.unload(); currentHowl = null }
   currentTrack = (currentTrack + 1) % shuffledPlaylist.length
-  // Re-shuffle when we've played everything
-  if (currentTrack === 0) shuffledPlaylist = shuffle(PLAYLIST)
+  if (currentTrack === 0) shuffledPlaylist = shuffle([...PLAYLIST])
+  loadAndPlay(shuffledPlaylist[currentTrack])
+}
 
-  const src = shuffledPlaylist[currentTrack]
+function loadAndPlay(src) {
   currentHowl = new Howl({
-    src: [src],
-    volume: 0.22,
+    src: [src], volume: 0.22,
     onend: playNextTrack,
-    onloaderror: () => {
-      console.warn(`Could not load ${src}, skipping`)
-      playNextTrack()
-    },
+    onloaderror: () => { console.warn(`Audio: could not load ${src}`); playNextTrack() },
   })
   currentHowl.play()
+  // Notify UI of track change
+  window.__currentTrack = getTrackDisplayName(src)
 }
 
 function startPlaylist() {
   if (!musicEnabled || shuffledPlaylist.length === 0) return
   currentTrack = Math.floor(Math.random() * shuffledPlaylist.length)
-  const src = shuffledPlaylist[currentTrack]
-  currentHowl = new Howl({
-    src: [src],
-    volume: 0.22,
-    onend: playNextTrack,
-    onloaderror: () => playNextTrack(),
-  })
-  currentHowl.play()
+  loadAndPlay(shuffledPlaylist[currentTrack])
 }
 
 export function initAudio() {
   if (initialized) return
   initialized = true
+  shuffledPlaylist = shuffle([...PLAYLIST])
 
   try {
     ctx = new (window.AudioContext || window.webkitAudioContext)()
-
-    // Engine oscillators
     const osc1 = ctx.createOscillator()
     const osc2 = ctx.createOscillator()
-    osc1.type = 'sawtooth'
-    osc2.type = 'square'
-    osc1.frequency.value = 52
-    osc2.frequency.value = 104
+    osc1.type = 'sawtooth'; osc2.type = 'square'
+    osc1.frequency.value = 52; osc2.frequency.value = 104
 
     const filter = ctx.createBiquadFilter()
-    filter.type = 'lowpass'
-    filter.frequency.value = 320
+    filter.type = 'lowpass'; filter.frequency.value = 320
 
     const gainNode = ctx.createGain()
     gainNode.gain.value = 0.02
 
-    osc1.connect(filter)
-    osc2.connect(filter)
-    filter.connect(gainNode)
-    gainNode.connect(ctx.destination)
-    osc1.start()
-    osc2.start()
+    osc1.connect(filter); osc2.connect(filter)
+    filter.connect(gainNode); gainNode.connect(ctx.destination)
+    osc1.start(); osc2.start()
     engine = { osc1, osc2, gain: gainNode, filter }
   } catch (_) {}
 
@@ -127,14 +117,10 @@ export function playCollision(speed = 5) {
     const frames = Math.floor(ctx.sampleRate * 0.2)
     const buf    = ctx.createBuffer(1, frames, ctx.sampleRate)
     const data   = buf.getChannelData(0)
-    for (let i = 0; i < frames; i++) {
+    for (let i = 0; i < frames; i++)
       data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / frames, 1.5)
-    }
-    const src  = ctx.createBufferSource()
-    src.buffer = buf
-    const lp   = ctx.createBiquadFilter()
-    lp.type = 'lowpass'
-    lp.frequency.value = 250 + intensity * 900
+    const src  = ctx.createBufferSource(); src.buffer = buf
+    const lp   = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 250 + intensity * 900
     const gain = ctx.createGain()
     gain.gain.setValueAtTime(intensity * 0.5, ctx.currentTime)
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2)
@@ -149,8 +135,7 @@ export function playBrake() {
   if (now - lastBrake < 400) return
   lastBrake = now
   try {
-    const osc  = ctx.createOscillator()
-    const gain = ctx.createGain()
+    const osc = ctx.createOscillator(); const gain = ctx.createGain()
     osc.type = 'sawtooth'
     osc.frequency.setValueAtTime(520, ctx.currentTime)
     osc.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.18)
@@ -165,10 +150,8 @@ export function playZoneChime() {
   if (!ctx) return
   try {
     ;[523, 659, 784].forEach((freq, i) => {
-      const osc  = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'sine'
-      osc.frequency.value = freq
+      const osc  = ctx.createOscillator(); const gain = ctx.createGain()
+      osc.type = 'sine'; osc.frequency.value = freq
       const t = ctx.currentTime + i * 0.1
       gain.gain.setValueAtTime(0, t)
       gain.gain.linearRampToValueAtTime(0.08, t + 0.04)
@@ -177,6 +160,10 @@ export function playZoneChime() {
       osc.start(t); osc.stop(t + 0.5)
     })
   } catch (_) {}
+}
+
+export function skipTrack() {
+  playNextTrack()
 }
 
 export function toggleMusic() {
