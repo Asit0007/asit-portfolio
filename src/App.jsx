@@ -3,9 +3,10 @@ import { Canvas } from '@react-three/fiber'
 import { KeyboardControls } from '@react-three/drei'
 import Scene          from './components/Scene'
 import ZoneOverlay    from './components/ZoneOverlay'
+import MapOverlay     from './components/MapOverlay'
 import MobileJoystick from './components/MobileJoystick'
 import StartScreen    from './components/StartScreen'
-import MapOverlay     from './components/MapOverlay'
+import NosHUD         from './components/NosHUD'
 import useGameStore   from './store/useGameStore'
 import { keyMap }     from './Controls'
 import { toggleMusic } from './audio'
@@ -24,14 +25,15 @@ function LoadingScreen() {
       alignItems:'center', justifyContent:'center', gap:24,
     }}>
       <p style={{
-        fontFamily:'monospace', fontSize:26, fontWeight:900,
+        fontFamily:'monospace', fontSize:'clamp(16px,4vw,26px)', fontWeight:900,
         letterSpacing:'0.22em', color:'#f0c060', textTransform:'uppercase',
       }}>ASIT MINZ</p>
       <p style={{ color:'rgba(255,255,255,0.35)', fontSize:12, fontFamily:'monospace' }}>
         Loading world...
       </p>
       <div style={{
-        width:200, height:2, background:'rgba(255,255,255,0.08)',
+        width:'min(200px, 50vw)', height:2,
+        background:'rgba(255,255,255,0.08)',
         borderRadius:99, overflow:'hidden',
       }}>
         <div style={{
@@ -67,6 +69,7 @@ export default function App() {
   const isMobile    = useGameStore((s) => s.isMobile)
   const setJoystick = useGameStore((s) => s.setJoystick)
   const vehicleBody = useGameStore((s) => s.vehicleBody)
+  const gameStarted = useGameStore((s) => s.gameStarted)
   const vehicleRef  = useRef()
 
   if (vehicleBody) vehicleRef.current = vehicleBody
@@ -92,7 +95,6 @@ export default function App() {
     const onKey = (e) => {
       if (e.code === 'KeyR') window.__resetCar = true
       if (e.code === 'KeyM') toggleMusic()
-      // Tab key opens map — prevent default tab focus behavior
       if (e.code === 'Tab') {
         e.preventDefault()
         document.getElementById('map-btn')?.click()
@@ -119,18 +121,17 @@ export default function App() {
 
       {/* A11y */}
       <div style={{ position:'absolute', width:1, height:1, overflow:'hidden', opacity:0 }}
-        aria-label="Portfolio resume content">
-        <h1>Asit Minz — Infrastructure & Cloud Engineer</h1>
-        <p>Bangalore. AZ-104. Microland. CloudPulse. QuantBot. Magento DeployKit.</p>
+        aria-label="Asit Minz portfolio">
+        <h1>Asit Minz — Infrastructure & Cloud Engineer, Bangalore</h1>
       </div>
 
-      {/* Canvas */}
+      {/* 3D Canvas — always rendered, behind overlays */}
       <div style={{ position:'fixed', inset:0 }}>
         <Suspense fallback={<LoadingScreen />}>
           <KeyboardControls map={keyMap}>
             <Canvas
               shadows={!isMobile}
-              camera={{ fov:50, near:0.1, far:600, position:[-8, 18, -20] }}
+              camera={{ fov:50, near:0.1, far:600, position:[8, 18, 20] }}
               gl={{
                 antialias: true,
                 powerPreference: 'high-performance',
@@ -145,26 +146,69 @@ export default function App() {
         </Suspense>
       </div>
 
-      {/* Overlays */}
-      <ZoneOverlay />
-      <MapOverlay vehicleRef={vehicleRef} />
-      <MobileJoystick onInput={setJoystick} />
+      {/* 3D HTML overlays — only when game is running */}
+      {gameStarted && (
+        <>
+          <ZoneOverlay />
+          <MapOverlay vehicleRef={vehicleRef} />
+          <NosHUD />
+          <MobileJoystick onInput={setJoystick} />
+
+          {/* HUD — responsive */}
+          <div style={{
+            position:'fixed', bottom:20, left:'50%',
+            transform:'translateX(-50%)',
+            background:'rgba(8,4,0,0.72)', backdropFilter:'blur(10px)',
+            border:'1px solid rgba(240,180,80,0.18)',
+            borderRadius:99, padding:'7px clamp(12px, 3vw, 22px)',
+            color:'rgba(255,220,120,0.8)',
+            fontSize:'clamp(8px, 1.2vw, 11px)',
+            fontFamily:'monospace', letterSpacing:'0.1em',
+            pointerEvents:'none', userSelect:'none',
+            textTransform:'uppercase', whiteSpace:'nowrap',
+          }}>
+            <span className="hud-desktop">
+              ↑↓←→ Drive &nbsp;·&nbsp; Space Brake &nbsp;·&nbsp; Shift Boost &nbsp;·&nbsp; R Reset &nbsp;·&nbsp; Tab Map
+            </span>
+            <span className="hud-mobile" style={{ display:'none' }}>
+              Use controls below
+            </span>
+          </div>
+
+          {/* Mobile boost button */}
+          {isMobile && (
+            <button
+              onTouchStart={() => setJoystick(p => ({ ...p, boost: true }))}
+              onTouchEnd={()   => setJoystick(p => ({ ...p, boost: false }))}
+              style={{
+                position:'fixed', bottom:80, right:80, zIndex:40,
+                width:56, height:56, borderRadius:'50%',
+                background:'rgba(0,212,255,0.25)',
+                border:'2px solid rgba(0,212,255,0.6)',
+                color:'#00d4ff', fontFamily:'monospace',
+                fontSize:10, fontWeight:700, letterSpacing:'0.1em',
+                touchAction:'none', userSelect:'none', cursor:'pointer',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                flexDirection:'column', gap:1,
+              }}
+            >
+              <span style={{ fontSize:16 }}>⚡</span>
+              <span style={{ fontSize:7 }}>BOOST</span>
+            </button>
+          )}
+        </>
+      )}
+
+      {/* StartScreen — always on top when game not started */}
       <StartScreen />
 
-      {/* HUD */}
-      <div style={{
-        position:'fixed', bottom:20, left:'50%',
-        transform:'translateX(-50%)',
-        background:'rgba(8,4,0,0.72)', backdropFilter:'blur(10px)',
-        border:'1px solid rgba(240,180,80,0.18)',
-        borderRadius:99, padding:'7px 22px',
-        color:'rgba(255,220,120,0.8)', fontSize:11,
-        fontFamily:'monospace', letterSpacing:'0.12em',
-        pointerEvents:'none', userSelect:'none',
-        textTransform:'uppercase', whiteSpace:'nowrap',
-      }}>
-        ↑↓←→ Drive &nbsp;·&nbsp; Space Brake &nbsp;·&nbsp; R Reset &nbsp;·&nbsp; M Mute &nbsp;·&nbsp; Tab Map
-      </div>
+      {/* Responsive HUD style injection */}
+      <style>{`
+        @media (max-width: 640px) {
+          .hud-desktop { display: none !important; }
+          .hud-mobile  { display: inline !important; }
+        }
+      `}</style>
     </>
   )
 }
