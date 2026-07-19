@@ -31,20 +31,13 @@ function GradientFloor() {
 }
 
 function ZonePad({ position, size, color }) {
-  const lipY = position[1] + size[1] / 2 + 0.09
   return (
-    <group>
-      <RigidBody type="fixed" colliders="cuboid" position={position}>
-        <mesh receiveShadow castShadow>
-          <boxGeometry args={size} />
-          <meshStandardMaterial color={color} roughness={0.7} metalness={0} />
-        </mesh>
-      </RigidBody>
-      <mesh receiveShadow position={[position[0], lipY, position[2]]}>
-        <boxGeometry args={[size[0] + 0.5, 0.13, size[2] + 0.5]} />
-        <meshStandardMaterial color="#e8d8c4" roughness={0.8} />
+    <RigidBody type="fixed" colliders="cuboid" position={position}>
+      <mesh receiveShadow>
+        <boxGeometry args={size} />
+        <meshStandardMaterial color={color} roughness={0.7} metalness={0} />
       </mesh>
-    </group>
+    </RigidBody>
   )
 }
 
@@ -62,7 +55,8 @@ function TilePaths() {
   const toCloud    = useMemo(() => makePath(0,  8,  0,  -42, 14), [])
   const toProjects = useMemo(() => makePath(8,  0,  42,   0, 14), [])
   const toHobbies  = useMemo(() => makePath(-8, 0, -42,   0, 14), [])
-  const all = [...toCloud, ...toProjects, ...toHobbies]
+  const toContact  = useMemo(() => makePath(0, -8,  0,   42, 14), [])
+  const all = [...toCloud, ...toProjects, ...toHobbies, ...toContact]
   return (
     <group>
       {all.map(([x, z], i) => (
@@ -200,11 +194,11 @@ export default function World() {
       <Roads />
       <Boundaries />
       <TilePaths />
-      <ZonePad position={[0,   -0.6, -55]} size={[30, 1.2, 30]} color="#f5efe6" />
-      <ZonePad position={[55,  -0.6,  0]}  size={[30, 1.2, 30]} color="#f5efe6" />
-      <ZonePad position={[-55, -0.6,  0]}  size={[30, 1.2, 30]} color="#f5efe6" />
-      <ZonePad position={[0,   -0.6,  0]}  size={[18, 1.2, 18]} color="#ffffff" />
-      <ZonePad position={[0, -0.6, 55]} size={[30, 1.2, 30]} color="#f5e6e8" />
+      <ZonePad position={[0,   -0.58, -55]} size={[30, 1.2, 30]} color="#f5efe6" />
+      <ZonePad position={[55,  -0.58,  0]}  size={[30, 1.2, 30]} color="#f5efe6" />
+      <ZonePad position={[-55, -0.58,  0]}  size={[30, 1.2, 30]} color="#f5efe6" />
+      <ZonePad position={[0,   -0.58,  0]}  size={[18, 1.2, 18]} color="#ffffff" />
+      <ZonePad position={[0,   -0.58, 55]}  size={[30, 1.2, 30]} color="#f5e6e8" />
       <ScatterProps />
     </group>
   )

@@ -2,6 +2,7 @@ import { Howl } from 'howler'
 
 // ── Playlist — add as many files as you want ──────────────────────────────
 const PLAYLIST = [
+  '/sounds/bg.mp3',
   '/sounds/bg1.mp3',
   '/sounds/bg2.mp3',
   '/sounds/bg3.mp3',

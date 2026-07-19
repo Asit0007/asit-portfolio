@@ -26,14 +26,6 @@ const BOOST_STEER     = 1.8
 // W pressed → car moves in -Z → moves north → away from camera → FORWARD ✓
 const CAM_OFFSET = new THREE.Vector3(8, 18, 20)
 const CAM_LERP   = 3.5
-const CAM_LERP_ZONE = 1.8
-
-const ZONE_CAMS = {
-  cloud:    { pos: new THREE.Vector3(0,  34, -40),  look: new THREE.Vector3(0,  0, -55) },
-  projects: { pos: new THREE.Vector3(70, 34,  0),   look: new THREE.Vector3(55, 0,  0)  },
-  hobbies:  { pos: new THREE.Vector3(-70,34,  0),   look: new THREE.Vector3(-55,0,  0)  },
-  contact:  { pos: new THREE.Vector3(0,  34,  70),  look: new THREE.Vector3(0,  0,  55) },
-}
 
 // ── Set true when your car.glb exists in /public/models/ ────────────────────
 const HAS_GLTF = true
@@ -51,7 +43,7 @@ const _carPos = new THREE.Vector3()
 // Most car GLB models face +Z by default. Our physics pushes in -Z.
 // Rotating 180° around Y makes the visual match the physics direction.
 function GLTFCar() {
-  const { scene } = useGLTF('/models/car.glb')
+  const { scene } = useGLTF('/models/car-1.glb')
   const cloned = scene.clone()
   cloned.traverse((child) => {
     if (child.isMesh) {
@@ -273,28 +265,16 @@ function VehicleInner(props, ref) {
     )
     body.setAngvel({ x: 0, y: steer.current * steerMax * steerSign, z: 0 }, true)
 
-    // Camera
-    const pos    = body.translation()
-    const zoneId = useGameStore.getState().activeZone?.id
-    const zoneCam = zoneId && ZONE_CAMS[zoneId]
-
+    // Camera — always follows car; no zone override so billboard stays face-on
+    const pos = body.translation()
+    _carPos.set(pos.x, pos.y, pos.z)
     _cam.copy(state.camera.position)
-    if (zoneCam) {
-      _ideal.copy(zoneCam.pos)
-      _cam.lerp(_ideal, 1 - Math.exp(-CAM_LERP_ZONE * dt))
-      state.camera.position.copy(_cam)
-      state.camera.lookAt(zoneCam.look)
-    } else {
-      _carPos.set(pos.x, pos.y, pos.z)
-      const offset = canBoost
-        ? new THREE.Vector3(10, 22, 26)
-        : CAM_OFFSET
-      _ideal.copy(_carPos).add(offset)
-      _cam.lerp(_ideal, 1 - Math.exp(-CAM_LERP * dt))
-      state.camera.position.copy(_cam)
-      _look.set(pos.x, pos.y + 0.5, pos.z)
-      state.camera.lookAt(_look)
-    }
+    const offset = canBoost ? new THREE.Vector3(10, 22, 26) : CAM_OFFSET
+    _ideal.copy(_carPos).add(offset)
+    _cam.lerp(_ideal, 1 - Math.exp(-CAM_LERP * dt))
+    state.camera.position.copy(_cam)
+    _look.set(pos.x, pos.y + 0.5, pos.z)
+    state.camera.lookAt(_look)
   })
 
   return (
@@ -313,7 +293,7 @@ function VehicleInner(props, ref) {
           playCollision(lastSpeed.current)
       }}
     >
-      <CuboidCollider args={[0.9, 0.28, 1.7]} position={[0, 0, 0]} />
+      <CuboidCollider args={[0.9, 0.5, 1.7]} position={[0, 0, 0]} />
       {HAS_GLTF ? (
         <Suspense fallback={<BoxCar />}>
           <GLTFCar />

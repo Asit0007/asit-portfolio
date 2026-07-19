@@ -1,17 +1,18 @@
-import { useRef } from 'react'
+import { useRef, Suspense } from 'react'
 import { Physics } from '@react-three/rapier'
 import useGameStore from '../store/useGameStore'
-import Lights          from './Lights'
-import World           from './World'
-import Trees           from './Trees'
-import Vehicle         from './Vehicle'
-import Zones           from './Zones'
-import SkyBox          from './Sky'
-import NameTitle       from './NameTitle'
-import ZoneDecorations from './ZoneDecorations'
-import SignPosts       from './SignPosts'
-import AudioManager    from './AudioManager'
-import ContactZone     from './ContactZone'
+import Lights            from './Lights'
+import World             from './World'
+import Trees             from './Trees'
+import Vehicle           from './Vehicle'
+import Zones             from './Zones'
+import SkyBox            from './Sky'
+import NameTitle         from './NameTitle'
+import ZoneDecorations   from './ZoneDecorations'
+import SignPosts          from './SignPosts'
+import AudioManager      from './AudioManager'
+import ContactZone       from './ContactZone'
+import EnvironmentModels from './EnvironmentModels'
 
 export default function Scene() {
   const vehicleRef = useRef()
@@ -23,6 +24,9 @@ export default function Scene() {
       <Lights />
       <World />
       <Trees />
+      <Suspense fallback={null}>
+        <EnvironmentModels />
+      </Suspense>
       <NameTitle />
       <ZoneDecorations />
       <SignPosts />

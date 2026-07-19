@@ -110,7 +110,6 @@ function ProjectBillboard({ position }) {
       <Html
         position={[0, 3.5, 0.18]}
         transform
-        occlude
         style={{ width: 480, pointerEvents: 'auto' }}
       >
         <div style={{
