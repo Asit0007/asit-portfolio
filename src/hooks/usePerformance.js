@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 
+export function isMobileDevice() {
+  return /iPhone|iPad|Android/i.test(navigator.userAgent)
+}
+
 // Measures actual FPS and returns quality tier
 // tier 0 = low (mobile/weak), 1 = medium, 2 = high (desktop)
 export function usePerformanceTier() {
@@ -8,8 +12,7 @@ export function usePerformanceTier() {
   const raf    = useRef()
 
   useEffect(() => {
-    const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent)
-    if (isMobile) { setTier(0); return }
+    if (isMobileDevice()) { setTier(0); return }
 
     let count = 0
     const measure = (t) => {
@@ -40,7 +43,7 @@ export const TIER_CONFIG = {
     shadows:         false,
     shadowMapSize:   512,
     maxTrees:        20,
-    maxProps:        8,
+    maxProps:        6,
     dpr:             [1, 1],
     fog:             80,
     antialias:       false,
@@ -50,7 +53,7 @@ export const TIER_CONFIG = {
     shadows:         true,
     shadowMapSize:   1024,
     maxTrees:        50,
-    maxProps:        20,
+    maxProps:        14,
     dpr:             [1, 1.5],
     fog:             150,
     antialias:       false,
@@ -60,7 +63,7 @@ export const TIER_CONFIG = {
     shadows:         true,
     shadowMapSize:   2048,
     maxTrees:        100,
-    maxProps:        40,
+    maxProps:        22,
     dpr:             [1, 2],
     fog:             300,
     antialias:       true,

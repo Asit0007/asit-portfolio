@@ -1,4 +1,4 @@
-import { RigidBody } from '@react-three/rapier'
+import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { useMemo } from 'react'
 import * as THREE from 'three'
 
@@ -21,7 +21,13 @@ function GradientFloor() {
   }, [])
 
   return (
-    <RigidBody type="fixed" colliders="cuboid" friction={1.2}>
+    <RigidBody type="fixed" colliders={false} friction={1.2}>
+      {/* Explicit thick slab instead of the auto "cuboid" collider generated
+          from a paper-thin plane mesh — the vehicle's wheel raycasts need a
+          collider with real vertical extent to hit reliably; a near-zero-
+          thickness auto-collider was letting raycasts miss intermittently
+          away from the (separately, more solidly collided) start zone pad. */}
+      <CuboidCollider args={[200, 0.15, 200]} position={[0, -0.15, 0]} />
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
         <planeGeometry args={[400, 400]} />
         <meshStandardMaterial map={texture} roughness={0.95} metalness={0} />

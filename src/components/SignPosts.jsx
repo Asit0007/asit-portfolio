@@ -3,9 +3,8 @@ import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 
 function ArrowSign({ position, text, color, rotationY = 0, pointLeft = false }) {
-  // Arrow sign shape — wider, with a pointed end
   const arrowShape = new THREE.Shape()
-  const w = 1.1, h = 0.3, tip = 0.35
+  const w = 1.9, h = 0.48, tip = 0.48
   if (pointLeft) {
     arrowShape.moveTo(-w - tip,  0)
     arrowShape.lineTo(-w,        h)
@@ -22,40 +21,58 @@ function ArrowSign({ position, text, color, rotationY = 0, pointLeft = false }) 
     arrowShape.closePath()
   }
 
-  const extrudeSettings = { depth: 0.12, bevelEnabled: false }
+  const extrudeSettings = { depth: 0.18, bevelEnabled: false }
 
   return (
     <RigidBody type="fixed" position={position} rotation={[0, rotationY, 0]}>
       <group>
         {/* Pole */}
-        <mesh castShadow position={[0, 1.1, 0]}>
-          <cylinderGeometry args={[0.06, 0.08, 2.2, 6]} />
+        <mesh castShadow position={[0, 2.0, 0]}>
+          <cylinderGeometry args={[0.08, 0.10, 4.0, 6]} />
           <meshStandardMaterial color="#6B5020" roughness={0.8} />
         </mesh>
 
-        {/* Arrow sign board */}
-        <mesh castShadow position={[0, 2.2, 0]} rotation={[0, 0, 0]}>
+        {/* Arrow board */}
+        <mesh castShadow position={[0, 4.0, 0]}>
           <extrudeGeometry args={[arrowShape, extrudeSettings]} />
-          <meshStandardMaterial color={color} roughness={0.4} metalness={0.05} />
+          <meshStandardMaterial color={color} roughness={0.35} metalness={0.08} />
         </mesh>
 
-        {/* Sign text */}
+        {/* Sign text — front face */}
         <Text
-          position={[pointLeft ? -0.2 : 0.2, 2.2, 0.14]}
-          fontSize={0.24}
+          position={[pointLeft ? -0.32 : 0.32, 4.0, 0.2]}
+          fontSize={0.44}
           color="#ffffff"
           anchorX="center"
           anchorY="middle"
-          outlineWidth={0.02}
-          outlineColor="#000"
-          maxWidth={2}
+          outlineWidth={0.04}
+          outlineColor="#000000"
+          maxWidth={3.4}
         >
           {text}
         </Text>
 
+        {/* Sign text — back face, readable driving the opposite way.
+            A 180° rotation (not a mirror) keeps the text right-reading,
+            same as flipping a physical sign around to face the other way. */}
+        <group rotation={[0, Math.PI, 0]}>
+          <Text
+            position={[pointLeft ? 0.32 : -0.32, 4.0, 0.02]}
+            fontSize={0.44}
+            color="#ffffff"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.04}
+            outlineColor="#000000"
+            maxWidth={3.4}
+          >
+            {text}
+          </Text>
+        </group>
+
         {/* Base */}
-        <mesh receiveShadow position={[0, 0.08, 0]}>
-          <boxGeometry args={[0.3, 0.16, 0.3]} />
+        <mesh receiveShadow position={[0, 0.09, 0]}>
+          <boxGeometry args={[0.38, 0.18, 0.38]} />
           <meshStandardMaterial color="#4a3a18" roughness={0.9} />
         </mesh>
       </group>
@@ -71,7 +88,7 @@ export default function SignPosts() {
         position={[2.5, 0, -11]}
         text="CLOUD & INFRA"
         color="#c47a0a"
-        rotationY={0}
+        rotationY={Math.PI / 2}
       />
 
       {/* East → Projects */}
@@ -79,7 +96,7 @@ export default function SignPosts() {
         position={[11, 0, 2.5]}
         text="PROJECTS"
         color="#0a7a4a"
-        rotationY={-Math.PI / 2}
+        rotationY={0}
       />
 
       {/* West → Easter Egg */}
@@ -87,7 +104,7 @@ export default function SignPosts() {
         position={[-11, 0, -2.5]}
         text="EASTER EGG"
         color="#7a25b7"
-        rotationY={Math.PI / 2}
+        rotationY={0}
         pointLeft
       />
 
@@ -96,7 +113,7 @@ export default function SignPosts() {
         position={[-2.5, 0, 11]}
         text="CONTACT"
         color="#c4154a"
-        rotationY={Math.PI}
+        rotationY={Math.PI / 2}
         pointLeft
       />
     </group>

@@ -13,19 +13,21 @@ import SignPosts          from './SignPosts'
 import AudioManager      from './AudioManager'
 import ContactZone       from './ContactZone'
 import EnvironmentModels from './EnvironmentModels'
+import DevStats           from './DevStats'
 
-export default function Scene() {
+export default function Scene({ tierCfg }) {
   const vehicleRef = useRef()
   const joystick   = useGameStore((s) => s.joystick)
+  const fogFar     = tierCfg.fog
 
   return (
-    <Physics gravity={[0, -20, 0]}>
+    <Physics gravity={[0, -20, 0]} timeStep={tierCfg.physicsStep}>
       <SkyBox />
       <Lights />
       <World />
-      <Trees />
+      <Trees maxTrees={tierCfg.maxTrees} />
       <Suspense fallback={null}>
-        <EnvironmentModels />
+        <EnvironmentModels maxProps={tierCfg.maxProps} />
       </Suspense>
       <NameTitle />
       <ZoneDecorations />
@@ -34,7 +36,8 @@ export default function Scene() {
       <Vehicle ref={vehicleRef} joystick={joystick} />
       <Zones vehicleRef={vehicleRef} />
       <AudioManager />
-      <fog attach="fog" args={['#f0a050', 120, 300]} />
+      <DevStats />
+      <fog attach="fog" args={['#f0a050', fogFar * 0.4, fogFar]} />
     </Physics>
   )
 }

@@ -30,7 +30,7 @@ export default function ContactZone() {
     <group position={[0, 0.6, 55]}>
       <MailboxProp position={[-10, 0,  2]} />
       <MailboxProp position={[ 10, 0, -2]} />
-      <MailboxProp position={[  0, 0,  8]} />
+      <MailboxProp position={[ -6, 0,  8]} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 4]}>
         <planeGeometry args={[14, 3]} />
         <meshStandardMaterial color="#f43f5e" transparent opacity={0.12} />

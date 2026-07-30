@@ -1,7 +1,7 @@
 import { RigidBody } from '@react-three/rapier'
 import { Text, Html } from '@react-three/drei'
 import { useState } from 'react'
-import { ZONES } from '../store/useGameStore'
+import useGameStore from '../store/useGameStore'
 
 // ── Reusable primitives ──────────────────────────────────────────────────────
 function Box({ position, size, color, rotation=[0,0,0], emissive, emissiveIntensity=0 }) {
@@ -87,6 +87,10 @@ const PROJECT_SLIDES = [
 function ProjectBillboard({ position }) {
   const [idx, setIdx] = useState(0)
   const slide = PROJECT_SLIDES[idx]
+  // The <Html transform> screen below syncs a DOM subtree (with an <img>)
+  // to the 3D camera every frame — real cost regardless of camera distance.
+  // Only pay for it while the player is actually in the Projects zone.
+  const isNear = useGameStore((s) => s.activeZone?.id === 'projects')
 
   return (
     <group position={position}>
@@ -106,7 +110,8 @@ function ProjectBillboard({ position }) {
         </group>
       </RigidBody>
 
-      {/* HTML screen — embedded in 3D world */}
+      {/* HTML screen — embedded in 3D world, only mounted while nearby */}
+      {isNear && (
       <Html
         position={[0, 3.5, 0.18]}
         transform
@@ -208,6 +213,7 @@ function ProjectBillboard({ position }) {
           </div>
         </div>
       </Html>
+      )}
 
       {/* Navigation hint text floating above billboard */}
       <Text
@@ -322,10 +328,11 @@ export default function ZoneDecorations() {
         <TerraformBlock position={[4, 0, 8]} />
         <TerraformBlock position={[6, 0, 8]} />
         <TerraformBlock position={[5, 0, 6]} />
-        <Crate position={[ 3,1,-3]} color="#ddd0b8" />
-        <Crate position={[ 4,1,-2]} color="#ccbba8" />
-        <Crate position={[-4,1, 3]} color="#d5c8b2" />
-        <Crate position={[-3,1, 4]} color="#c8bba2" />
+        {/* Road runs through x in [-4,4] here — keep crates off it */}
+        <Crate position={[ 6,1,-3]} color="#ddd0b8" />
+        <Crate position={[ 7,1,-2]} color="#ccbba8" />
+        <Crate position={[-6,1, 3]} color="#d5c8b2" />
+        <Crate position={[-7,1, 4]} color="#c8bba2" />
       </group>
 
       {/* ── PROJECTS ZONE [55, 0, 0] ─────────────────────────────────── */}
@@ -335,15 +342,16 @@ export default function ZoneDecorations() {
         <DockerStack position={[-8, 0, -4]} />
         <DockerStack position={[-8, 0,  4]} />
         <DockerStack position={[ 8, 0,  0]} />
-        <Crate position={[4,1, 5]} size={[1.2,1.2,1.2]} color="#0db7ed" />
-        <Crate position={[5,1, 3]} size={[0.9,0.9,0.9]} color="#2496ed" />
-        <Crate position={[3,1,-5]} size={[1.1,1.1,1.1]} color="#0db7ed" />
+        {/* Road runs through z in [-4,4] here — keep crates off it */}
+        <Crate position={[4,1, 6]} size={[1.2,1.2,1.2]} color="#0db7ed" />
+        <Crate position={[5,1, 7]} size={[0.9,0.9,0.9]} color="#2496ed" />
+        <Crate position={[3,1,-6]} size={[1.1,1.1,1.1]} color="#0db7ed" />
       </group>
 
       {/* ── HOBBIES ZONE [-55, 0, 0] ─────────────────────────────────── */}
       <group position={[-55, 0.6, 0]}>
-        <HeavyBag position={[-4, 0, -4]} />
-        <HeavyBag position={[ 4, 0,  4]} />
+        <HeavyBag position={[-4, 0, -6]} />
+        <HeavyBag position={[ 4, 0,  6]} />
         <PS2      position={[ 0, 0,  6]} />
         <Racket   position={[-6, 1.2, 0]} rotation={[0,0.3,0.8]} />
         <Racket   position={[ 6, 1.2, 2]} rotation={[0,-0.4,0.9]} />

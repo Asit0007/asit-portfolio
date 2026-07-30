@@ -1,37 +1,94 @@
-import { useRef, forwardRef, Suspense } from 'react'
+import { useRef, forwardRef, Suspense, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { RigidBody, CuboidCollider, useRapier } from '@react-three/rapier'
 import { useKeyboardControls, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { Controls } from '../Controls'
 import useGameStore from '../store/useGameStore'
 import { playCollision, playBrake } from '../audio'
+import { applyShake } from '../utils/cameraShake'
 
-// ── Tuning ──────────────────────────────────────────────────────────────────
-const MAX_SPEED       = 20
-const BOOST_MAX_SPEED = 38
-const MAX_REV_SPEED   = 18
-const ACCEL_FORCE     = 30
-const BOOST_FORCE     = 68
-const REV_FORCE       = 18
-const BRAKE_DAMPING   = 0.88
-const COAST_DAMPING   = 0.995
-const LATERAL_GRIP    = 0.80
-const STEER_SPEED     = 2.4
-const BOOST_STEER     = 1.8
+// ── Tuning — starting values for Rapier's raycast vehicle controller.
+// Gravity here is [0,-20,0] (2x real-world). Tuned for a low, wide American
+// muscle-car stance (not folio-2025's tall monster-truck/SUV proportions):
+// low ride height + stiffer suspension + wider track for rollover
+// resistance, moderate (not maximal) tire grip since a raycast vehicle with
+// full rotation freedom can "trip" and flip on its own tires if grip is too
+// high relative to how hard it corners. ─────────────────────────────────────
+// Engine/brake force is a real force divided by mass to get acceleration —
+// at mass=2 the original 140/300/60 values worked out to ~3.5g of horizontal
+// acceleration (140/2=70 units/s² against 20 units/s² gravity), which will
+// wheelie/stoppie *any* vehicle once rotation isn't locked. Retuned to a
+// much more sane ~0.6-1g range.
+const ENGINE_FORCE         = 32
+const BOOST_ENGINE_FORCE   = 65
+const REVERSE_ENGINE_FORCE = 22
+const BRAKE_FORCE          = 26
+const IDLE_BRAKE           = 3
+const TOP_SPEED            = 20
+const TOP_SPEED_BOOST      = 38
+const MAX_REV_SPEED        = 12
+const STEER_MAX            = 0.42  // radians, front-wheel toe angle — slightly
+                                    // tighter than a first pass, wide-track
+                                    // muscle cars don't turn on a dime
+const STEER_LERP_SPEED     = 10
+
+// Rapier's engine-force sign convention depends on wheel axle/direction setup
+// below — if the car drives backwards on "forward" input, flip this to -1.
+const FORWARD_SIGN = 1
+
+const WHEEL_RADIUS            = 0.36
+const SUSPENSION_REST_LENGTH  = 0.24  // low ride height
+const SUSPENSION_STIFFNESS    = 75    // stiffer — less body roll mid-corner
+const SUSPENSION_COMPRESSION  = 5.0
+const SUSPENSION_RELAXATION   = 3.6
+const MAX_SUSPENSION_TRAVEL   = 0.22  // short travel to match the low stance
+const MAX_SUSPENSION_FORCE    = 500
+const FRICTION_SLIP           = 1.6   // moderate grip — high grip + full
+                                       // rotation freedom trips the car into
+                                       // a rollover during hard cornering
+const SIDE_FRICTION_STIFFNESS = 3.2
+
+// Wheel chassis-connection points (chassis-local space) — a slightly longer
+// wheelbase than the BoxCar fallback's visual wheel positions (z:±1.1) on
+// purpose: more distance between front/rear contact patches gives more
+// leverage resisting pitch (nose-up/nose-down), directly fighting
+// wheelie/stoppie on top of the mass-properties override below. Front pair
+// (0,1) steers, rear pair (2,3) is driven (RWD). Wide track (x:±0.95) for
+// rollover resistance. Car faces -Z (front), matching the rest of this
+// file's existing "-Z is forward" convention.
+const WHEEL_POSITIONS = [
+  { x: -0.95, y: -0.25, z: -1.4 }, // front-left
+  { x:  0.95, y: -0.25, z: -1.4 }, // front-right
+  { x: -0.95, y: -0.25, z:  1.4 }, // rear-left
+  { x:  0.95, y: -0.25, z:  1.4 }, // rear-right
+]
+const STEERED_WHEELS = [0, 1]
+const DRIVEN_WHEELS   = [2, 3]
+
+// Mass + a custom principal angular inertia (overriding what Rapier would
+// auto-compute from the collider) — deliberately anisotropic: much higher
+// resistance to PITCH (local X axis — the wheelie/stoppie rotation) than to
+// yaw or roll, so the chassis still leans/bounces naturally over rocks and
+// corners but can't rotate end-over-end from engine/brake torque alone.
+const CHASSIS_MASS   = 2
+const PITCH_INERTIA  = 9    // local X — resists wheelie/stoppie
+const YAW_INERTIA    = 2.6  // local Y — steering turn-in response
+const ROLL_INERTIA   = 1.2  // local Z — cornering lean / bump response
+const CHASSIS_COM    = { x: 0, y: -0.05, z: 0 } // matches the collider position below
 
 // ── Camera ──────────────────────────────────────────────────────────────────
 // Camera sits at +Z (south) relative to car
 // Car faces -Z (north) → _fwd = (0,0,-1)
 // W pressed → car moves in -Z → moves north → away from camera → FORWARD ✓
-const CAM_OFFSET = new THREE.Vector3(8, 18, 20)
+const CAM_OFFSET       = new THREE.Vector3(8, 18, 20)
+const CAM_OFFSET_BOOST = new THREE.Vector3(10, 22, 26)
 const CAM_LERP   = 3.5
 
 // ── Set true when your car.glb exists in /public/models/ ────────────────────
 const HAS_GLTF = true
 
 const _fwd    = new THREE.Vector3()
-const _right  = new THREE.Vector3()
 const _vel    = new THREE.Vector3()
 const _quat   = new THREE.Quaternion()
 const _cam    = new THREE.Vector3()
@@ -106,12 +163,7 @@ function BoxCar() {
       </mesh>
 
       {/* Wheels */}
-      {[
-        [-0.95, -0.22, -1.1],  // front-left
-        [ 0.95, -0.22, -1.1],  // front-right
-        [-0.95, -0.22,  1.1],  // rear-left
-        [ 0.95, -0.22,  1.1],  // rear-right
-      ].map(([x, y, z], i) => (
+      {WHEEL_POSITIONS.map(({ x, y, z }, i) => (
         <mesh key={i} castShadow position={[x, y, z]}>
           <boxGeometry args={[0.28, 0.52, 0.52]} />
           <meshStandardMaterial color="#1a1a1a" roughness={1} />
@@ -150,13 +202,56 @@ function BoxCar() {
 }
 
 function VehicleInner(props, ref) {
+  const { world }   = useRapier()
   const bodyRef     = useRef()
+  const vehicleRef  = useRef(null)
   const steer       = useRef(0)
   const bodySet     = useRef(false)
   const lastSpeed   = useRef(0)
   const prevBrake   = useRef(false)
   const nosRef      = useRef(100)
   const [, getKeys] = useKeyboardControls()
+
+  // Create the raycast vehicle controller once the chassis body exists.
+  // The controller stays internal to this component — every other file
+  // (Zones, Minimap, MapOverlay, App, AudioManager) reads translation()/
+  // linvel() off the plain chassis RigidBody, exactly as before.
+  useEffect(() => {
+    if (!bodyRef.current) return
+
+    // Overrides Rapier's auto-computed (isotropic) inertia from the collider
+    // with an anisotropic one — see PITCH_INERTIA/YAW_INERTIA/ROLL_INERTIA
+    // above for why.
+    bodyRef.current.setAdditionalMassProperties(
+      CHASSIS_MASS,
+      CHASSIS_COM,
+      { x: PITCH_INERTIA, y: YAW_INERTIA, z: ROLL_INERTIA },
+      { x: 0, y: 0, z: 0, w: 1 },
+      true
+    )
+
+    const controller = world.createVehicleController(bodyRef.current)
+
+    WHEEL_POSITIONS.forEach((pos) => {
+      controller.addWheel(pos, { x: 0, y: -1, z: 0 }, { x: 1, y: 0, z: 0 },
+        SUSPENSION_REST_LENGTH, WHEEL_RADIUS)
+    })
+    for (let i = 0; i < WHEEL_POSITIONS.length; i++) {
+      controller.setWheelSuspensionStiffness(i, SUSPENSION_STIFFNESS)
+      controller.setWheelSuspensionCompression(i, SUSPENSION_COMPRESSION)
+      controller.setWheelSuspensionRelaxation(i, SUSPENSION_RELAXATION)
+      controller.setWheelMaxSuspensionTravel(i, MAX_SUSPENSION_TRAVEL)
+      controller.setWheelMaxSuspensionForce(i, MAX_SUSPENSION_FORCE)
+      controller.setWheelFrictionSlip(i, FRICTION_SLIP)
+      controller.setWheelSideFrictionStiffness(i, SIDE_FRICTION_STIFFNESS)
+    }
+
+    vehicleRef.current = controller
+    return () => {
+      vehicleRef.current = null
+      world.removeVehicleController(controller)
+    }
+  }, [world])
 
   const getInput = () => {
     const k = getKeys()
@@ -172,9 +267,10 @@ function VehicleInner(props, ref) {
   }
 
   useFrame((state, delta) => {
-    if (!bodyRef.current) return
-    const body = bodyRef.current
-    const dt   = Math.min(delta, 0.05)
+    if (!bodyRef.current || !vehicleRef.current) return
+    const body       = bodyRef.current
+    const controller = vehicleRef.current
+    const dt         = Math.min(delta, 0.05)
 
     if (!bodySet.current) {
       bodySet.current = true
@@ -208,70 +304,72 @@ function VehicleInner(props, ref) {
       window.__isBoosting = canBoost
     }
 
-    // ── Car faces -Z (north). Camera at +Z (south) sees back of car.
-    //    W pressed → _fwd = (0,0,-1) → car moves north → FORWARD ✓
+    // Forward basis + current speed — used for the soft speed cap, reverse
+    // gating, camera follow, and collision-sound loudness.
     const rot = body.rotation()
     _quat.set(rot.x, rot.y, rot.z, rot.w)
-    _fwd  .set(0, 0, -1).applyQuaternion(_quat).setY(0).normalize()
-    _right.set(1, 0,  0).applyQuaternion(_quat).setY(0).normalize()
-
+    _fwd.set(0, 0, -1).applyQuaternion(_quat).setY(0).normalize()
     const lv = body.linvel()
     _vel.set(lv.x, lv.y, lv.z)
     const fwdSpeed = _fwd.dot(_vel)
-    const latSpeed = _right.dot(_vel)
     lastSpeed.current = Math.sqrt(lv.x * lv.x + lv.z * lv.z)
 
-    // Kill lateral drift
-    _vel.addScaledVector(_right, -latSpeed * (1 - LATERAL_GRIP))
+    // Engine force — soft speed cap via force attenuation (force fades out
+    // as speed passes the target, rather than hard-clamping velocity, which
+    // would fight the vehicle controller's own solver).
+    const topSpeed = canBoost ? TOP_SPEED_BOOST : TOP_SPEED
+    const overflow = Math.max(0, lastSpeed.current - topSpeed)
 
-    // Acceleration / boost
-    const maxSpd = canBoost ? BOOST_MAX_SPEED : MAX_SPEED
-    if (forward && fwdSpeed < maxSpd) {
-      _vel.addScaledVector(_fwd, (canBoost ? BOOST_FORCE : ACCEL_FORCE) * dt)
+    let engineForce = 0
+    let brakeFront  = 0
+    let brakeRear   = 0
+
+    if (backward && fwdSpeed > 0.5) {
+      // Moving forward, pressing reverse → brake to a stop first instead
+      // of instantly reversing direction.
+      brakeFront = brakeRear = BRAKE_FORCE
+    } else if (forward) {
+      engineForce = FORWARD_SIGN * (canBoost ? BOOST_ENGINE_FORCE : ENGINE_FORCE) / (1 + overflow)
+    } else if (backward && fwdSpeed > -MAX_REV_SPEED) {
+      engineForce = -FORWARD_SIGN * REVERSE_ENGINE_FORCE
     }
 
-    // Reverse
-    if (backward) {
-      if (fwdSpeed > 0.5) { _vel.x *= 0.85; _vel.z *= 0.85 }
-      else if (fwdSpeed > -MAX_REV_SPEED) {
-        _vel.addScaledVector(_fwd, -REV_FORCE * dt)
-      }
-    }
-
-    // Brake / coast
     if (brake) {
-      _vel.x *= BRAKE_DAMPING; _vel.z *= BRAKE_DAMPING
+      brakeFront = brakeRear = BRAKE_FORCE
     } else if (!forward && !backward) {
-      _vel.x *= COAST_DAMPING; _vel.z *= COAST_DAMPING
+      // Idle "engine braking" only comes through the driven wheels in a real
+      // RWD car — applying it to the front wheels too was pitching the nose
+      // down hard (a "stoppie") when coasting off the accelerator at speed.
+      brakeRear = IDLE_BRAKE
     }
 
-    // Speed cap
-    const horizSq = _vel.x * _vel.x + _vel.z * _vel.z
-    const capSpd  = canBoost ? BOOST_MAX_SPEED : MAX_SPEED
-    if (horizSq > capSpd * capSpd) {
-      const inv = capSpd / Math.sqrt(horizSq)
-      _vel.x *= inv; _vel.z *= inv
-    }
-
-    body.setLinvel({ x: _vel.x, y: _vel.y, z: _vel.z }, true)
-
-    // Steering
-    const steerMax    = canBoost ? BOOST_STEER : STEER_SPEED
-    const speedFactor = Math.min(Math.abs(fwdSpeed) / 5, 1)
-    const steerDir    = (left ? 1 : 0) - (right ? 1 : 0)
-    const steerSign   = fwdSpeed < -0.3 ? -1 : 1
+    // Steering — smoothed so a tapped key eases toward full lock instead of
+    // snapping there instantly.
+    const steerDir = (left ? 1 : 0) - (right ? 1 : 0)
     steer.current = THREE.MathUtils.lerp(
-      steer.current, steerDir * speedFactor, 1 - Math.exp(-10 * dt)
+      steer.current, steerDir, 1 - Math.exp(-STEER_LERP_SPEED * dt)
     )
-    body.setAngvel({ x: 0, y: steer.current * steerMax * steerSign, z: 0 }, true)
+    const steerAngle = steer.current * STEER_MAX
+
+    for (const i of STEERED_WHEELS) {
+      controller.setWheelSteering(i, steerAngle)
+      controller.setWheelBrake(i, brakeFront)
+    }
+    for (const i of DRIVEN_WHEELS) {
+      controller.setWheelEngineForce(i, engineForce)
+      controller.setWheelBrake(i, brakeRear)
+    }
+
+    controller.updateVehicle(dt)
 
     // Camera — always follows car; no zone override so billboard stays face-on
     const pos = body.translation()
     _carPos.set(pos.x, pos.y, pos.z)
     _cam.copy(state.camera.position)
-    const offset = canBoost ? new THREE.Vector3(10, 22, 26) : CAM_OFFSET
+    const offset = canBoost ? CAM_OFFSET_BOOST : CAM_OFFSET
     _ideal.copy(_carPos).add(offset)
     _cam.lerp(_ideal, 1 - Math.exp(-CAM_LERP * dt))
+    applyShake(_cam)
     state.camera.position.copy(_cam)
     _look.set(pos.x, pos.y + 0.5, pos.z)
     state.camera.lookAt(_look)
@@ -282,10 +380,9 @@ function VehicleInner(props, ref) {
       ref={bodyRef}
       position={[0, 2.5, 0]}
       colliders={false}
-      mass={2}
-      linearDamping={0}
-      angularDamping={6}
-      enabledRotations={[false, true, false]}
+      mass={CHASSIS_MASS}
+      linearDamping={0.05}
+      angularDamping={4}
       ccd={true}
       restitution={0.2}
       onCollisionEnter={() => {
@@ -293,7 +390,14 @@ function VehicleInner(props, ref) {
           playCollision(lastSpeed.current)
       }}
     >
-      <CuboidCollider args={[0.9, 0.5, 1.7]} position={[0, 0, 0]} />
+      {/* Sized/positioned to stay clear of the wheels' own ground contact —
+          the wheel raycasts (connection y=-0.25, reaching further down by
+          suspensionRestLength+radius) need to be the only thing touching
+          the ground under normal driving. If this collider reached as low
+          as the wheels' contact patch, the two ground-contact mechanisms
+          would fight each other (the body resting on this collider directly,
+          independent of and inconsistent with the suspension). */}
+      <CuboidCollider args={[0.9, 0.3, 1.7]} position={[0, -0.05, 0]} />
       {HAS_GLTF ? (
         <Suspense fallback={<BoxCar />}>
           <GLTFCar />

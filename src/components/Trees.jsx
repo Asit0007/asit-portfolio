@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react'
 import * as THREE from 'three'
+import { RigidBody, CuboidCollider } from '@react-three/rapier'
 
 const TREE_COUNT = 100
 
@@ -21,17 +22,19 @@ function randomTreePositions() {
   return positions
 }
 
-// Frozen outside component — never recalculates on re-render
+// Frozen at module load — positions are stable across renders
 const TREES = randomTreePositions()
 
-export default function Trees() {
+export default function Trees({ maxTrees = TREE_COUNT }) {
   const trunkRef  = useRef()
   const leavesRef = useRef()
+  const visibleTrees = TREES.slice(0, maxTrees)
+  const count = visibleTrees.length
 
   useEffect(() => {
     if (!trunkRef.current || !leavesRef.current) return
     const dummy = new THREE.Object3D()
-    TREES.forEach(({ x, z, scale }, i) => {
+    visibleTrees.forEach(({ x, z, scale }, i) => {
       dummy.position.set(x, scale * 0.9, z)
       dummy.scale.setScalar(scale)
       dummy.updateMatrix()
@@ -45,17 +48,17 @@ export default function Trees() {
     trunkRef.current.instanceMatrix.needsUpdate  = true
     leavesRef.current.instanceMatrix.needsUpdate = true
 
-    // Fix frustum culling — expand bounding sphere to cover entire world
     trunkRef.current.geometry.boundingSphere  = new THREE.Sphere(new THREE.Vector3(0,0,0), 200)
     leavesRef.current.geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0,0,0), 200)
-  }, [])
+  }, [count])
 
   return (
     <group>
-      {/* frustumCulled={false} — the KEY fix for disappearing trees */}
+      {/* Visual trunks */}
       <instancedMesh
+        key={`trunk-${count}`}
         ref={trunkRef}
-        args={[null, null, TREE_COUNT]}
+        args={[null, null, count]}
         castShadow
         frustumCulled={false}
       >
@@ -63,15 +66,28 @@ export default function Trees() {
         <meshStandardMaterial color="#8B5E3C" roughness={1} flatShading />
       </instancedMesh>
 
+      {/* Visual canopy */}
       <instancedMesh
+        key={`leaves-${count}`}
         ref={leavesRef}
-        args={[null, null, TREE_COUNT]}
+        args={[null, null, count]}
         castShadow
         frustumCulled={false}
       >
         <coneGeometry args={[1.3, 2.6, 6]} />
         <meshStandardMaterial color="#5a8f3c" roughness={0.85} flatShading />
       </instancedMesh>
+
+      {/* Physics trunks — one static cuboid collider per tree, all on a
+          single fixed body. Trees never move, so this needs no per-frame
+          transform sync (unlike InstancedRigidBodies, which is built for
+          instances whose positions change and costs a JS↔WASM readback
+          every frame for each instance even when nothing moves). */}
+      <RigidBody type="fixed" colliders={false}>
+        {visibleTrees.map(({ x, z }, i) => (
+          <CuboidCollider key={i} args={[0.35, 1.75, 0.35]} position={[x, 1.75, z]} />
+        ))}
+      </RigidBody>
     </group>
   )
 }

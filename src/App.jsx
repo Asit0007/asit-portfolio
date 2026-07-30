@@ -11,6 +11,8 @@ import MusicPlayer    from './components/MusicPlayer'
 import useGameStore   from './store/useGameStore'
 import { keyMap }     from './Controls'
 import { toggleMusic } from './audio'
+import { usePerformanceTier, TIER_CONFIG } from './hooks/usePerformance'
+import { RendererInfoOverlay } from './components/DevStats'
 
 function handleContextLost(e) {
   e.preventDefault()
@@ -95,6 +97,13 @@ export default function App() {
 
   if (vehicleBody) vehicleRef.current = vehicleBody
   useTitleAnimation(vehicleBody)
+
+  // `antialias`/`powerPreference` are WebGL context attributes — fixed at
+  // Canvas mount, so they're decided from the synchronous device check
+  // rather than the async FPS-measured tier (which resolves ~1.5s later
+  // and can only affect props that update reactively post-mount).
+  const perfTier = usePerformanceTier()
+  const tierCfg  = TIER_CONFIG[perfTier ?? 1]
 
   useEffect(() => {
     let cleanup = () => {}
@@ -181,18 +190,20 @@ export default function App() {
               shadows={false}
               camera={{ fov: 50, near: 0.1, far: 600, position: [8, 18, 20] }}
               gl={{
-                antialias: true,
+                antialias: !isMobile,
                 powerPreference: 'high-performance',
                 failIfMajorPerformanceCaveat: false,
               }}
-              dpr={[1, Math.min(window.devicePixelRatio, 2)]}
+              dpr={[tierCfg.dpr[0], Math.min(tierCfg.dpr[1], window.devicePixelRatio)]}
               style={{ width: '100%', height: '100%' }}
             >
-              <Scene />
+              <Scene tierCfg={tierCfg} />
             </Canvas>
           </KeyboardControls>
         </Suspense>
       </div>
+
+      <RendererInfoOverlay />
 
       {/* Game overlays — only when active */}
       {gameStarted && (
