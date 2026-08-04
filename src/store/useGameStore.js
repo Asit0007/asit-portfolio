@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { getBestTime } from '../utils/raceStorage'
+import { getVisitedZones } from '../utils/achievementStorage'
 
 const ZONES = {
   start: {
@@ -123,6 +125,23 @@ const useGameStore = create((set) => ({
   needsReset: false,
   resetCar:   () => set({ needsReset: true }),
   clearReset: () => set({ needsReset: false }),
+
+  // ── Racing circuit ─────────────────────────────────────────────────────
+  raceState:            'idle', // 'idle' | 'racing' | 'finished'
+  setRaceState:         (v) => set({ raceState: v }),
+
+  currentCheckpoint:    0,
+  setCurrentCheckpoint: (i) => set({ currentCheckpoint: i }),
+
+  lastLapTime:          null, // ms
+  setLastLapTime:       (ms) => set({ lastLapTime: ms }),
+
+  bestLapTime:          getBestTime(), // ms, hydrated from localStorage
+  setBestLapTime:       (ms) => set({ bestLapTime: ms }),
+
+  // ── Achievements — zone visits tracked here; AchievementSystem.jsx
+  // watches this + raceState to decide what to toast ─────────────────────
+  visitedZones: getVisitedZones(), // array of zone ids, hydrated from localStorage
 }))
 
 export default useGameStore

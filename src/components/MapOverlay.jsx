@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import useGameStore from '../store/useGameStore'
 
-const WORLD_SIZE = 200
+const WORLD_SIZE = 320 // matches the ±160 world boundary (World.jsx Boundaries())
 const MAP_SIZE   = 340
 
 const ZONE_INFO = [

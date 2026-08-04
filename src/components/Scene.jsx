@@ -14,11 +14,14 @@ import AudioManager      from './AudioManager'
 import ContactZone       from './ContactZone'
 import EnvironmentModels from './EnvironmentModels'
 import DevStats           from './DevStats'
+import Circuit            from './Circuit'
+import useDayNightCycle   from '../hooks/useDayNightCycle'
 
 export default function Scene({ tierCfg }) {
   const vehicleRef = useRef()
   const joystick   = useGameStore((s) => s.joystick)
   const fogFar     = tierCfg.fog
+  const { fog: fogColor } = useDayNightCycle()
 
   return (
     <Physics gravity={[0, -20, 0]} timeStep={tierCfg.physicsStep}>
@@ -35,9 +38,10 @@ export default function Scene({ tierCfg }) {
       <ContactZone />
       <Vehicle ref={vehicleRef} joystick={joystick} />
       <Zones vehicleRef={vehicleRef} />
+      <Circuit vehicleRef={vehicleRef} />
       <AudioManager />
       <DevStats />
-      <fog attach="fog" args={['#f0a050', fogFar * 0.4, fogFar]} />
+      <fog attach="fog" args={[fogColor, fogFar * 0.4, fogFar]} />
     </Physics>
   )
 }

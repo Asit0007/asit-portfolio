@@ -81,9 +81,26 @@ const CHASSIS_COM    = { x: 0, y: -0.05, z: 0 } // matches the collider position
 // Camera sits at +Z (south) relative to car
 // Car faces -Z (north) → _fwd = (0,0,-1)
 // W pressed → car moves in -Z → moves north → away from camera → FORWARD ✓
-const CAM_OFFSET       = new THREE.Vector3(8, 18, 20)
-const CAM_OFFSET_BOOST = new THREE.Vector3(10, 22, 26)
+const CAM_OFFSET = new THREE.Vector3(8, 18, 20)
 const CAM_LERP   = 3.5
+
+// Continuous speed-based zoom replaces the old binary boost/non-boost
+// offset swap — boost already raises speed toward TOP_SPEED_BOOST, so it
+// naturally produces a bigger offset through this curve without a special case.
+const ZOOM_SPEED_MIN = 5
+const ZOOM_SPEED_MAX = 38 // matches TOP_SPEED_BOOST
+const ZOOM_NEAR       = 0.85
+const ZOOM_FAR        = 1.35
+
+// Brief camera bias on entering a zone — NOT folio's locked cinematic shot
+// (this game's zones are passive/proximity-triggered, driving never pauses,
+// so a hard camera takeover would fight the core interaction model). Just a
+// few seconds of extra height/distance blended into the existing follow-cam
+// lerp for a slight "establishing" look, decaying back to normal on its own
+// — nothing to release, no state machine, safe even if the player keeps
+// driving straight through it.
+const ZONE_BIAS_OFFSET   = new THREE.Vector3(0, 4, 4)
+const ZONE_BIAS_DURATION = 2000 // ms
 
 // ── Set true when your car.glb exists in /public/models/ ────────────────────
 const HAS_GLTF = true
@@ -210,6 +227,8 @@ function VehicleInner(props, ref) {
   const lastSpeed   = useRef(0)
   const prevBrake   = useRef(false)
   const nosRef      = useRef(100)
+  const lastZoneRef      = useRef(null)
+  const zoneBiasStartRef = useRef(-Infinity)
   const [, getKeys] = useKeyboardControls()
 
   // Create the raycast vehicle controller once the chassis body exists.
@@ -362,12 +381,29 @@ function VehicleInner(props, ref) {
 
     controller.updateVehicle(dt)
 
-    // Camera — always follows car; no zone override so billboard stays face-on
+    // Camera — always follows car; still no hard zone override (the
+    // billboard needs a fairly consistent approach angle to stay face-on),
+    // just a brief additive bias below that decays on its own.
+    // Zoom scales continuously with speed rather than a binary boost swap —
+    // boost already raises lastSpeed toward TOP_SPEED_BOOST, so it pulls the
+    // camera back further through this curve without a special case.
     const pos = body.translation()
     _carPos.set(pos.x, pos.y, pos.z)
     _cam.copy(state.camera.position)
-    const offset = canBoost ? CAM_OFFSET_BOOST : CAM_OFFSET
-    _ideal.copy(_carPos).add(offset)
+    const zoomT = THREE.MathUtils.smoothstep(lastSpeed.current, ZOOM_SPEED_MIN, ZOOM_SPEED_MAX)
+    const zoom  = THREE.MathUtils.lerp(ZOOM_NEAR, ZOOM_FAR, zoomT)
+    _ideal.copy(_carPos).addScaledVector(CAM_OFFSET, zoom)
+
+    // On freshly entering a zone (not leaving one), blend in a decaying
+    // extra height/distance bias for a brief "establishing" look.
+    const activeZoneId = useGameStore.getState().activeZone?.id ?? null
+    if (activeZoneId !== lastZoneRef.current) {
+      lastZoneRef.current = activeZoneId
+      if (activeZoneId) zoneBiasStartRef.current = performance.now()
+    }
+    const zoneBiasT = 1 - (performance.now() - zoneBiasStartRef.current) / ZONE_BIAS_DURATION
+    if (zoneBiasT > 0) _ideal.addScaledVector(ZONE_BIAS_OFFSET, zoneBiasT)
+
     _cam.lerp(_ideal, 1 - Math.exp(-CAM_LERP * dt))
     applyShake(_cam)
     state.camera.position.copy(_cam)

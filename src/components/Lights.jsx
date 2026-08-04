@@ -1,21 +1,25 @@
+import useDayNightCycle from '../hooks/useDayNightCycle'
+
 export default function Lights() {
+  const { ambient, sun, fill, hemi } = useDayNightCycle()
+
   return (
     <>
-      <ambientLight intensity={1.0} color="#ffe5b4" />
+      <ambientLight intensity={ambient.intensity} color={ambient.color} />
       <directionalLight
         position={[40, 60, -60]}
-        intensity={2.2}
-        color="#ffcc88"
+        intensity={sun.intensity}
+        color={sun.color}
       />
       <directionalLight
         position={[-30, 20, 40]}
-        intensity={0.45}
-        color="#aaccff"
+        intensity={fill.intensity}
+        color={fill.color}
       />
       <hemisphereLight
-        skyColor="#ffe0a0"
-        groundColor="#c8640a"
-        intensity={0.7}
+        skyColor={hemi.sky}
+        groundColor={hemi.ground}
+        intensity={hemi.intensity}
       />
     </>
   )

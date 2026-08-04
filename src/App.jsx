@@ -7,6 +7,8 @@ import MapOverlay     from './components/MapOverlay'
 import MobileJoystick from './components/MobileJoystick'
 import StartScreen    from './components/StartScreen'
 import NosHUD         from './components/NosHUD'
+import LapTimerHUD    from './components/LapTimerHUD'
+import AchievementSystem from './components/AchievementSystem'
 import MusicPlayer    from './components/MusicPlayer'
 import useGameStore   from './store/useGameStore'
 import { keyMap }     from './Controls'
@@ -209,6 +211,8 @@ export default function App() {
       {gameStarted && (
         <>
           <ZoneOverlay />
+          <LapTimerHUD />
+          <AchievementSystem />
 
           {/* NOS gauge */}
           <div className="nos-hud" style={{ position: 'fixed', bottom: 56, left: '50%',
