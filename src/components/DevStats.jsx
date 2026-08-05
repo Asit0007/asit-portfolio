@@ -22,6 +22,12 @@ export function RendererInfoTracker() {
 }
 
 // Mount outside <Canvas>, in plain App DOM. Dev-only overlay.
+// Bottom-left, above the music toggle button (MusicPlayer.jsx, bottom:20
+// left:20) — moved off the top-left corner where it used to overlap
+// LapTimerHUD (top:16 left:16) and drei's own <Stats/> panel, which
+// defaults to top:0 left:0 (repositioned below via the .dev-stats-gl-panel
+// override — stats.js sets that inline via style attribute, which beats a
+// plain class selector without !important).
 export function RendererInfoOverlay() {
   const elRef = useRef()
 
@@ -37,15 +43,20 @@ export function RendererInfoOverlay() {
 
   if (!import.meta.env.DEV) return null
   return (
-    <div
-      ref={elRef}
-      style={{
-        position: 'fixed', top: 48, left: 0, zIndex: 9999,
-        background: 'rgba(0,0,0,0.75)', color: '#0f0',
-        font: '11px monospace', padding: '4px 8px',
-        pointerEvents: 'none', whiteSpace: 'pre',
-      }}
-    />
+    <>
+      <style>{`
+        .dev-stats-gl-panel { top: auto !important; left: 8px !important; bottom: 70px !important; }
+      `}</style>
+      <div
+        ref={elRef}
+        style={{
+          position: 'fixed', bottom: 8, left: 8, zIndex: 9999,
+          background: 'rgba(0,0,0,0.75)', color: '#0f0',
+          font: '11px monospace', padding: '4px 8px',
+          pointerEvents: 'none', whiteSpace: 'pre',
+        }}
+      />
+    </>
   )
 }
 
@@ -54,7 +65,7 @@ export default function DevStats() {
   if (!import.meta.env.DEV) return null
   return (
     <>
-      <Stats />
+      <Stats className="dev-stats-gl-panel" />
       <RendererInfoTracker />
     </>
   )

@@ -14,6 +14,7 @@ export default function AchievementSystem() {
   const visitedZones = useGameStore((s) => s.visitedZones)
   const raceState    = useGameStore((s) => s.raceState)
   const bestLapTime  = useGameStore((s) => s.bestLapTime)
+  const strikeCount  = useGameStore((s) => s.strikeCount)
 
   const [queue, setQueue]     = useState([])
   const [current, setCurrent] = useState(null)
@@ -54,6 +55,12 @@ export default function AchievementSystem() {
     if (isFirstBestRef.current) { isFirstBestRef.current = false; return }
     if (bestLapTime != null) unlock('new-best', 'New Best Lap Time')
   }, [bestLapTime])
+
+  // Bowling strike — the in-world "STRIKE!" celebration in Bowling.jsx
+  // fires every time (replayable fun); this achievement is one-time only.
+  useEffect(() => {
+    if (strikeCount > 0) unlock('strike', '🎳 STRIKE!')
+  }, [strikeCount])
 
   // Advance the queue — only one toast on screen at a time.
   useEffect(() => {

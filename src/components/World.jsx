@@ -129,10 +129,11 @@ function Roads() {
 }
 
 function Boundaries() {
-  // Pushed out from ±100 to ±160 to make room for the racing circuit
-  // (centered at [90,-90], radius 50 — needs to reach x/z ≈140). The
-  // ground plane is already 400x400 (half-extent 200), so there's plenty
-  // of margin without touching any floor geometry.
+  // Pushed out from ±100 to ±160 to make room for the racing circuit — the
+  // big wraparound track (src/data/track.js) reaches x/z ≈±142 at its
+  // widest, verified to stay clear of these walls with margin. The ground
+  // plane is already 400x400 (half-extent 200), so there's plenty of
+  // margin without touching any floor geometry.
   const walls = [
     { pos: [0,   3, -160], size: [340, 6, 2] },
     { pos: [0,   3,  160], size: [340, 6, 2] },
@@ -160,8 +161,8 @@ const SCATTER_DATA = [
   { x:  32, z:  42, sx: 1.0, sy: 1.0,  sz: 1.1, ry: 0.8  },
   { x: -62, z: -48, sx: 1.1, sy: 1.4,  sz: 0.8, ry: 1.6  },
   { x:  66, z:  38, sx: 0.8, sy: 0.9,  sz: 1.3, ry: 2.8  },
-  { x: -36, z:  68, sx: 1.3, sy: 0.6,  sz: 1.0, ry: 0.2  },
-  { x:  46, z: -55, sx: 0.7, sy: 1.1,  sz: 0.9, ry: 3.1  }, // nudged clear of the circuit track (center [90,-90] r50)
+  { x: -10, z:  80, sx: 1.3, sy: 0.6,  sz: 1.0, ry: 0.2  }, // nudged clear of the big wraparound track (src/data/track.js)
+  { x:  46, z: -55, sx: 0.7, sy: 1.1,  sz: 0.9, ry: 3.1  },
   { x: -72, z:  12, sx: 1.5, sy: 0.8,  sz: 1.2, ry: 1.9  },
   { x:  22, z: -72, sx: 1.0, sy: 1.3,  sz: 0.7, ry: 0.6  },
   { x:  62, z: -16, sx: 0.9, sy: 0.7,  sz: 1.4, ry: 2.1  },

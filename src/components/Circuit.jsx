@@ -2,71 +2,101 @@ import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Text } from '@react-three/drei'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import useGameStore from '../store/useGameStore'
 import { setBestTime } from '../utils/raceStorage'
+import TrackObstacles from './TrackObstacles'
+import {
+  CHECKPOINTS, TRACK_SAMPLES, PATH_WIDTH, BORDER_WIDTH, CHECK_RADIUS,
+} from '../data/track'
 
-// Sized to match folio-2025's actual circuit — measured directly from its
-// checkpoint scene data (static/areas/areas.glb): 8 checkpoints averaging
-// ~60 units apart, spanning roughly 100x150 units. This track uses 6
-// checkpoints at 50-unit spacing (2*radius*sin(30°) = radius for a
-// hexagon) — same scale, fewer stops.
-//
-// Center [90,-90] with radius 50 reaches x/z ≈140, clear of every zone/
-// rock/tree exclusion box (all centered on [[0,-55],[55,0],[-55,0],
-// [0,55],[0,0]], excluded out to ~20-22 units — see
-// EnvironmentModels.jsx/Trees.jsx) and within the ±160 boundary walls
-// (World.jsx) — the boundary was pushed out from ±100 specifically to fit
-// this.
-const TRACK_CENTER = [90, -90]
-const TRACK_RADIUS = 50
-const CHECKPOINT_COUNT = 6
-const CHECK_RADIUS = 12   // bigger track, a bit more forgiving to hit
-const GATE_HALF_WIDTH = 5 // matches folio's actual gate width (10 units)
-const PATH_WIDTH = 8
-
-const CHECKPOINTS = Array.from({ length: CHECKPOINT_COUNT }, (_, i) => {
-  const angle = (i / CHECKPOINT_COUNT) * Math.PI * 2
-  return {
-    id: i,
-    position: [
-      TRACK_CENTER[0] + Math.cos(angle) * TRACK_RADIUS,
-      TRACK_CENTER[1] + Math.sin(angle) * TRACK_RADIUS,
-    ],
-    label: i === 0 ? 'START / FINISH' : `CHECKPOINT ${i}`,
-  }
-})
+const BORDER_COLORS = ['#f5f0e8', '#32ffc1'] // alternates for the checker look; teal matches the checkpoint gates' active color
 
 const _vPos = new THREE.Vector3()
 const _cPos = new THREE.Vector3()
 
-// Ground ribbon connecting each checkpoint to the next, so the loop reads
-// as an actual track instead of floating gates in open ground.
+// Bakes a solid-color BoxGeometry with a per-vertex 'color' attribute, so
+// many of these can be merged into one buffer while keeping each piece's
+// own color (used for the alternating checkered border).
+function coloredBoxGeometry(width, height, depth, colorHex) {
+  const geo = new THREE.BoxGeometry(width, height, depth)
+  const count = geo.attributes.position.count
+  const c = new THREE.Color(colorHex)
+  const colors = new Float32Array(count * 3)
+  for (let i = 0; i < count; i++) {
+    colors[i * 3] = c.r
+    colors[i * 3 + 1] = c.g
+    colors[i * 3 + 2] = c.b
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  return geo
+}
+
+// Ground track connecting the checkpoints — a smooth closed curve (not the
+// straight hexagon segments this used to be) with a checkered border, same
+// visual language as folio-2025's actual circuit but built procedurally
+// (folio's is a hand-modeled Blender mesh — see Circuit.jsx's module
+// comment/the plan this came from for why that's not portable here).
+// Every small per-segment piece is baked (position/rotation applied
+// directly to its vertices) and merged into exactly 2 draw calls total —
+// despite ~6x more segments than the old straight-line version, this is
+// fewer draw calls than before (2 vs 18), not more.
 function TrackPath() {
-  const segments = useMemo(() => CHECKPOINTS.map((cp, i) => {
-    const next = CHECKPOINTS[(i + 1) % CHECKPOINTS.length]
-    const [ax, az] = cp.position
-    const [bx, bz] = next.position
-    const dx = bx - ax, dz = bz - az
-    const length = Math.hypot(dx, dz)
-    // Y-axis rotation: local +X maps to world (cos θ, -sin θ) — solve for
-    // θ so that direction lands on (dx, dz) normalized.
-    const rotationY = -Math.atan2(dz, dx)
-    return {
-      key: i,
-      position: [(ax + bx) / 2, 0.03, (az + bz) / 2],
-      rotationY,
-      length,
+  const { roadGeometry, borderGeometry } = useMemo(() => {
+    const samples = TRACK_SAMPLES
+
+    const roadPieces = []
+    const borderPieces = []
+
+    for (let i = 0; i < samples.length - 1; i++) {
+      const a = samples[i]
+      const b = samples[(i + 1) % samples.length]
+      const dx = b.x - a.x, dz = b.z - a.z
+      const length = Math.hypot(dx, dz)
+      if (length < 0.001) continue
+
+      // Y-axis rotation: local +X maps to world (cos θ, -sin θ) — solve for
+      // θ so that direction lands on (dx, dz). Local +Z (the box's
+      // width/depth axis) then maps to world (sin θ, cos θ) — the
+      // perpendicular direction used below to offset the border pieces.
+      const angle = -Math.atan2(dz, dx)
+      const midX = (a.x + b.x) / 2
+      const midZ = (a.z + b.z) / 2
+
+      const road = new THREE.BoxGeometry(length, 0.02, PATH_WIDTH)
+      road.rotateY(angle)
+      road.translate(midX, 0.03, midZ)
+      roadPieces.push(road)
+
+      const color = BORDER_COLORS[i % 2]
+      const edgeOffset = PATH_WIDTH / 2 + BORDER_WIDTH / 2
+      for (const offset of [-edgeOffset, edgeOffset]) {
+        const border = coloredBoxGeometry(length, 0.03, BORDER_WIDTH, color)
+        border.rotateY(angle)
+        border.translate(
+          midX + offset * Math.sin(angle),
+          0.035,
+          midZ + offset * Math.cos(angle)
+        )
+        borderPieces.push(border)
+      }
     }
-  }), [])
+
+    const roadGeometry   = mergeGeometries(roadPieces)
+    const borderGeometry = mergeGeometries(borderPieces)
+    roadPieces.forEach((g) => g.dispose())
+    borderPieces.forEach((g) => g.dispose())
+    return { roadGeometry, borderGeometry }
+  }, [])
 
   return (
     <group>
-      {segments.map((seg) => (
-        <mesh key={seg.key} position={seg.position} rotation={[0, seg.rotationY, 0]}>
-          <boxGeometry args={[seg.length, 0.02, PATH_WIDTH]} />
-          <meshStandardMaterial color="#1a3a34" transparent opacity={0.55} />
-        </mesh>
-      ))}
+      <mesh geometry={roadGeometry}>
+        <meshStandardMaterial color="#1a3a34" transparent opacity={0.55} />
+      </mesh>
+      <mesh geometry={borderGeometry}>
+        <meshStandardMaterial vertexColors />
+      </mesh>
     </group>
   )
 }
@@ -91,18 +121,8 @@ function CheckpointGate({ position, label, isTarget, isPassed }) {
           side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
-      {/* Gate pillars — purely visual, no collider, same as the resume
-          zone markers (a wide-open ring, not something to physically hit) */}
-      {[-GATE_HALF_WIDTH, GATE_HALF_WIDTH].map((x, i) => (
-        <mesh key={i} position={[x, 1.5, 0]} castShadow>
-          <cylinderGeometry args={[0.15, 0.15, 3, 8]} />
-          <meshStandardMaterial color={color} emissive={color}
-            emissiveIntensity={isTarget ? 1.2 : 0.3} />
-        </mesh>
-      ))}
-
       {isTarget && (
-        <group position={[0, 5, 0]}>
+        <group position={[0, 2.5, 0]}>
           <Text fontSize={1} color={color} anchorX="center" anchorY="middle"
             outlineWidth={0.06} outlineColor="#000">
             {label}
@@ -152,6 +172,10 @@ export default function Circuit({ vehicleRef }) {
           if (state.bestLapTime === null || elapsed < state.bestLapTime) {
             state.setBestLapTime(elapsed)
             setBestTime(elapsed)
+            // LapTimerHUD watches this to prompt for a name + submit to the
+            // global leaderboard — kept out of this physics-loop component
+            // since it involves a text input, not just a store write.
+            useGameStore.setState({ pendingLeaderboardSubmit: elapsed })
           }
           // raceState has no other path back to 'idle' — without this, the
           // HUD would keep showing "FINISHED" and the last lap time
@@ -184,6 +208,7 @@ export default function Circuit({ vehicleRef }) {
   return (
     <group>
       <TrackPath />
+      <TrackObstacles />
       {CHECKPOINTS.map((cp) => (
         <CheckpointGate
           key={cp.id}

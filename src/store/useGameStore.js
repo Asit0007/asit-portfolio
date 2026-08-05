@@ -142,6 +142,25 @@ const useGameStore = create((set) => ({
   // ── Achievements — zone visits tracked here; AchievementSystem.jsx
   // watches this + raceState to decide what to toast ─────────────────────
   visitedZones: getVisitedZones(), // array of zone ids, hydrated from localStorage
+
+  // Written directly by Bowling.jsx via useGameStore.setState (same pattern
+  // as visitedZones above) each time all 10 pins go down; AchievementSystem
+  // watches it for a one-time "STRIKE!" unlock.
+  strikeCount: 0,
+
+  // Set by Circuit.jsx on a new local best; LapTimerHUD.jsx watches it to
+  // prompt for a name and submit to the global leaderboard, then clears it.
+  pendingLeaderboardSubmit: null, // ms, or null
+
+  // Toggled by the KeyC handler in App.jsx; Whispers.jsx shows its message
+  // input while this is true.
+  whisperInputOpen:    false,
+  setWhisperInputOpen: (v) => set({ whisperInputOpen: v }),
+
+  // Runtime cache of fetched whisper messages (not persisted — server data,
+  // re-fetched each load). Written directly via useGameStore.setState from
+  // Whispers.jsx, same pattern as visitedZones/strikeCount above.
+  whispers: [],
 }))
 
 export default useGameStore

@@ -5,11 +5,13 @@ const WORLD_SIZE = 320 // matches the ±160 world boundary (World.jsx Boundaries
 const MAP_SIZE   = 340
 
 const ZONE_INFO = [
-  { id:'cloud',    x:0,   z:-55, color:'#f59e0b', icon:'☁️',  label:'Cloud & Infra',  desc:'Microland · Azure · AZ-104' },
-  { id:'projects', x:55,  z:0,   color:'#10b981', icon:'🛠️',  label:'Projects',       desc:'CloudPulse · QuantBot · Magento' },
-  { id:'hobbies',  x:-55, z:0,   color:'#a855f7', icon:'🥊',  label:'Easter Egg',     desc:'Muay Thai · PS2 · Badminton' },
-  { id:'contact',  x:0,   z:55,  color:'#f43f5e', icon:'📬',  label:'Contact',        desc:'asitminz007@gmail.com' },
-  { id:'start',    x:0,   z:0,   color:'#00d4ff', icon:'🚗',  label:'Start',          desc:'Spawn · Instructions' },
+  { id:'cloud',    x:0,   z:-55, color:'#f59e0b', icon:'☁️',  label:'Cloud & Infra',  desc:'Microland · Azure · AZ-104', r:22 },
+  { id:'projects', x:55,  z:0,   color:'#10b981', icon:'🛠️',  label:'Projects',       desc:'CloudPulse · QuantBot · Magento', r:22 },
+  { id:'hobbies',  x:-55, z:0,   color:'#a855f7', icon:'🥊',  label:'Easter Egg',     desc:'Muay Thai · PS2 · Badminton', r:22 },
+  { id:'contact',  x:0,   z:55,  color:'#f43f5e', icon:'📬',  label:'Contact',        desc:'asitminz007@gmail.com', r:22 },
+  { id:'start',    x:0,   z:0,   color:'#00d4ff', icon:'🚗',  label:'Start',          desc:'Spawn · Instructions', r:12 },
+  { id:'circuit',  x:-9,  z:5,   color:'#32ffc1', icon:'🏁',  label:'Racing Circuit', desc:'9 checkpoints · ramp · slalom', r:55 },
+  { id:'bowling',  x:-90, z:90,  color:'#c4154a', icon:'🎳',  label:'Bowling',        desc:'Knock down all 10 pins', r:22 },
 ]
 
 export default function MapOverlay({ vehicleRef }) {
@@ -61,12 +63,11 @@ export default function MapOverlay({ vehicleRef }) {
       ctx.setLineDash([])
 
       // Zone circles
-      ZONE_INFO.forEach(({ x, z, color, id }) => {
+      ZONE_INFO.forEach(({ x, z, color, id, r }) => {
         const mx = cx + x * scale
         const mz = cz + z * scale
         const isActive = activeZone?.id === id
         const isHovered = hovered === id
-        const r = id === 'start' ? 12 : 22
 
         // Zone glow
         if (isActive || isHovered) {
@@ -199,10 +200,9 @@ export default function MapOverlay({ vehicleRef }) {
                   const mx = e.clientX - rect.left
                   const mz = e.clientY - rect.top
                   let found = null
-                  ZONE_INFO.forEach(({ id, x, z }) => {
+                  ZONE_INFO.forEach(({ id, x, z, r }) => {
                     const zx = cx + x * scale
                     const zz = cz + z * scale
-                    const r = id === 'start' ? 12 : 22
                     if (Math.sqrt((mx-zx)**2 + (mz-zz)**2) < r + 8) found = id
                   })
                   setHovered(found)
@@ -211,10 +211,10 @@ export default function MapOverlay({ vehicleRef }) {
               />
 
               {/* Zone icon labels on canvas */}
-              {ZONE_INFO.map(({ id, x, z, color, icon, label }) => {
+              {ZONE_INFO.map(({ id, x, z, color, icon, label, r }) => {
                 const mx = cx + x * scale
                 const mz = cz + z * scale
-                const offsetY = id === 'start' ? -20 : -32
+                const offsetY = -(r + 8)
                 return (
                   <div key={id} style={{
                     position: 'absolute',

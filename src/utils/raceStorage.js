@@ -1,4 +1,7 @@
-const KEY = 'circuitBestLapMs'
+// Versioned: bumped when the track's actual shape/length changes, so a
+// returning visitor's old best time (no longer comparable to the new
+// track) doesn't linger and silently block the "new best" flow forever.
+const KEY = 'circuitBestLapMsV2'
 
 // localStorage can throw in private-browsing/disabled-storage contexts —
 // same defensive try/catch style already used around fallible calls in

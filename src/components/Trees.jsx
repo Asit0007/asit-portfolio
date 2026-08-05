@@ -1,11 +1,12 @@
 import { useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { isNearTrack } from '../data/track'
 
 const TREE_COUNT = 100
 
 function randomTreePositions() {
-  const zoneCenters = [[0,-55],[55,0],[-55,0],[0,0]]
+  const zoneCenters = [[0,-55],[55,0],[-55,0],[0,55],[0,0]]
   const positions = []
   let attempts = 0
   while (positions.length < TREE_COUNT && attempts < 3000) {
@@ -17,6 +18,7 @@ function randomTreePositions() {
     if (Math.abs(x) < 6 || Math.abs(z) < 6) continue
     if (zoneCenters.some(([zx,zz]) =>
       Math.abs(x-zx) < 20 && Math.abs(z-zz) < 20)) continue
+    if (isNearTrack(x, z, 6)) continue
     positions.push({ x, z, scale: 0.7 + Math.random() * 0.9 })
   }
   return positions

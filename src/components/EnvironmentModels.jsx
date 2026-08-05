@@ -3,6 +3,7 @@ import { useGLTF } from '@react-three/drei'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 import { triggerShake } from '../utils/cameraShake'
+import { isNearTrack } from '../data/track'
 
 // Preload only the models we actually render
 ;[
@@ -105,6 +106,7 @@ function RockScatter({ count }) {
       const z = Math.sin(angle) * radius
       if (Math.abs(x) < 8 || Math.abs(z) < 8) continue
       if (ZONE_CENTERS.some(([zx, zz]) => Math.abs(x - zx) < 22 && Math.abs(z - zz) < 22)) continue
+      if (isNearTrack(x, z, 6)) continue
       result.push({
         x, z,
         model: `/models/snowy-rock-${1 + Math.floor(rng() * 4)}.glb`,
@@ -217,6 +219,28 @@ function ContactZoneProps() {
   )
 }
 
+// A few streetlights along the racing circuit for atmosphere — repositioned
+// alongside the big wraparound loop (src/data/track.js), offset ~8.5 units
+// outward from the road edge at three points spaced around the new, much
+// bigger track. Reuses the same already-optimized model/collider as the
+// crossroad StreetLights above — no new asset cost.
+function CircuitProps() {
+  const positions = [
+    [ 48.4, 0.6, -116.9],
+    [ 47.4, 0.6,  117.2],
+    [-115.6, 0.6,  33.2],
+  ]
+  return (
+    <Suspense fallback={null}>
+      <group>
+        {positions.map((p, i) => (
+          <SolidModel key={i} path="/models/streetlight-1.glb" position={p} scale={3} />
+        ))}
+      </group>
+    </Suspense>
+  )
+}
+
 export default function EnvironmentModels({ maxProps }) {
   return (
     <group>
@@ -224,6 +248,7 @@ export default function EnvironmentModels({ maxProps }) {
       <ProjectsZoneProps />
       <HobbiesZoneProps />
       <ContactZoneProps />
+      <CircuitProps />
       <RockScatter count={maxProps} />
       <StreetLights />
     </group>

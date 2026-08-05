@@ -15,6 +15,7 @@ import { keyMap }     from './Controls'
 import { toggleMusic } from './audio'
 import { usePerformanceTier, TIER_CONFIG } from './hooks/usePerformance'
 import { RendererInfoOverlay } from './components/DevStats'
+import { WhisperInput } from './components/Whispers'
 
 function handleContextLost(e) {
   e.preventDefault()
@@ -127,6 +128,7 @@ export default function App() {
     const onKey = (e) => {
       if (e.code === 'KeyR') window.__resetCar = true
       if (e.code === 'KeyM') toggleMusic()
+      if (e.code === 'KeyC') useGameStore.getState().setWhisperInputOpen(true)
       if (e.code === 'Tab') {
         e.preventDefault()
         document.getElementById('map-btn')?.click()
@@ -213,6 +215,7 @@ export default function App() {
           <ZoneOverlay />
           <LapTimerHUD />
           <AchievementSystem />
+          <WhisperInput />
 
           {/* NOS gauge */}
           <div className="nos-hud" style={{ position: 'fixed', bottom: 56, left: '50%',
@@ -276,7 +279,7 @@ export default function App() {
             }}
           >
             <span className="hud-full" style={{ display: 'inline' }}>
-              ↑↓←→ Drive · Space Brake · Shift Boost · R Reset · Tab Map
+              ↑↓←→ Drive · Space Brake · Shift Boost · R Reset · C Whisper · Tab Map
             </span>
             <span className="hud-short" style={{ display: 'none' }}>
               Controls active
