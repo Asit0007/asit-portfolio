@@ -11,29 +11,47 @@ import { triggerShake } from '../utils/cameraShake'
 // the origin, well beyond the tree/rock scatter radius (max ~94) and every
 // zone's exclusion box.
 const BOWLING_CENTER = [-90, 90]
-const RESET_RADIUS   = 30   // reset an abandoned attempt once the player is this far away
+const RESET_RADIUS   = 34   // reset an abandoned attempt once the player is this far away
 const RESET_DELAY_MS = 4000 // after a strike, before pins reset
 
+// Dimensions taken from folio-2025's actual areas.glb and scaled by ~0.875
+// (its truck chassis is 3.0×1.8 vs our car's 3.4×1.9, close enough to
+// borrow absolute sizes): folio pin h=2.97/r=0.51 → 2.6/0.45; ball r≈0.97
+// → 0.85; pin triangle spacing 1.44 lateral / 1.15 per row → 1.26/1.0.
+// Like folio, the pins deliberately tower over the car — that's the joke.
+const PIN_HEIGHT   = 2.6
+const PIN_TOP_R    = 0.2
+const PIN_BOTTOM_R = 0.45
+const PIN_START_Y  = PIN_HEIGHT / 2
+
 // Standard 10-pin triangle (apex toward -Z — the side a car approaching
-// from the rest of the map naturally enters from), spaced to roughly match
-// the car's width so a pass through the middle plows several pins at once.
+// from the rest of the map naturally enters from), real-bowling tight
+// spacing per folio rather than the old car-width spread — the ball is now
+// big enough to do the plowing.
 const PIN_LOCAL_POSITIONS = [
   [0, 0],
-  [-0.9, 1.8], [0.9, 1.8],
-  [-1.8, 3.6], [0, 3.6], [1.8, 3.6],
-  [-2.7, 5.4], [-0.9, 5.4], [0.9, 5.4], [2.7, 5.4],
+  [-0.63, 1.0], [0.63, 1.0],
+  [-1.26, 2.0], [0, 2.0], [1.26, 2.0],
+  [-1.89, 3.0], [-0.63, 3.0], [0.63, 3.0], [1.89, 3.0],
 ]
-const PIN_HEIGHT  = 1.1
-const PIN_START_Y = PIN_HEIGHT / 2
 
 // A separate physics ball the car pushes into the pins — matching folio's
 // actual mechanic (its ball is "just another dynamic rigid body the
-// player's car rolls into," no throw/grab), rather than the car hitting
-// pins directly. Placed in front of the apex pin, on the side a car
-// entering from the rest of the map naturally approaches from.
-const BALL_LOCAL = [0, -2.5]
-const BALL_RADIUS = 0.35
+// player's car rolls into," no throw/grab). Like folio, it sits well up
+// the lane so there's a run-up before impact.
+const BALL_LOCAL   = [0, -12]
+const BALL_RADIUS  = 0.85
 const BALL_START_Y = BALL_RADIUS
+
+// The lane — folio flanks its lane with long bumper rails (~0.84 high in
+// its world units) that keep ball and pins contained; same here. The rails
+// are fixed rigid bodies, the lane floor is visual only (the ground's own
+// collider does the physical work).
+const LANE_WIDTH       = 7
+const LANE_LENGTH      = 24
+const LANE_CENTER_Z    = -4   // local: lane spans z -16 (entry) … +8 (behind pins)
+const BUMPER_HEIGHT    = 0.84
+const BUMPER_THICKNESS = 0.5
 
 const _up     = new THREE.Vector3()
 const _quat   = new THREE.Quaternion()
@@ -57,19 +75,19 @@ function Ball({ ballRef, position }) {
       ref={ballRef}
       position={position}
       colliders="ball"
-      mass={1.5}
+      mass={2.5}
       linearDamping={0.25}
       angularDamping={0.1}
       restitution={0.35}
     >
       <mesh castShadow>
-        <sphereGeometry args={[BALL_RADIUS, 16, 16]} />
+        <sphereGeometry args={[BALL_RADIUS, 20, 20]} />
         <meshStandardMaterial color="#5a2d82" roughness={0.3} metalness={0.2} />
       </mesh>
       {/* Finger holes — three small dark dots, purely cosmetic */}
-      {[[0.18, 0.28, 0.1], [0.3, 0.28, -0.1], [0.05, 0.28, -0.25]].map((p, i) => (
+      {[[0.44, 0.68, 0.24], [0.72, 0.68, -0.24], [0.12, 0.68, -0.6]].map((p, i) => (
         <mesh key={i} position={p}>
-          <sphereGeometry args={[0.05, 6, 6]} />
+          <sphereGeometry args={[0.12, 8, 8]} />
           <meshStandardMaterial color="#1a0a2a" />
         </mesh>
       ))}
@@ -83,22 +101,74 @@ function Pin({ pinRef, position }) {
       ref={pinRef}
       position={position}
       colliders="cuboid"
-      mass={0.05}
-      linearDamping={0.3}
-      angularDamping={0.3}
-      restitution={0.1}
+      mass={0.15}
+      linearDamping={0.1}
+      angularDamping={0.5}
+      restitution={0.5}
     >
       <mesh castShadow>
-        <cylinderGeometry args={[0.1, 0.22, PIN_HEIGHT, 8]} />
+        <cylinderGeometry args={[PIN_TOP_R, PIN_BOTTOM_R, PIN_HEIGHT, 10]} />
         <meshStandardMaterial color="#f5f0e8" roughness={0.6} />
       </mesh>
-      {/* Red stripe near the top — the only thing distinguishing this from
-          a plain cone, cheap (one extra short cylinder, no collider). */}
+      {/* Red neck stripe — the only thing distinguishing this from a plain
+          cone, cheap (one extra short cylinder, no collider). */}
       <mesh position={[0, PIN_HEIGHT * 0.22, 0]}>
-        <cylinderGeometry args={[0.185, 0.19, 0.12, 8]} />
+        <cylinderGeometry args={[0.3, 0.32, 0.28, 10]} />
         <meshStandardMaterial color="#c4154a" roughness={0.5} />
       </mesh>
     </RigidBody>
+  )
+}
+
+// The lane's boundary rails — visual boundary line + physical containment
+// in one, like folio's bumpers.
+function Bumpers() {
+  const railX = LANE_WIDTH / 2 + BUMPER_THICKNESS / 2
+  return (
+    <>
+      {[-railX, railX].map((x, i) => (
+        <RigidBody key={i} type="fixed" colliders="cuboid"
+          position={[BOWLING_CENTER[0] + x, BUMPER_HEIGHT / 2, BOWLING_CENTER[1] + LANE_CENTER_Z]}>
+          <mesh castShadow>
+            <boxGeometry args={[BUMPER_THICKNESS, BUMPER_HEIGHT, LANE_LENGTH]} />
+            <meshStandardMaterial color="#c4154a" roughness={0.55} />
+          </mesh>
+        </RigidBody>
+      ))}
+    </>
+  )
+}
+
+// folio's bowling has a "Restart" interactive point beside the lane; ours
+// is a clickable 3D sign (R3F pointer events — also works as a tap on
+// mobile, which has no R key equivalent for the pins).
+function RestartButton({ onRestart }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <group
+      position={[BOWLING_CENTER[0] + 5.6, 0, BOWLING_CENTER[1] - 8]}
+      rotation={[0, Math.PI, 0]}
+    >
+      <mesh position={[0, 0.9, 0]} castShadow>
+        <cylinderGeometry args={[0.08, 0.08, 1.8, 6]} />
+        <meshStandardMaterial color="#3a2a1a" roughness={0.9} />
+      </mesh>
+      <mesh
+        position={[0, 2.1, 0]}
+        castShadow
+        onClick={(e) => { e.stopPropagation(); onRestart() }}
+        onPointerOver={() => { setHovered(true); document.body.style.cursor = 'pointer' }}
+        onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto' }}
+      >
+        <boxGeometry args={[2.6, 1.1, 0.16]} />
+        <meshStandardMaterial color="#1a0a2a" emissive="#c4154a"
+          emissiveIntensity={hovered ? 0.5 : 0.15} roughness={0.5} />
+      </mesh>
+      <Text position={[0, 2.1, 0.1]} fontSize={0.42} color={hovered ? '#ffffff' : '#ffe0a0'}
+        anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="#000">
+        ↻ RESTART
+      </Text>
+    </group>
   )
 }
 
@@ -179,22 +249,25 @@ export default function Bowling({ vehicleRef }) {
   return (
     <group>
       <group position={[BOWLING_CENTER[0], 0, BOWLING_CENTER[1]]}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 2.7]}>
-          <ringGeometry args={[7, 8, 32]} />
-          <meshStandardMaterial color="#c4154a" transparent opacity={0.18}
-            side={THREE.DoubleSide} depthWrite={false} />
+        {/* Wooden lane floor — visual only, sits just above the ground */}
+        <mesh position={[0, 0.025, LANE_CENTER_Z]} receiveShadow>
+          <boxGeometry args={[LANE_WIDTH, 0.02, LANE_LENGTH]} />
+          <meshStandardMaterial color="#d9b77c" roughness={0.75} />
         </mesh>
-        <Text position={[0, 4, 2.7]} fontSize={1} color="#f5f0e8"
-          anchorX="center" anchorY="middle" outlineWidth={0.06} outlineColor="#000">
+        <Text position={[0, 5.4, 1.5]} fontSize={1.2} color="#f5f0e8"
+          anchorX="center" anchorY="middle" outlineWidth={0.07} outlineColor="#000">
           🎳 BOWLING
         </Text>
         {showStrike && (
-          <Text position={[0, 3.5, 2.7]} fontSize={1.6} color="#c4154a"
-            anchorX="center" anchorY="middle" outlineWidth={0.08} outlineColor="#fff">
+          <Text position={[0, 4.2, 1.5]} fontSize={1.8} color="#c4154a"
+            anchorX="center" anchorY="middle" outlineWidth={0.09} outlineColor="#fff">
             STRIKE!
           </Text>
         )}
       </group>
+
+      <Bumpers />
+      <RestartButton onRestart={resetPins} />
 
       {PIN_LOCAL_POSITIONS.map((local, i) => (
         <Pin

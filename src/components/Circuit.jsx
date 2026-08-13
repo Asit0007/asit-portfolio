@@ -10,7 +10,7 @@ import {
   CHECKPOINTS, TRACK_SAMPLES, PATH_WIDTH, BORDER_WIDTH, CHECK_RADIUS,
 } from '../data/track'
 
-const BORDER_COLORS = ['#f5f0e8', '#32ffc1'] // alternates for the checker look; teal matches the checkpoint gates' active color
+const BORDER_COLORS = ['#f5f0e8', '#e03131'] // classic red/white racing kerb alternation
 
 const _vPos = new THREE.Vector3()
 const _cPos = new THREE.Vector3()
@@ -71,14 +71,28 @@ function TrackPath() {
       const color = BORDER_COLORS[i % 2]
       const edgeOffset = PATH_WIDTH / 2 + BORDER_WIDTH / 2
       for (const offset of [-edgeOffset, edgeOffset]) {
-        const border = coloredBoxGeometry(length, 0.03, BORDER_WIDTH, color)
+        // Slightly raised so the kerbs read as kerbs, not paint — visual
+        // only, no collider, so the car glides over them unaffected.
+        const border = coloredBoxGeometry(length, 0.06, BORDER_WIDTH, color)
         border.rotateY(angle)
         border.translate(
           midX + offset * Math.sin(angle),
-          0.035,
+          0.045,
           midZ + offset * Math.cos(angle)
         )
         borderPieces.push(border)
+      }
+
+      // White dashed centerline — every other segment gets a dash, merged
+      // into the same vertex-colored draw call as the kerbs. Skipped near
+      // the start/finish line so it doesn't z-fight the checkered strip.
+      const cp0 = CHECKPOINTS[0].position
+      const nearStart = Math.hypot(midX - cp0[0], midZ - cp0[1]) < 4
+      if (i % 2 === 0 && !nearStart) {
+        const dash = coloredBoxGeometry(length * 0.55, 0.02, 0.28, '#f5f0e8')
+        dash.rotateY(angle)
+        dash.translate(midX, 0.045, midZ)
+        borderPieces.push(dash)
       }
     }
 
@@ -92,11 +106,73 @@ function TrackPath() {
   return (
     <group>
       <mesh geometry={roadGeometry}>
-        <meshStandardMaterial color="#1a3a34" transparent opacity={0.55} />
+        <meshStandardMaterial color="#33343b" roughness={0.95} />
       </mesh>
       <mesh geometry={borderGeometry}>
         <meshStandardMaterial vertexColors />
       </mesh>
+    </group>
+  )
+}
+
+// Checkered start/finish strip across the road plus an overhead gantry —
+// the strip is baked/merged like everything else (1 draw call), the gantry
+// is a handful of one-off meshes. Aligned to the track's tangent at the
+// start/finish checkpoint, same local-frame convention as TrackPath
+// (local +X = direction of travel, local Z = across the road).
+function StartFinish() {
+  const { stripGeometry, angle, pos } = useMemo(() => {
+    const cp = CHECKPOINTS[0].position
+    let best = 0
+    let bestD = Infinity
+    for (let i = 0; i < TRACK_SAMPLES.length; i++) {
+      const dx = TRACK_SAMPLES[i].x - cp[0]
+      const dz = TRACK_SAMPLES[i].z - cp[1]
+      const d = dx * dx + dz * dz
+      if (d < bestD) { bestD = d; best = i }
+    }
+    const n = TRACK_SAMPLES.length
+    const prev = TRACK_SAMPLES[(best - 1 + n) % n]
+    const next = TRACK_SAMPLES[(best + 1) % n]
+    const angle = -Math.atan2(next.z - prev.z, next.x - prev.x)
+
+    const pieces = []
+    const cell = PATH_WIDTH / 8
+    for (let r = 0; r < 2; r++) {
+      for (let c = 0; c < 8; c++) {
+        const g = coloredBoxGeometry(cell, 0.022, cell, (r + c) % 2 ? '#15151a' : '#f5f0e8')
+        g.translate((r - 0.5) * cell, 0, (c - 3.5) * cell)
+        pieces.push(g)
+      }
+    }
+    const stripGeometry = mergeGeometries(pieces)
+    pieces.forEach((g) => g.dispose())
+    return { stripGeometry, angle, pos: [cp[0], 0.043, cp[1]] }
+  }, [])
+
+  return (
+    <group position={pos} rotation={[0, angle, 0]}>
+      <mesh geometry={stripGeometry}>
+        <meshStandardMaterial vertexColors />
+      </mesh>
+      {[-6.2, 6.2].map((z) => (
+        <mesh key={z} position={[0, 2.75, z]} castShadow>
+          <cylinderGeometry args={[0.14, 0.14, 5.5, 8]} />
+          <meshStandardMaterial color="#2a2a30" roughness={0.7} />
+        </mesh>
+      ))}
+      <mesh position={[0, 5.6, 0]} castShadow>
+        <boxGeometry args={[0.5, 0.7, 13.4]} />
+        <meshStandardMaterial color="#c4154a" roughness={0.6} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <Text key={side} position={[side * 0.28, 5.6, 0]}
+          rotation={[0, side * Math.PI / 2, 0]}
+          fontSize={0.55} color="#f5f0e8" anchorX="center" anchorY="middle"
+          outlineWidth={0.03} outlineColor="#000">
+          START · FINISH
+        </Text>
+      ))}
     </group>
   )
 }
@@ -208,6 +284,7 @@ export default function Circuit({ vehicleRef }) {
   return (
     <group>
       <TrackPath />
+      <StartFinish />
       <TrackObstacles />
       {CHECKPOINTS.map((cp) => (
         <CheckpointGate
