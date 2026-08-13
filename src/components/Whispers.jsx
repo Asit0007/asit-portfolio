@@ -132,11 +132,11 @@ export function WhisperInput() {
       padding: '10px 16px', color: '#ffe0a0',
     }}>
       {alreadyDone ? (
-        <div style={{ fontSize: 11 }}>You've already left a whisper in this world.</div>
+        <div style={{ fontSize: 11 }}>You've already left a comment in this world.</div>
       ) : (
         <>
           <div style={{ fontSize: 9, opacity: 0.6, marginBottom: 6, letterSpacing: '0.1em' }}>
-            LEAVE A WHISPER HERE (30 CHARS)
+            LEAVE A COMMENT HERE (30 CHARS)
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <input
@@ -146,7 +146,7 @@ export function WhisperInput() {
                 if (e.code === 'Enter') handleSubmit()
                 if (e.code === 'Escape') close()
               }}
-              placeholder="Say something..."
+              placeholder="Write a comment..."
               maxLength={30}
               autoFocus
               style={{
@@ -166,7 +166,7 @@ export function WhisperInput() {
                 opacity: submitting || !message.trim() ? 0.5 : 1,
               }}
             >
-              {submitting ? '...' : 'LEAVE'}
+              {submitting ? '...' : 'POST'}
             </button>
           </div>
         </>

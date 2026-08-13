@@ -126,6 +126,11 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e) => {
+      // Ignore game hotkeys while the user is typing in any text field
+      // (comment input, leaderboard name input) — otherwise R resets the
+      // car and C re-opens the comment box mid-sentence.
+      const el = e.target
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
       if (e.code === 'KeyR') window.__resetCar = true
       if (e.code === 'KeyM') toggleMusic()
       if (e.code === 'KeyC') useGameStore.getState().setWhisperInputOpen(true)
@@ -279,7 +284,7 @@ export default function App() {
             }}
           >
             <span className="hud-full" style={{ display: 'inline' }}>
-              ↑↓←→ Drive · Space Brake · Shift Boost · R Reset · C Whisper · Tab Map
+              ↑↓←→ Drive · Space Brake · Shift Boost · R Reset · C Comment · Tab Map
             </span>
             <span className="hud-short" style={{ display: 'none' }}>
               Controls active

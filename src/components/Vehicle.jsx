@@ -273,6 +273,13 @@ function VehicleInner(props, ref) {
   }, [world])
 
   const getInput = () => {
+    // While a text field is focused (comment input, leaderboard name),
+    // keyboard state must not drive the car — WASD/arrows/space would
+    // steer and brake underneath the user's typing.
+    const el = typeof document !== 'undefined' ? document.activeElement : null
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
+      return { forward: false, backward: false, left: false, right: false, brake: false, boost: false }
+    }
     const k = getKeys()
     const j = props.joystick || {}
     return {
