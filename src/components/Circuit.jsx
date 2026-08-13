@@ -11,9 +11,94 @@ import {
 } from '../data/track'
 
 const BORDER_COLORS = ['#f5f0e8', '#e03131'] // classic red/white racing kerb alternation
+const ASPHALT = '#413a3e' // warm dark asphalt (DESIGN.md: never neutral gray)
 
 const _vPos = new THREE.Vector3()
 const _cPos = new THREE.Vector3()
+
+// ── Continuous-ribbon track geometry ────────────────────────────────────
+// The road/kerbs/centerline used to be straight boxes laid end to end —
+// on every curve the joints left wedge-shaped gaps with ground showing
+// through (the "patchy" look). Everything below instead extrudes a lateral
+// cross-section along the sampled curve, with all pieces offsetting from
+// the same per-sample perpendiculars, so shared edges are watertight by
+// construction. Still exactly 2 draw calls: asphalt + merged details.
+
+const LOOP = TRACK_SAMPLES.slice(0, -1) // drop the duplicated closing sample
+const N = LOOP.length
+
+// Per-sample unit perpendicular (central difference) — every ribbon
+// offsets from these same vectors, so pieces sharing a sample line up.
+const PERPS = LOOP.map((_, i) => {
+  const prev = LOOP[(i - 1 + N) % N]
+  const next = LOOP[(i + 1) % N]
+  const px = next.z - prev.z
+  const pz = -(next.x - prev.x)
+  const l = Math.hypot(px, pz) || 1
+  return { x: px / l, z: pz / l }
+})
+
+// rows: [{ x, z, nx, nz, shade }] along the curve; profile: [{ o, y, shade }]
+// lateral cross-section ordered by increasing o (the quad winding assumes
+// this — it's what keeps faces pointing up).
+function ribbonGeometry(rows, profile, colorHex) {
+  const R = rows.length
+  const P = profile.length
+  const positions = new Float32Array(R * P * 3)
+  const colors = new Float32Array(R * P * 3)
+  const base = new THREE.Color(colorHex)
+  for (let r = 0; r < R; r++) {
+    const row = rows[r]
+    for (let j = 0; j < P; j++) {
+      const { o, y, shade = 1 } = profile[j]
+      const k = (r * P + j) * 3
+      const s = shade * (row.shade ?? 1)
+      positions[k]     = row.x + row.nx * o
+      positions[k + 1] = y
+      positions[k + 2] = row.z + row.nz * o
+      colors[k]     = base.r * s
+      colors[k + 1] = base.g * s
+      colors[k + 2] = base.b * s
+    }
+  }
+  const indices = []
+  for (let r = 0; r < R - 1; r++) {
+    for (let j = 0; j < P - 1; j++) {
+      const a = r * P + j
+      const b = a + 1
+      const c = a + P
+      const d = c + 1
+      indices.push(a, c, b, b, c, d)
+    }
+  }
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  geo.setIndex(indices)
+  geo.computeVertexNormals()
+  return geo
+}
+
+const sampleRow = (i, shade = 1) => ({
+  x: LOOP[i % N].x, z: LOOP[i % N].z,
+  nx: PERPS[i % N].x, nz: PERPS[i % N].z,
+  shade,
+})
+
+// Row partway between samples i and i+1 — lets the centerline dashes
+// start/end mid-segment instead of snapping to sample boundaries.
+function lerpRow(i, t) {
+  const a = LOOP[i % N], b = LOOP[(i + 1) % N]
+  const na = PERPS[i % N], nb = PERPS[(i + 1) % N]
+  const nx = na.x + (nb.x - na.x) * t
+  const nz = na.z + (nb.z - na.z) * t
+  const l = Math.hypot(nx, nz) || 1
+  return {
+    x: a.x + (b.x - a.x) * t,
+    z: a.z + (b.z - a.z) * t,
+    nx: nx / l, nz: nz / l,
+  }
+}
 
 // Bakes a solid-color BoxGeometry with a per-vertex 'color' attribute, so
 // many of these can be merged into one buffer while keeping each piece's
@@ -32,84 +117,82 @@ function coloredBoxGeometry(width, height, depth, colorHex) {
   return geo
 }
 
-// Ground track connecting the checkpoints — a smooth closed curve (not the
-// straight hexagon segments this used to be) with a checkered border, same
-// visual language as folio-2025's actual circuit but built procedurally
-// (folio's is a hand-modeled Blender mesh — see Circuit.jsx's module
-// comment/the plan this came from for why that's not portable here).
-// Every small per-segment piece is baked (position/rotation applied
-// directly to its vertices) and merged into exactly 2 draw calls total —
-// despite ~6x more segments than the old straight-line version, this is
-// fewer draw calls than before (2 vs 18), not more.
+// Ground track connecting the checkpoints — smooth continuous ribbons
+// (see the module comment above ribbonGeometry), same visual language as
+// folio-2025's actual circuit but built procedurally (folio's is a
+// hand-modeled Blender mesh). 2 draw calls total: the asphalt ribbon and
+// one merged vertex-colored geometry holding kerbs + centerline dashes.
 function TrackPath() {
-  const { roadGeometry, borderGeometry } = useMemo(() => {
-    const samples = TRACK_SAMPLES
+  const { roadGeometry, detailGeometry } = useMemo(() => {
+    // Asphalt: one closed ribbon (the final row lands back on row 0's
+    // exact positions). Darker band across the middle fakes the worn
+    // racing line; a slow sine drift along the length breaks up the
+    // flat fill so it reads as surface, not vector art.
+    const roadProfile = [
+      { o: -PATH_WIDTH / 2, y: 0.03, shade: 1.04 },
+      { o: -PATH_WIDTH * 0.2, y: 0.03, shade: 0.85 },
+      { o:  PATH_WIDTH * 0.2, y: 0.03, shade: 0.85 },
+      { o:  PATH_WIDTH / 2, y: 0.03, shade: 1.04 },
+    ]
+    const roadRows = []
+    for (let i = 0; i <= N; i++) {
+      // Integer wave counts around the loop, so row N's shade matches
+      // row 0 exactly — no color seam where the ribbon closes.
+      const t = (i / N) * Math.PI * 2
+      const drift = 1 + 0.05 * Math.sin(t * 11) + 0.04 * Math.sin(t * 5 + 1.7)
+      roadRows.push(sampleRow(i, drift))
+    }
+    const roadGeometry = ribbonGeometry(roadRows, roadProfile, ASPHALT)
 
-    const roadPieces = []
-    const borderPieces = []
+    const details = []
 
-    for (let i = 0; i < samples.length - 1; i++) {
-      const a = samples[i]
-      const b = samples[(i + 1) % samples.length]
-      const dx = b.x - a.x, dz = b.z - a.z
-      const length = Math.hypot(dx, dz)
-      if (length < 0.001) continue
-
-      // Y-axis rotation: local +X maps to world (cos θ, -sin θ) — solve for
-      // θ so that direction lands on (dx, dz). Local +Z (the box's
-      // width/depth axis) then maps to world (sin θ, cos θ) — the
-      // perpendicular direction used below to offset the border pieces.
-      const angle = -Math.atan2(dz, dx)
-      const midX = (a.x + b.x) / 2
-      const midZ = (a.z + b.z) / 2
-
-      const road = new THREE.BoxGeometry(length, 0.02, PATH_WIDTH)
-      road.rotateY(angle)
-      road.translate(midX, 0.03, midZ)
-      roadPieces.push(road)
-
-      const color = BORDER_COLORS[i % 2]
-      const edgeOffset = PATH_WIDTH / 2 + BORDER_WIDTH / 2
-      for (const offset of [-edgeOffset, edgeOffset]) {
-        // Slightly raised so the kerbs read as kerbs, not paint — visual
-        // only, no collider, so the car glides over them unaffected.
-        const border = coloredBoxGeometry(length, 0.06, BORDER_WIDTH, color)
-        border.rotateY(angle)
-        border.translate(
-          midX + offset * Math.sin(angle),
-          0.045,
-          midZ + offset * Math.cos(angle)
-        )
-        borderPieces.push(border)
-      }
-
-      // White dashed centerline — every other segment gets a dash, merged
-      // into the same vertex-colored draw call as the kerbs. Skipped near
-      // the start/finish line so it doesn't z-fight the checkered strip.
-      const cp0 = CHECKPOINTS[0].position
-      const nearStart = Math.hypot(midX - cp0[0], midZ - cp0[1]) < 4
-      if (i % 2 === 0 && !nearStart) {
-        const dash = coloredBoxGeometry(length * 0.55, 0.02, 0.28, '#f5f0e8')
-        dash.rotateY(angle)
-        dash.translate(midX, 0.045, midZ)
-        borderPieces.push(dash)
+    // Kerbs: a low triangular prism hugging each road edge, one 2-row run
+    // per stripe so the red/white alternation stays crisp (no vertex-color
+    // bleeding), with shared boundary samples keeping consecutive stripes
+    // watertight. Inner edge tucks slightly under the asphalt so no crack
+    // can show. Visual only, no collider — the car glides over them.
+    for (const side of [-1, 1]) {
+      const pts = [
+        { o: PATH_WIDTH / 2 - 0.1, y: 0.026 },
+        { o: PATH_WIDTH / 2 + BORDER_WIDTH * 0.5, y: 0.088 },
+        { o: PATH_WIDTH / 2 + BORDER_WIDTH + 0.1, y: 0.026 },
+      ].map((p) => ({ ...p, o: side * p.o }))
+      if (side < 0) pts.reverse() // keep profile ordered by increasing o
+      for (let i = 0; i < N; i++) {
+        details.push(ribbonGeometry(
+          [sampleRow(i), sampleRow(i + 1)],
+          pts,
+          BORDER_COLORS[i % 2]
+        ))
       }
     }
 
-    const roadGeometry   = mergeGeometries(roadPieces)
-    const borderGeometry = mergeGeometries(borderPieces)
-    roadPieces.forEach((g) => g.dispose())
-    borderPieces.forEach((g) => g.dispose())
-    return { roadGeometry, borderGeometry }
+    // White dashed centerline — skipped near the start/finish line so it
+    // doesn't z-fight the checkered strip.
+    const cp0 = CHECKPOINTS[0].position
+    const dashProfile = [{ o: -0.14, y: 0.048 }, { o: 0.14, y: 0.048 }]
+    for (let i = 0; i < N; i += 2) {
+      const mid = lerpRow(i, 0.5)
+      if (Math.hypot(mid.x - cp0[0], mid.z - cp0[1]) < 4) continue
+      details.push(ribbonGeometry(
+        [lerpRow(i, 0.2), lerpRow(i, 0.8)],
+        dashProfile,
+        '#f5f0e8'
+      ))
+    }
+
+    const detailGeometry = mergeGeometries(details)
+    details.forEach((g) => g.dispose())
+    return { roadGeometry, detailGeometry }
   }, [])
 
   return (
     <group>
-      <mesh geometry={roadGeometry}>
-        <meshStandardMaterial color="#33343b" roughness={0.95} />
+      <mesh geometry={roadGeometry} receiveShadow>
+        <meshStandardMaterial vertexColors roughness={0.96} />
       </mesh>
-      <mesh geometry={borderGeometry}>
-        <meshStandardMaterial vertexColors />
+      <mesh geometry={detailGeometry} receiveShadow>
+        <meshStandardMaterial vertexColors roughness={0.8} />
       </mesh>
     </group>
   )

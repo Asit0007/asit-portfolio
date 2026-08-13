@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import useGameStore from '../store/useGameStore'
+import { TRACK_SAMPLES, PATH_WIDTH } from '../data/track'
 
 const WORLD_SIZE = 320 // matches the ±160 world boundary (World.jsx Boundaries())
 const MAP_SIZE   = 340
@@ -10,7 +11,9 @@ const ZONE_INFO = [
   { id:'hobbies',  x:-55, z:0,   color:'#a855f7', icon:'🥊',  label:'Easter Egg',     desc:'Muay Thai · PS2 · Badminton', r:22 },
   { id:'contact',  x:0,   z:55,  color:'#f43f5e', icon:'📬',  label:'Contact',        desc:'asitminz007@gmail.com', r:22 },
   { id:'start',    x:0,   z:0,   color:'#00d4ff', icon:'🚗',  label:'Start',          desc:'Spawn · Instructions', r:12 },
-  { id:'circuit',  x:-9,  z:5,   color:'#32ffc1', icon:'🏁',  label:'Racing Circuit', desc:'9 checkpoints · ramp · slalom', r:55 },
+  // Circuit marker sits on the start/finish line — the loop itself is drawn
+  // as the real track shape from TRACK_SAMPLES, not an abstract circle.
+  { id:'circuit',  x:45.2, z:-109, color:'#32ffc1', icon:'🏁',  label:'Racing Circuit', desc:'9 checkpoints · ramp · slalom', r:12 },
   { id:'bowling',  x:-90, z:90,  color:'#c4154a', icon:'🎳',  label:'Bowling',        desc:'Knock down all 10 pins', r:22 },
 ]
 
@@ -60,6 +63,27 @@ export default function MapOverlay({ vehicleRef }) {
       ctx.setLineDash([8,6])
       ctx.beginPath(); ctx.moveTo(cx,8); ctx.lineTo(cx,MAP_SIZE-8); ctx.stroke()
       ctx.beginPath(); ctx.moveTo(8,cz); ctx.lineTo(MAP_SIZE-8,cz); ctx.stroke()
+      ctx.setLineDash([])
+
+      // Racing circuit — the real track shape from track.js
+      const trackPath = () => {
+        ctx.beginPath()
+        TRACK_SAMPLES.forEach((p, i) => {
+          const mx = cx + p.x * scale
+          const mz = cz + p.z * scale
+          if (i === 0) ctx.moveTo(mx, mz)
+          else ctx.lineTo(mx, mz)
+        })
+        ctx.closePath()
+      }
+      ctx.lineJoin = 'round'
+      ctx.strokeStyle = 'rgba(65,58,62,0.95)'   // asphalt, matches Circuit.jsx
+      ctx.lineWidth = PATH_WIDTH * scale
+      trackPath(); ctx.stroke()
+      ctx.strokeStyle = 'rgba(245,240,232,0.4)' // dashed centerline
+      ctx.lineWidth = 1
+      ctx.setLineDash([5,5])
+      trackPath(); ctx.stroke()
       ctx.setLineDash([])
 
       // Zone circles

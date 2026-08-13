@@ -196,7 +196,7 @@ export default function App() {
         <Suspense fallback={<LoadingScreen />}>
           <KeyboardControls map={keyMap}>
             <Canvas
-              shadows={false}
+              shadows={!isMobile && tierCfg.shadows}
               camera={{ fov: 50, near: 0.1, far: 600, position: [8, 18, 20] }}
               gl={{
                 antialias: !isMobile,

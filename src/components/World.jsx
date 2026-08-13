@@ -3,20 +3,58 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 
 function GradientFloor() {
+  // Was a 2x2 DataTexture (pure 4-corner gradient) — perfectly flat sand.
+  // Now a 256x256 canvas baked once at mount: same warm corner gradient,
+  // plus seeded soft blotches (sand variation) and a warm edge vignette so
+  // the world reads as a diorama with a lit center, folio-style. Still one
+  // texture on the same single ground draw call. Deliberately left in the
+  // pre-color-managed brightness (no colorSpace tag) to keep the exact
+  // saturated-orange look the old DataTexture rendered with.
   const texture = useMemo(() => {
-    const tl = new THREE.Color('#f5883c')
-    const tr = new THREE.Color('#f9a34e')
-    const br = new THREE.Color('#fccf7a')
-    const bl = new THREE.Color('#e8702a')
-    const data = new Uint8Array([
-      Math.round(bl.r*255), Math.round(bl.g*255), Math.round(bl.b*255), 255,
-      Math.round(br.r*255), Math.round(br.g*255), Math.round(br.b*255), 255,
-      Math.round(tl.r*255), Math.round(tl.g*255), Math.round(tl.b*255), 255,
-      Math.round(tr.r*255), Math.round(tr.g*255), Math.round(tr.b*255), 255,
-    ])
-    const tex = new THREE.DataTexture(data, 2, 2, THREE.RGBAFormat)
-    tex.magFilter = THREE.LinearFilter
-    tex.needsUpdate = true
+    const S = 256
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = S
+    const ctx = canvas.getContext('2d')
+
+    // 4-corner gradient via bilinear upscale of a 2x2 base
+    const base = document.createElement('canvas')
+    base.width = base.height = 2
+    const bctx = base.getContext('2d')
+    bctx.fillStyle = '#f5883c'; bctx.fillRect(0, 0, 1, 1)
+    bctx.fillStyle = '#f9a34e'; bctx.fillRect(1, 0, 1, 1)
+    bctx.fillStyle = '#e8702a'; bctx.fillRect(0, 1, 1, 1)
+    bctx.fillStyle = '#fccf7a'; bctx.fillRect(1, 1, 1, 1)
+    ctx.imageSmoothingEnabled = true
+    ctx.drawImage(base, 0, 0, 2, 2, 0, 0, S, S)
+
+    // Seeded soft blotches — deterministic so the ground never changes
+    // between visits/renders (same reasoning as Trees' frozen positions)
+    let seed = 42
+    const rand = () => {
+      seed = (seed * 16807) % 2147483647
+      return seed / 2147483647
+    }
+    for (let i = 0; i < 70; i++) {
+      const x = rand() * S
+      const y = rand() * S
+      const r = 6 + rand() * 26
+      const dark = rand() > 0.5
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r)
+      g.addColorStop(0, dark ? 'rgba(168,80,26,0.10)' : 'rgba(255,232,170,0.10)')
+      g.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = g
+      ctx.fillRect(x - r, y - r, r * 2, r * 2)
+    }
+
+    // Warm vignette toward the world edges (never gray/black — DESIGN.md)
+    const v = ctx.createRadialGradient(S / 2, S / 2, S * 0.32, S / 2, S / 2, S * 0.74)
+    v.addColorStop(0, 'rgba(0,0,0,0)')
+    v.addColorStop(1, 'rgba(150,55,15,0.20)')
+    ctx.fillStyle = v
+    ctx.fillRect(0, 0, S, S)
+
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.anisotropy = 4
     return tex
   }, [])
 

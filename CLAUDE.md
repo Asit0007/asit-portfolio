@@ -69,7 +69,7 @@ Visitor-left messages placed at the car's position in the world. **User-facing c
 
 ### Performance tiers (`src/hooks/usePerformance.js`)
 
-Mobile UA → tier 0 immediately; otherwise ~90 frames of FPS measurement → tier 0/1/2. `TIER_CONFIG` drives tree/prop counts, DPR, fog distance, and the physics timestep (1/30 on tier 0). WebGL context attributes (`antialias`, `powerPreference`) can't wait for the async tier, so they come from the synchronous mobile check at Canvas mount. There's a WebGL context-lost overlay wired in `App.jsx`.
+Mobile UA → tier 0 immediately; otherwise ~90 frames of FPS measurement → tier 0/1/2. `TIER_CONFIG` drives tree/prop counts, DPR, fog distance, the physics timestep (1/30 on tier 0), and shadows (off on tier 0 / mobile; 1024/2048 map on tier 1/2). The shadow-casting key light in `Lights.jsx` follows the car with a tight ~120-unit ortho frustum so shadows stay sharp across the whole 400×400 world. WebGL context attributes (`antialias`, `powerPreference`) can't wait for the async tier, so they come from the synchronous mobile check at Canvas mount. There's a WebGL context-lost overlay wired in `App.jsx`.
 
 ### Other pieces
 
