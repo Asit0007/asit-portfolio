@@ -16,8 +16,10 @@ Stack: React 18 + Vite 6, Three.js via @react-three/fiber (R3F) + drei, physics 
 npm run dev       # dev server (localhost:5173)
 npm run build     # production build → dist/
 npm run preview   # preview production build
-npx eslint src    # lint (no npm script; eslint.config.js at root)
+npm run lint      # eslint over src/ and api/ (flat config at eslint.config.js)
 ```
+
+Lint policy: `catch (_) {}` and empty catch blocks are allowed by config — they're the codebase's graceful-degradation contract, not oversights. The react-hooks compiler rules (`set-state-in-effect`, `immutability`, `refs`) and `react-refresh/only-export-components` are demoted to warnings because they flag long-standing working patterns; keep the error count at zero.
 
 There are no tests. Local dev has no Redis credentials by default, so leaderboard/comments/visitor APIs return null and the UI shows its offline states — that's expected. To exercise the API routes locally you need `vercel dev` plus `vercel env pull` (requires `vercel login`; the CLI in dependencies is v32).
 
@@ -25,7 +27,7 @@ There are no tests. Local dev has no Redis credentials by default, so leaderboar
 
 ### Two render worlds, one store
 
-`App.jsx` is the DOM shell: it mounts `<KeyboardControls>` → `<Canvas>` → `Scene.jsx` (everything 3D), and, alongside the canvas, the 2D HUD/overlay components (`ZoneOverlay`, `LapTimerHUD`, `AchievementSystem`, `WhisperInput`, `NosHUD`, `MapOverlay`, `MusicPlayer`, `MobileJoystick`, `StartScreen`). The two worlds communicate through:
+`App.jsx` is the DOM shell: it mounts `<KeyboardControls>` → `<Canvas>` → `Scene.jsx` (everything 3D), and, alongside the canvas, the 2D HUD/overlay components. **`Scene` is `React.lazy`-loaded** (inside a `<Suspense fallback={null}>` within the Canvas): Scene is the only import path to `@react-three/rapier`, so the ~2 MB rapier chunk stays out of the initial bundle and streams in behind the start screen — don't statically import Scene (or anything that imports rapier) from App/main, or the split silently collapses. The remaining 2D components (`ZoneOverlay`, `LapTimerHUD`, `AchievementSystem`, `WhisperInput`, `NosHUD`, `MapOverlay`, `MusicPlayer`, `MobileJoystick`, `StartScreen`). The two worlds communicate through:
 
 1. **`src/store/useGameStore.js` (Zustand)** — the single state hub. Holds zone state, game lifecycle (`gameStarted`), mobile joystick state, race state machine (`raceState: idle|racing|finished`), best/last lap, `pendingLeaderboardSubmit`, achievements (`visitedZones`, `strikeCount`), comment state (`whisperInputOpen`, `whispers`), and the vehicle's Rapier body handle (`vehicleBody`). Several components write directly via `useGameStore.setState(...)` rather than through actions — that's an established pattern here, not an accident.
    - The store also exports `ZONES`: **this object is the resume content** (experience, projects, contact info). Edit resume text there, not in components.
@@ -69,7 +71,7 @@ Visitor-left messages placed at the car's position in the world. **User-facing c
 
 ### Performance tiers (`src/hooks/usePerformance.js`)
 
-Mobile UA → tier 0 immediately; otherwise ~90 frames of FPS measurement → tier 0/1/2. `TIER_CONFIG` drives tree/prop counts, DPR, fog distance, the physics timestep (1/30 on tier 0), and shadows (off on tier 0 / mobile; 1024/2048 map on tier 1/2). The shadow-casting key light in `Lights.jsx` follows the car with a tight ~120-unit ortho frustum so shadows stay sharp across the whole 400×400 world. WebGL context attributes (`antialias`, `powerPreference`) can't wait for the async tier, so they come from the synchronous mobile check at Canvas mount. There's a WebGL context-lost overlay wired in `App.jsx`.
+Mobile UA → tier 0 immediately; otherwise ~90 frames of FPS measurement → tier 0/1/2. `TIER_CONFIG` drives tree/prop counts, DPR, fog distance, and the physics timestep (1/30 on tier 0). **There are no shadow maps** — dynamic shadows were removed entirely (2026-08) because the depth-map pass was too costly for the visual payoff; `Lights.jsx` is a static fixed-direction warm sun + fills, and depth cues come from flat color contrast and fog (DESIGN.md §6). Don't reintroduce `castShadow`/`receiveShadow`/`<Canvas shadows>` without revisiting that decision. WebGL context attributes (`antialias`, `powerPreference`) can't wait for the async tier, so they come from the synchronous mobile check at Canvas mount. There's a WebGL context-lost overlay wired in `App.jsx`.
 
 ### Other pieces
 
@@ -87,9 +89,8 @@ Mobile UA → tier 0 immediately; otherwise ~90 frames of FPS measurement → ti
 
 ## Known state / history (as of 2026-08-13)
 
-Development arc (see git log for detail): start screen + zones/resume world → GLB car + map overlay + billboard slideshow → boost/NOS + mobile support → R3F error/WebGL fixes → major perf overhaul (tiers, instancing) → real raycast-vehicle physics → racing circuit + camera/lighting/achievements polish → big wraparound track, bowling, whispers (comments), visitor counter → typing-guard fix + whisper→comment UI rename → folio-scale bowling overhaul (big ball/pins, lane + bumpers, restart button) + realistic track (asphalt, kerbs, centerline, start/finish gantry).
+Development arc (see git log for detail): start screen + zones/resume world → GLB car + map overlay + billboard slideshow → boost/NOS + mobile support → R3F error/WebGL fixes → major perf overhaul (tiers, instancing) → real raycast-vehicle physics → racing circuit + camera/lighting/achievements polish → big wraparound track, bowling, whispers (comments), visitor counter → typing-guard fix + whisper→comment UI rename → folio-scale bowling overhaul (big ball/pins, lane + bumpers, restart button) + realistic track (asphalt, kerbs, centerline, start/finish gantry) → dynamic shadows removed entirely for performance (static sun, no shadow maps).
 
 - Known issue: production leaderboard/comments/visitor counter show OFFLINE until Upstash Redis env vars are configured on the Vercel project (see Backend section).
-- `src/components/Vehicle 2.jsx` is an untracked stale duplicate of `Vehicle.jsx` (pre-physics-overhaul, imports `../controls` with wrong casing) — safe to delete, never imported.
-- `README.md` is still the default Vite template plus a title line.
-- `Minimap.jsx` is legacy (replaced by `MapOverlay.jsx`); `DevStats.jsx` exports an in-canvas and an out-of-canvas (`RendererInfoOverlay`) half — the same split pattern `Whispers.jsx` uses.
+- 2026-08-13 cleanup: deleted dead files `Vehicle 2.jsx` (stale untracked duplicate), `Minimap.jsx` (replaced by `MapOverlay.jsx`), and `Ground.jsx` (never imported — `World.jsx` has its own ground); wrote a real `README.md`; added eslint as a devDependency with `npm run lint` (0 errors is the baseline).
+- `DevStats.jsx` exports an in-canvas and an out-of-canvas (`RendererInfoOverlay`) half — the same split pattern `Whispers.jsx` uses.

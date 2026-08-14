@@ -61,7 +61,6 @@ export default function Trees({ maxTrees = TREE_COUNT }) {
         key={`trunk-${count}`}
         ref={trunkRef}
         args={[null, null, count]}
-        castShadow
         frustumCulled={false}
       >
         <cylinderGeometry args={[0.18, 0.28, 1.8, 5]} />
@@ -73,7 +72,6 @@ export default function Trees({ maxTrees = TREE_COUNT }) {
         key={`leaves-${count}`}
         ref={leavesRef}
         args={[null, null, count]}
-        castShadow
         frustumCulled={false}
       >
         <coneGeometry args={[1.3, 2.6, 6]} />

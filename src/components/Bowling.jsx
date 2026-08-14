@@ -80,7 +80,7 @@ function Ball({ ballRef, position }) {
       angularDamping={0.1}
       restitution={0.35}
     >
-      <mesh castShadow>
+      <mesh>
         <sphereGeometry args={[BALL_RADIUS, 20, 20]} />
         <meshStandardMaterial color="#5a2d82" roughness={0.3} metalness={0.2} />
       </mesh>
@@ -106,7 +106,7 @@ function Pin({ pinRef, position }) {
       angularDamping={0.5}
       restitution={0.5}
     >
-      <mesh castShadow>
+      <mesh>
         <cylinderGeometry args={[PIN_TOP_R, PIN_BOTTOM_R, PIN_HEIGHT, 10]} />
         <meshStandardMaterial color="#f5f0e8" roughness={0.6} />
       </mesh>
@@ -129,7 +129,7 @@ function Bumpers() {
       {[-railX, railX].map((x, i) => (
         <RigidBody key={i} type="fixed" colliders="cuboid"
           position={[BOWLING_CENTER[0] + x, BUMPER_HEIGHT / 2, BOWLING_CENTER[1] + LANE_CENTER_Z]}>
-          <mesh castShadow>
+          <mesh>
             <boxGeometry args={[BUMPER_THICKNESS, BUMPER_HEIGHT, LANE_LENGTH]} />
             <meshStandardMaterial color="#c4154a" roughness={0.55} />
           </mesh>
@@ -149,13 +149,12 @@ function RestartButton({ onRestart }) {
       position={[BOWLING_CENTER[0] + 5.6, 0, BOWLING_CENTER[1] - 8]}
       rotation={[0, Math.PI, 0]}
     >
-      <mesh position={[0, 0.9, 0]} castShadow>
+      <mesh position={[0, 0.9, 0]}>
         <cylinderGeometry args={[0.08, 0.08, 1.8, 6]} />
         <meshStandardMaterial color="#3a2a1a" roughness={0.9} />
       </mesh>
       <mesh
         position={[0, 2.1, 0]}
-        castShadow
         onClick={(e) => { e.stopPropagation(); onRestart() }}
         onPointerOver={() => { setHovered(true); document.body.style.cursor = 'pointer' }}
         onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto' }}
@@ -250,7 +249,7 @@ export default function Bowling({ vehicleRef }) {
     <group>
       <group position={[BOWLING_CENTER[0], 0, BOWLING_CENTER[1]]}>
         {/* Wooden lane floor — visual only, sits just above the ground */}
-        <mesh position={[0, 0.025, LANE_CENTER_Z]} receiveShadow>
+        <mesh position={[0, 0.025, LANE_CENTER_Z]}>
           <boxGeometry args={[LANE_WIDTH, 0.02, LANE_LENGTH]} />
           <meshStandardMaterial color="#d9b77c" roughness={0.75} />
         </mesh>

@@ -1,7 +1,6 @@
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, lazy, useEffect, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { KeyboardControls } from '@react-three/drei'
-import Scene          from './components/Scene'
 import ZoneOverlay    from './components/ZoneOverlay'
 import MapOverlay     from './components/MapOverlay'
 import MobileJoystick from './components/MobileJoystick'
@@ -16,6 +15,12 @@ import { toggleMusic } from './audio'
 import { usePerformanceTier, TIER_CONFIG } from './hooks/usePerformance'
 import { RendererInfoOverlay } from './components/DevStats'
 import { WhisperInput } from './components/Whispers'
+
+// Scene is the only import path to @react-three/rapier and the world
+// components, so lazy-loading it keeps the ~2 MB rapier chunk out of the
+// initial bundle: the start screen paints immediately and the world
+// streams in behind it (the chunk starts fetching at mount, not on START).
+const Scene = lazy(() => import('./components/Scene'))
 
 function handleContextLost(e) {
   e.preventDefault()
@@ -196,7 +201,6 @@ export default function App() {
         <Suspense fallback={<LoadingScreen />}>
           <KeyboardControls map={keyMap}>
             <Canvas
-              shadows={!isMobile && tierCfg.shadows}
               camera={{ fov: 50, near: 0.1, far: 600, position: [8, 18, 20] }}
               gl={{
                 antialias: !isMobile,
@@ -206,7 +210,12 @@ export default function App() {
               dpr={[tierCfg.dpr[0], Math.min(tierCfg.dpr[1], window.devicePixelRatio)]}
               style={{ width: '100%', height: '100%' }}
             >
-              <Scene tierCfg={tierCfg} />
+              {/* Boundary inside the Canvas: catches both the lazy chunk
+                  and rapier's WASM init without unmounting the Canvas.
+                  Empty canvas during load is invisible behind StartScreen. */}
+              <Suspense fallback={null}>
+                <Scene tierCfg={tierCfg} />
+              </Suspense>
             </Canvas>
           </KeyboardControls>
         </Suspense>

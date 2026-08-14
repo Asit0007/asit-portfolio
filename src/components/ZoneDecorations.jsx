@@ -6,7 +6,7 @@ import useGameStore from '../store/useGameStore'
 // ── Reusable primitives ──────────────────────────────────────────────────────
 function Box({ position, size, color, rotation=[0,0,0], emissive, emissiveIntensity=0 }) {
   return (
-    <mesh castShadow receiveShadow position={position} rotation={rotation}>
+    <mesh position={position} rotation={rotation}>
       <boxGeometry args={size} />
       <meshStandardMaterial
         color={color} roughness={0.7} metalness={0.1}
@@ -18,7 +18,7 @@ function Box({ position, size, color, rotation=[0,0,0], emissive, emissiveIntens
 
 function Cylinder({ position, args, color, rotation=[0,0,0] }) {
   return (
-    <mesh castShadow position={position} rotation={rotation}>
+    <mesh position={position} rotation={rotation}>
       <cylinderGeometry args={args} />
       <meshStandardMaterial color={color} roughness={0.6} metalness={0.2} />
     </mesh>
@@ -29,7 +29,7 @@ function Crate({ position, size=[1.2,1.2,1.2], color='#c8b89a' }) {
   return (
     <RigidBody position={position} colliders="cuboid" mass={0.4}
       linearDamping={0.5} angularDamping={0.8} restitution={0.3}>
-      <mesh castShadow receiveShadow>
+      <mesh>
         <boxGeometry args={size} />
         <meshStandardMaterial color={color} roughness={0.9} flatShading />
       </mesh>

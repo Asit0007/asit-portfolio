@@ -62,7 +62,7 @@ function Ramp() {
 
   return (
     <RigidBody type="fixed" colliders="cuboid" position={position} quaternion={quaternion}>
-      <mesh castShadow receiveShadow>
+      <mesh>
         <boxGeometry args={[RAMP_WIDTH, RAMP_THICKNESS, RAMP_LENGTH]} />
         <meshStandardMaterial color="#e8c060" roughness={0.7} metalness={0.1} />
       </mesh>
@@ -88,7 +88,7 @@ function SwingingObstacle({ basePosition, perpDir, phase }) {
 
   return (
     <RigidBody ref={bodyRef} type="kinematicPosition" colliders="cuboid" position={basePosition}>
-      <mesh castShadow>
+      <mesh>
         <boxGeometry args={[0.6, 2.2, 0.6]} />
         <meshStandardMaterial color="#f0c060" emissive="#f0c060" emissiveIntensity={0.35} />
       </mesh>

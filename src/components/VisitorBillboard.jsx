@@ -37,13 +37,13 @@ export default function VisitorBillboard() {
     <RigidBody type="fixed" position={POSITION}>
       <group>
         {/* Pole — same construction as SignPosts.jsx's ArrowSign */}
-        <mesh castShadow position={[0, 1.6, 0]}>
+        <mesh position={[0, 1.6, 0]}>
           <cylinderGeometry args={[0.08, 0.10, 3.2, 6]} />
           <meshStandardMaterial color="#6B5020" roughness={0.8} />
         </mesh>
 
         {/* Board */}
-        <mesh castShadow position={[0, 3.2, 0]}>
+        <mesh position={[0, 3.2, 0]}>
           <boxGeometry args={[3.2, 1.1, 0.15]} />
           <meshStandardMaterial color="#1a3a34" roughness={0.4} metalness={0.08} />
         </mesh>
@@ -58,7 +58,7 @@ export default function VisitorBillboard() {
         </Text>
 
         {/* Base */}
-        <mesh receiveShadow position={[0, 0.08, 0]}>
+        <mesh position={[0, 0.08, 0]}>
           <boxGeometry args={[0.35, 0.16, 0.35]} />
           <meshStandardMaterial color="#4a3a18" roughness={0.9} />
         </mesh>

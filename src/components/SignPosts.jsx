@@ -27,13 +27,13 @@ function ArrowSign({ position, text, color, rotationY = 0, pointLeft = false }) 
     <RigidBody type="fixed" position={position} rotation={[0, rotationY, 0]}>
       <group>
         {/* Pole */}
-        <mesh castShadow position={[0, 2.0, 0]}>
+        <mesh position={[0, 2.0, 0]}>
           <cylinderGeometry args={[0.08, 0.10, 4.0, 6]} />
           <meshStandardMaterial color="#6B5020" roughness={0.8} />
         </mesh>
 
         {/* Arrow board */}
-        <mesh castShadow position={[0, 4.0, 0]}>
+        <mesh position={[0, 4.0, 0]}>
           <extrudeGeometry args={[arrowShape, extrudeSettings]} />
           <meshStandardMaterial color={color} roughness={0.35} metalness={0.08} />
         </mesh>
@@ -71,7 +71,7 @@ function ArrowSign({ position, text, color, rotationY = 0, pointLeft = false }) 
         </group>
 
         {/* Base */}
-        <mesh receiveShadow position={[0, 0.09, 0]}>
+        <mesh position={[0, 0.09, 0]}>
           <boxGeometry args={[0.38, 0.18, 0.38]} />
           <meshStandardMaterial color="#4a3a18" roughness={0.9} />
         </mesh>

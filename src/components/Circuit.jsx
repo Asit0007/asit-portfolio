@@ -188,10 +188,10 @@ function TrackPath() {
 
   return (
     <group>
-      <mesh geometry={roadGeometry} receiveShadow>
+      <mesh geometry={roadGeometry}>
         <meshStandardMaterial vertexColors roughness={0.96} />
       </mesh>
-      <mesh geometry={detailGeometry} receiveShadow>
+      <mesh geometry={detailGeometry}>
         <meshStandardMaterial vertexColors roughness={0.8} />
       </mesh>
     </group>
@@ -239,12 +239,12 @@ function StartFinish() {
         <meshStandardMaterial vertexColors />
       </mesh>
       {[-6.2, 6.2].map((z) => (
-        <mesh key={z} position={[0, 2.75, z]} castShadow>
+        <mesh key={z} position={[0, 2.75, z]}>
           <cylinderGeometry args={[0.14, 0.14, 5.5, 8]} />
           <meshStandardMaterial color="#2a2a30" roughness={0.7} />
         </mesh>
       ))}
-      <mesh position={[0, 5.6, 0]} castShadow>
+      <mesh position={[0, 5.6, 0]}>
         <boxGeometry args={[0.5, 0.7, 13.4]} />
         <meshStandardMaterial color="#c4154a" roughness={0.6} />
       </mesh>

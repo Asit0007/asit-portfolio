@@ -41,8 +41,6 @@ function BootLine({ text, delay, color }) {
 
 // Compact mode card — horizontal layout for small screens
 function ModeCard({ mode, icon, label, subtitle, desc, tags, color, hovered, onClick, onEnter, onLeave }) {
-  const isSmall = typeof window !== 'undefined' && window.innerWidth < 500
-
   return (
     <div
       onClick={onClick}

@@ -66,7 +66,7 @@ function GradientFloor() {
           thickness auto-collider was letting raycasts miss intermittently
           away from the (separately, more solidly collided) start zone pad. */}
       <CuboidCollider args={[200, 0.15, 200]} position={[0, -0.15, 0]} />
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
         <planeGeometry args={[400, 400]} />
         <meshStandardMaterial map={texture} roughness={0.95} metalness={0} />
       </mesh>
@@ -77,7 +77,7 @@ function GradientFloor() {
 function ZonePad({ position, size, color }) {
   return (
     <RigidBody type="fixed" colliders="cuboid" position={position}>
-      <mesh receiveShadow>
+      <mesh>
         <boxGeometry args={size} />
         <meshStandardMaterial color={color} roughness={0.7} metalness={0} />
       </mesh>
@@ -104,8 +104,7 @@ function TilePaths() {
   return (
     <group>
       {all.map(([x, z], i) => (
-        <mesh key={i} receiveShadow
-          rotation={[-Math.PI / 2, 0, (i * 1.3) % Math.PI]}
+        <mesh key={i} rotation={[-Math.PI / 2, 0, (i * 1.3) % Math.PI]}
           position={[x, 0.04, z]}
         >
           <planeGeometry args={[3, 3]} />
@@ -121,42 +120,42 @@ function Roads() {
   const Y = 0.06
   return (
     <group>
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, Y, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y, 0]}>
         <planeGeometry args={[8, 220]} />
         <meshStandardMaterial color="#4a4030" roughness={1} />
       </mesh>
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, Y, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y, 0]}>
         <planeGeometry args={[220, 8]} />
         <meshStandardMaterial color="#4a4030" roughness={1} />
       </mesh>
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}
         position={[0, Y + 0.001, 0]}>
         <planeGeometry args={[9, 9]} />
         <meshStandardMaterial color="#4a4030" roughness={1} />
       </mesh>
       {[-3.6, 3.6].map((x, i) => (
-        <mesh key={`ns-${i}`} receiveShadow rotation={[-Math.PI / 2, 0, 0]}
+        <mesh key={`ns-${i}`} rotation={[-Math.PI / 2, 0, 0]}
           position={[x, Y + 0.005, 0]}>
           <planeGeometry args={[0.18, 220]} />
           <meshStandardMaterial color="#e8c878" roughness={0.8} />
         </mesh>
       ))}
       {[-3.6, 3.6].map((z, i) => (
-        <mesh key={`ew-${i}`} receiveShadow rotation={[-Math.PI / 2, 0, 0]}
+        <mesh key={`ew-${i}`} rotation={[-Math.PI / 2, 0, 0]}
           position={[0, Y + 0.005, z]}>
           <planeGeometry args={[220, 0.18]} />
           <meshStandardMaterial color="#e8c878" roughness={0.8} />
         </mesh>
       ))}
       {Array.from({ length: 26 }, (_, i) => (
-        <mesh key={`dns-${i}`} receiveShadow rotation={[-Math.PI / 2, 0, 0]}
+        <mesh key={`dns-${i}`} rotation={[-Math.PI / 2, 0, 0]}
           position={[0, Y + 0.01, -100 + i * 8]}>
           <planeGeometry args={[0.25, 4]} />
           <meshStandardMaterial color="#f0d060" roughness={0.7} />
         </mesh>
       ))}
       {Array.from({ length: 26 }, (_, i) => (
-        <mesh key={`dew-${i}`} receiveShadow rotation={[-Math.PI / 2, 0, 0]}
+        <mesh key={`dew-${i}`} rotation={[-Math.PI / 2, 0, 0]}
           position={[-100 + i * 8, Y + 0.01, 0]}>
           <planeGeometry args={[4, 0.25]} />
           <meshStandardMaterial color="#f0d060" roughness={0.7} />
@@ -226,7 +225,7 @@ function ScatterProps() {
           restitution={0.3}
           friction={0.8}
         >
-          <mesh castShadow receiveShadow>
+          <mesh>
             <boxGeometry args={[r.sx, r.sy, r.sz]} />
             <meshStandardMaterial color="#ddd0b8" roughness={0.9} flatShading />
           </mesh>

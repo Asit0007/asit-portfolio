@@ -27,7 +27,7 @@ export default function Scene({ tierCfg }) {
   return (
     <Physics gravity={[0, -20, 0]} timeStep={tierCfg.physicsStep}>
       <SkyBox />
-      <Lights shadows={tierCfg.shadows} shadowMapSize={tierCfg.shadowMapSize} />
+      <Lights />
       <World />
       <Trees maxTrees={tierCfg.maxTrees} />
       <Suspense fallback={null}>

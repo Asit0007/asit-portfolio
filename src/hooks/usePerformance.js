@@ -40,8 +40,6 @@ export function usePerformanceTier() {
 
 export const TIER_CONFIG = {
   0: { // Mobile / weak GPU
-    shadows:         false,
-    shadowMapSize:   512,
     maxTrees:        20,
     maxProps:        6,
     dpr:             [1, 1],
@@ -50,8 +48,6 @@ export const TIER_CONFIG = {
     physicsStep:     1/30,
   },
   1: { // Medium
-    shadows:         true,
-    shadowMapSize:   1024,
     maxTrees:        50,
     maxProps:        14,
     dpr:             [1, 1.5],
@@ -60,8 +56,6 @@ export const TIER_CONFIG = {
     physicsStep:     1/60,
   },
   2: { // High / desktop
-    shadows:         true,
-    shadowMapSize:   2048,
     maxTrees:        100,
     maxProps:        22,
     dpr:             [1, 2],

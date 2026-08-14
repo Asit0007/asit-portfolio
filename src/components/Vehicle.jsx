@@ -119,12 +119,6 @@ const _carPos = new THREE.Vector3()
 function GLTFCar() {
   const { scene } = useGLTF('/models/car-1.glb')
   const cloned = scene.clone()
-  cloned.traverse((child) => {
-    if (child.isMesh) {
-      child.castShadow    = true
-      child.receiveShadow = true
-    }
-  })
   return (
     <primitive
       object={cloned}
@@ -142,19 +136,19 @@ function BoxCar() {
   return (
     <>
       {/* Main body */}
-      <mesh castShadow>
+      <mesh>
         <boxGeometry args={[1.8, 0.5, 3.4]} />
         <meshStandardMaterial color="#00d4ff" metalness={0.5} roughness={0.25} />
       </mesh>
 
       {/* Hood — raised panel at FRONT (-Z) */}
-      <mesh castShadow position={[0, 0.28, -0.8]}>
+      <mesh position={[0, 0.28, -0.8]}>
         <boxGeometry args={[1.7, 0.06, 1.4]} />
         <meshStandardMaterial color="#00bde0" metalness={0.4} roughness={0.3} />
       </mesh>
 
       {/* Cab — passenger section at BACK (+Z) */}
-      <mesh castShadow position={[0, 0.52, 0.5]}>
+      <mesh position={[0, 0.52, 0.5]}>
         <boxGeometry args={[1.3, 0.5, 1.6]} />
         <meshStandardMaterial color="#0099bb" metalness={0.3} roughness={0.4} />
       </mesh>
@@ -174,14 +168,14 @@ function BoxCar() {
       </mesh>
 
       {/* Roof rack — on top of cab */}
-      <mesh castShadow position={[0, 0.79, 0.5]}>
+      <mesh position={[0, 0.79, 0.5]}>
         <boxGeometry args={[1.1, 0.06, 1.4]} />
         <meshStandardMaterial color="#007799" roughness={0.6} />
       </mesh>
 
       {/* Wheels */}
       {WHEEL_POSITIONS.map(({ x, y, z }, i) => (
-        <mesh key={i} castShadow position={[x, y, z]}>
+        <mesh key={i} position={[x, y, z]}>
           <boxGeometry args={[0.28, 0.52, 0.52]} />
           <meshStandardMaterial color="#1a1a1a" roughness={1} />
         </mesh>
@@ -233,7 +227,7 @@ function VehicleInner(props, ref) {
 
   // Create the raycast vehicle controller once the chassis body exists.
   // The controller stays internal to this component — every other file
-  // (Zones, Minimap, MapOverlay, App, AudioManager) reads translation()/
+  // (Zones, MapOverlay, App, AudioManager) reads translation()/
   // linvel() off the plain chassis RigidBody, exactly as before.
   useEffect(() => {
     if (!bodyRef.current) return
