@@ -54,7 +54,7 @@ Recipes (folio pattern → how it looks here):
 
 - **HUD panel**: dark warm translucent bg + `backdrop-filter: blur(10–14px)` + 1px border in emphasis-color at ~18–35% alpha + border-radius 10–12px (pill 99px for single-line bars). Already our house style — all new panels must follow it.
 - **Buttons**: no default chrome (folio resets button/input entirely); tinted bg (emphasis color @ ~18% alpha), 1px border @ ~40% alpha, emphasis-color text, disabled = opacity 0.5. Hover: raise emissive/brightness, never change size except playful `back.out` pops.
-- **Touch targets**: minimum ~44px; folio's in-game buttons are 80px tall with 7vw padding — mobile controls should be generous (our joystick/boost button comply).
+- **Touch targets**: minimum ~44px; folio's in-game buttons are 80px tall with 7vw padding — mobile controls should be generous (our steering wheel and pedals comply).
 - **Gradient scrim** behind bottom-of-screen touch UI so it reads over any world color.
 - **In-world text** (drei `<Text>`): always `outlineWidth` 0.02–0.09 with dark outline so it survives any background; white or emphasis color.
 - **Interactive points** (folio's Restart, jukebox, etc. → our ↻ RESTART sign): a physical object in the world, revealed/emphasized contextually, clickable/tappable, with hover feedback (cursor + emissive).
@@ -89,7 +89,7 @@ folio's rules (from its audio register): every physical interaction has a sound;
 1. **Driving is never interrupted.** No modal takes over while the car can move; zone overlays are passive; camera biases decay on their own.
 2. **Everything degrades gracefully offline.** Server-backed features show a quiet `OFFLINE` / silent no-op state (null-returning API utils), never an error.
 3. **Typing is sacred.** When any text field is focused, all game keys are dead (guards in `App.jsx` + `Vehicle.jsx`).
-4. **Mobile is first-class**: every keyboard affordance needs a touch equivalent (R-reset → tappable RESTART sign; keys → joystick/boost button).
+4. **Mobile is first-class**: every keyboard affordance needs a touch equivalent (R-reset → tappable RESTART sign; keys → steering wheel + gas/brake pedals + boost).
 5. **Reward exploration**: achievements, easter eggs, celebration moments (STRIKE!, NEW BEST) are loud and joyful — `back.out` energy, hot accent colors, screen shake (`cameraShake.js`, keep ≤0.3 intensity).
 6. **Performance is a design constraint**: new world visuals must state their draw-call cost; prefer merged/instanced geometry (2-draw-call track is the exemplar); respect `TIER_CONFIG` caps.
 

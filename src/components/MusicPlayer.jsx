@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { toggleMusic, skipTrack, getMusicEnabled } from '../audio'
+import useGameStore from '../store/useGameStore'
 
 export default function MusicPlayer() {
+  const isMobile = useGameStore((s) => s.isMobile)
   const [playing, setPlaying]   = useState(true)
   const [track,   setTrack]     = useState('')
   const [visible, setVisible]   = useState(false)
@@ -28,8 +30,12 @@ export default function MusicPlayer() {
   return (
     <div
       style={{
-        position: 'fixed', bottom: 20, left: 20,
-        zIndex: 35,
+        // Mobile: bottom-left belongs to the steering wheel (MobileControls),
+        // so the player joins the map button in the top-right corner row.
+        position: 'fixed', zIndex: 35,
+        ...(isMobile
+          ? { top: 16, right: 82, flexDirection: 'row-reverse' }
+          : { bottom: 20, left: 20 }),
         display: 'flex', alignItems: 'center', gap: 6,
       }}
       onMouseEnter={() => setVisible(true)}

@@ -272,15 +272,21 @@ function VehicleInner(props, ref) {
     // steer and brake underneath the user's typing.
     const el = typeof document !== 'undefined' ? document.activeElement : null
     if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
-      return { forward: false, backward: false, left: false, right: false, brake: false, boost: false }
+      return { forward: false, backward: false, steer: 0, brake: false, boost: false }
     }
     const k = getKeys()
     const j = props.joystick || {}
+    // Steering is analog (-1..1, +1 = left). Priority: keyboard (digital
+    // ±1) → mobile steering wheel (window.__mobileSteer — bypasses the
+    // store because it changes every touchmove; see MobileControls.jsx) →
+    // legacy joystick booleans.
+    const kSteer = (k[Controls.left] ? 1 : 0) - (k[Controls.right] ? 1 : 0)
+    const wheel  = typeof window !== 'undefined' ? (window.__mobileSteer || 0) : 0
+    const jSteer = (j.left ? 1 : 0) - (j.right ? 1 : 0)
     return {
       forward:  k[Controls.forward]  || j.forward  || false,
       backward: k[Controls.backward] || j.backward || false,
-      left:     k[Controls.left]     || j.left     || false,
-      right:    k[Controls.right]    || j.right    || false,
+      steer:    Math.max(-1, Math.min(1, kSteer || wheel || jSteer)),
       brake:    k[Controls.brake]    || j.brake    || false,
       boost:    k[Controls.boost]    || j.boost    || false,
     }
@@ -306,7 +312,7 @@ function VehicleInner(props, ref) {
       body.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
     }
 
-    const { forward, backward, left, right, brake, boost } = getInput()
+    const { forward, backward, steer: steerInput, brake, boost } = getInput()
     const gameStarted = useGameStore.getState().gameStarted
 
     if (brake && !prevBrake.current && gameStarted) playBrake()
@@ -364,10 +370,10 @@ function VehicleInner(props, ref) {
     }
 
     // Steering — smoothed so a tapped key eases toward full lock instead of
-    // snapping there instantly.
-    const steerDir = (left ? 1 : 0) - (right ? 1 : 0)
+    // snapping there instantly (the mobile wheel feeds analog values through
+    // the same lerp, which just makes it track faster).
     steer.current = THREE.MathUtils.lerp(
-      steer.current, steerDir, 1 - Math.exp(-STEER_LERP_SPEED * dt)
+      steer.current, steerInput, 1 - Math.exp(-STEER_LERP_SPEED * dt)
     )
     const steerAngle = steer.current * STEER_MAX
 

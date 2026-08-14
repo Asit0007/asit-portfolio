@@ -1,9 +1,9 @@
-import { Suspense, lazy, useEffect, useRef } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { KeyboardControls } from '@react-three/drei'
 import ZoneOverlay    from './components/ZoneOverlay'
 import MapOverlay     from './components/MapOverlay'
-import MobileJoystick from './components/MobileJoystick'
+import MobileControls from './components/MobileControls'
 import StartScreen    from './components/StartScreen'
 import NosHUD         from './components/NosHUD'
 import LapTimerHUD    from './components/LapTimerHUD'
@@ -75,6 +75,44 @@ function LoadingScreen() {
   )
 }
 
+// Forced-landscape frame for mobile portrait. Instead of the unreliable
+// screen.orientation.lock() (fullscreen-only on Android, unavailable on iOS
+// Safari), the whole app is wrapped in a CSS-rotated frame sized
+// 100dvh × 100dvw. The frame's transform makes it the containing block for
+// every position:fixed overlay inside, so all existing UI lays itself out in
+// the rotated space with no per-component changes.
+//
+// Stages: 'pre' paints one unrotated frame so the rotate(0)→rotate(90)
+// transition can run — the visible "screen flips to horizontal" intro
+// (cinematic tier, DESIGN.md §5) — then 'settled' drops the transition so a
+// later physical device rotation snaps like a native re-layout.
+function useForcedLandscape(isMobile) {
+  const [portrait, setPortrait] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(orientation: portrait)').matches
+      : false
+  )
+  useEffect(() => {
+    if (!window.matchMedia) return
+    const mq = window.matchMedia('(orientation: portrait)')
+    const onChange = (e) => setPortrait(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  const forced = isMobile && portrait
+  const [stage, setStage] = useState('off') // off | pre | flipping | settled
+  useEffect(() => {
+    if (!forced) { setStage('off'); return }
+    setStage('pre')
+    const t1 = setTimeout(() => setStage('flipping'), 80)
+    const t2 = setTimeout(() => setStage('settled'), 1200)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [forced])
+
+  return { forced, stage }
+}
+
 function useTitleAnimation(vehicleBody) {
   useEffect(() => {
     if (!vehicleBody) return
@@ -98,10 +136,10 @@ function useTitleAnimation(vehicleBody) {
 
 export default function App() {
   const isMobile    = useGameStore((s) => s.isMobile)
-  const setJoystick = useGameStore((s) => s.setJoystick)
   const vehicleBody = useGameStore((s) => s.vehicleBody)
   const gameStarted = useGameStore((s) => s.gameStarted)
   const vehicleRef  = useRef()
+  const { forced, stage } = useForcedLandscape(isMobile)
 
   if (vehicleBody) vehicleRef.current = vehicleBody
   useTitleAnimation(vehicleBody)
@@ -148,8 +186,14 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  const frameClass =
+    'app-frame' +
+    (forced ? ' forced-landscape' : '') +
+    (stage === 'pre' ? ' flip-pre' : '') +
+    (stage === 'pre' || stage === 'flipping' ? ' flip-anim' : '')
+
   return (
-    <>
+    <div className={frameClass}>
       {/* Global responsive styles */}
       <style>{`
         * { box-sizing: border-box; }
@@ -157,11 +201,32 @@ export default function App() {
           width: 100%; height: 100%;
           margin: 0; padding: 0;
           overflow: hidden;
+          background: #0d0500;
         }
         /* Vertical viewport fix for mobile browsers with address bar */
         #root {
           height: 100dvh;
           min-height: -webkit-fill-available;
+        }
+        .app-frame { position: fixed; inset: 0; }
+        /* Mobile portrait → rotate the whole app into landscape. The frame
+           is sized to the rotated viewport (100dvh wide, 100dvw tall) and
+           swung into place around the top-left corner. */
+        .app-frame.forced-landscape {
+          inset: auto;
+          top: 0; left: 0;
+          width: 100vh;  height: 100vw;   /* fallback */
+          width: 100dvh; height: 100dvw;
+          transform-origin: top left;
+          transform: rotate(90deg) translateY(-100%);
+          overflow: hidden;
+          background: #0d0500;
+        }
+        .app-frame.forced-landscape.flip-pre {
+          transform: rotate(0deg) translateY(0%);
+        }
+        .app-frame.forced-landscape.flip-anim {
+          transition: transform 0.9s cubic-bezier(0.45, 0, 0.55, 1);
         }
         @media (max-width: 640px) {
           .hud-full { display: none !important; }
@@ -202,6 +267,13 @@ export default function App() {
           <KeyboardControls map={keyMap}>
             <Canvas
               camera={{ fov: 50, near: 0.1, far: 600, position: [8, 18, 20] }}
+              // offsetSize measures the container's layout size instead of
+              // getBoundingClientRect — required under the forced-landscape
+              // CSS rotation, where the bounding rect is the portrait
+              // viewport and the canvas would otherwise render a portrait
+              // strip. Pointer picking stays correct too: R3F divides
+              // offsetX/offsetY (local, untransformed coords) by this size.
+              resize={{ offsetSize: true }}
               gl={{
                 antialias: !isMobile,
                 powerPreference: 'high-performance',
@@ -239,71 +311,47 @@ export default function App() {
 
           <MapOverlay vehicleRef={vehicleRef} />
           <MusicPlayer />
-          <MobileJoystick onInput={setJoystick} />
+          <MobileControls />
 
-          {/* Mobile boost button */}
-          {isMobile && (
-            <button
-              onTouchStart={() => setJoystick(p => ({ ...p, boost: true }))}
-              onTouchEnd={()   => setJoystick(p => ({ ...p, boost: false }))}
+          {/* HUD bar — keyboard hints, desktop only (mobile has the
+              self-explanatory wheel/pedal cockpit instead) */}
+          {!isMobile && (
+            <div
+              className="hud-bar"
               style={{
                 position: 'fixed',
-                bottom: 'clamp(60px, 10vh, 80px)',
-                right:  'clamp(60px, 8vw, 80px)',
-                zIndex: 40,
-                width: 'clamp(44px, 7vw, 56px)',
-                height: 'clamp(44px, 7vw, 56px)',
-                borderRadius: '50%',
-                background: 'rgba(0,212,255,0.22)',
-                border: '2px solid rgba(0,212,255,0.55)',
-                color: '#00d4ff', fontFamily: 'monospace',
-                fontSize: 10, fontWeight: 700,
-                touchAction: 'none', userSelect: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center',
-                justifyContent: 'center', flexDirection: 'column', gap: 1,
+                bottom: 'clamp(8px, 2vh, 20px)',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: 'rgba(8,4,0,0.75)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(240,180,80,0.18)',
+                borderRadius: 99,
+                padding: 'clamp(5px, 1vh, 7px) clamp(12px, 3vw, 22px)',
+                color: 'rgba(255,220,120,0.82)',
+                fontSize: 'clamp(8px, 1.1vw, 11px)',
+                fontFamily: 'monospace',
+                letterSpacing: '0.1em',
+                pointerEvents: 'none',
+                userSelect: 'none',
+                textTransform: 'uppercase',
+                whiteSpace: 'nowrap',
+                zIndex: 30,
               }}
             >
-              <span style={{ fontSize: 18 }}>⚡</span>
-              <span style={{ fontSize: 7 }}>BOOST</span>
-            </button>
+              <span className="hud-full" style={{ display: 'inline' }}>
+                ↑↓←→ Drive · Space Brake · Shift Boost · R Reset · C Comment · Tab Map
+              </span>
+              <span className="hud-short" style={{ display: 'none' }}>
+                Controls active
+              </span>
+            </div>
           )}
-
-          {/* HUD bar — responsive */}
-          <div
-            className="hud-bar"
-            style={{
-              position: 'fixed',
-              bottom: 'clamp(8px, 2vh, 20px)',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              background: 'rgba(8,4,0,0.75)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(240,180,80,0.18)',
-              borderRadius: 99,
-              padding: 'clamp(5px, 1vh, 7px) clamp(12px, 3vw, 22px)',
-              color: 'rgba(255,220,120,0.82)',
-              fontSize: 'clamp(8px, 1.1vw, 11px)',
-              fontFamily: 'monospace',
-              letterSpacing: '0.1em',
-              pointerEvents: 'none',
-              userSelect: 'none',
-              textTransform: 'uppercase',
-              whiteSpace: 'nowrap',
-              zIndex: 30,
-            }}
-          >
-            <span className="hud-full" style={{ display: 'inline' }}>
-              ↑↓←→ Drive · Space Brake · Shift Boost · R Reset · C Comment · Tab Map
-            </span>
-            <span className="hud-short" style={{ display: 'none' }}>
-              Controls active
-            </span>
-          </div>
         </>
       )}
 
       {/* StartScreen — always on top */}
       <StartScreen />
-    </>
+    </div>
   )
 }

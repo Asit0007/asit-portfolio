@@ -22,6 +22,7 @@ export default function MapOverlay({ vehicleRef }) {
   const [hovered,  setHovered]  = useState(null)
   const canvasRef  = useRef()
   const activeZone = useGameStore((s) => s.activeZone)
+  const isMobile   = useGameStore((s) => s.isMobile)
   const scale      = MAP_SIZE / WORLD_SIZE
   const cx         = MAP_SIZE / 2
   const cz         = MAP_SIZE / 2
@@ -154,13 +155,15 @@ export default function MapOverlay({ vehicleRef }) {
 
   return (
     <>
-      {/* Map toggle button — replaces minimap entirely */}
+      {/* Map toggle button — replaces minimap entirely. On mobile it moves
+          to the top-right corner: the bottom-right belongs to the pedal
+          cluster (MobileControls). */}
       <button
         id="map-btn"
         onClick={() => setOpen(o => !o)}
         style={{
-          position: 'fixed', bottom: 20, right: 20,
-          zIndex: 35,
+          position: 'fixed', zIndex: 35,
+          ...(isMobile ? { top: 16, right: 16 } : { bottom: 20, right: 20 }),
           width: 56, height: 56,
           background: open
             ? 'rgba(240,192,96,0.22)'
