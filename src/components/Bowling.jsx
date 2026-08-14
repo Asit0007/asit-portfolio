@@ -83,7 +83,7 @@ function Ball({ ballRef, position }) {
           also wrap each cosmetic finger-hole mesh in its own tiny collider —
           three bumps protruding past the surface that made the ball thump
           instead of roll. */}
-      <BallCollider args={[BALL_RADIUS]} mass={2.5} restitution={0.35} />
+      <BallCollider args={[BALL_RADIUS]} mass={1.2} restitution={0.35} />
       <mesh>
         <sphereGeometry args={[BALL_RADIUS, 28, 28]} />
         <meshStandardMaterial color="#5a2d82" roughness={0.3} metalness={0.2} />
@@ -105,7 +105,7 @@ function Pin({ pinRef, position }) {
       ref={pinRef}
       position={position}
       colliders="cuboid"
-      mass={0.15}
+      mass={0.08}
       linearDamping={0.1}
       angularDamping={0.5}
       restitution={0.5}

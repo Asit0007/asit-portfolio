@@ -8,10 +8,10 @@ function PhysicsLetter({ char, position, color = '#ffffff', size = 3.2 }) {
       type="dynamic"
       position={position}
       colliders="cuboid"
-      mass={14}
-      linearDamping={0.6}
-      angularDamping={0.8}
-      restitution={0.12}
+      mass={1.5}
+      linearDamping={0.35}
+      angularDamping={0.5}
+      restitution={0.18}
     >
       <Center>
         <Text3D
@@ -32,7 +32,7 @@ function PhysicsLetter({ char, position, color = '#ffffff', size = 3.2 }) {
   )
 }
 
-function GroundText({ text, position, tiltZ = 0, size = 0.75, color = '#f0c060' }) {
+function GroundText({ text, position, tiltZ = 0, size = 0.75, color = '#ffffff' }) {
   return (
     <Center position={position} rotation={[-Math.PI / 2, 0, tiltZ]}>
       <Text3D
@@ -43,8 +43,12 @@ function GroundText({ text, position, tiltZ = 0, size = 0.75, color = '#f0c060' 
         bevelEnabled={false}
       >
         {text}
+        {/* Slight emissive so instruction text reads against the warm sand
+            under the static sun (in-world sign text — DESIGN.md §3/§6) */}
         <meshStandardMaterial
           color={color}
+          emissive={color}
+          emissiveIntensity={0.3}
           roughness={0.5}
           metalness={0.05}
           side={2}
@@ -78,20 +82,21 @@ export default function NameTitle() {
           />
         ))}
 
-        {/* FIX: no rgba() in Three.js color — use solid hex only */}
+        {/* White, not amber — amber vanished into the sand. Matches the
+            white 3D letters (DESIGN.md: in-world text is white or emphasis) */}
         <GroundText
           text="USE ARROW KEYS TO EXPLORE"
           position={[7, 0.58, -9]}
           tiltZ={-0.06}
           size={0.65}
-          color="#f0c060"
+          color="#ffffff"
         />
         <GroundText
           text="R=RESET  M=MUTE  TAB=MAP  SHIFT=BOOST"
           position={[7.5, 0.58, -11.2]}
           tiltZ={-0.06}
           size={0.45}
-          color="#c49a30"   // ← solid hex, NOT rgba() — Three.js ignores alpha
+          color="#fff4e0"
         />
       </group>
     </Suspense>
