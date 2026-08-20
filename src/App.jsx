@@ -39,7 +39,7 @@ function LoadingScreen() {
       padding: '16px',
     }}>
       <p style={{
-        fontFamily: 'monospace',
+        fontFamily: 'var(--font-mono)',
         fontSize: 'clamp(14px, 3.5vw, 26px)',
         fontWeight: 900,
         letterSpacing: '0.22em',
@@ -52,7 +52,7 @@ function LoadingScreen() {
       <p style={{
         color: 'rgba(255,255,255,0.35)',
         fontSize: 'clamp(10px, 1.5vw, 13px)',
-        fontFamily: 'monospace',
+        fontFamily: 'var(--font-mono)',
         textAlign: 'center',
       }}>
         Loading world...
@@ -148,7 +148,7 @@ export default function App() {
   // Canvas mount, so they're decided from the synchronous device check
   // rather than the async FPS-measured tier (which resolves ~1.5s later
   // and can only affect props that update reactively post-mount).
-  const perfTier = usePerformanceTier()
+  const perfTier = usePerformanceTier(gameStarted)
   const tierCfg  = TIER_CONFIG[perfTier ?? 1]
 
   useEffect(() => {
@@ -261,7 +261,7 @@ export default function App() {
         <h1>Asit Minz — Infrastructure & Cloud Engineer, Bangalore</h1>
       </div>
 
-      {/* 3D Canvas — always mounted */}
+      {/* 3D Canvas — always mounted, but idle until gameStarted */}
       <div style={{ position: 'fixed', inset: 0 }}>
         <Suspense fallback={<LoadingScreen />}>
           <KeyboardControls map={keyMap}>
@@ -274,6 +274,10 @@ export default function App() {
               // strip. Pointer picking stays correct too: R3F divides
               // offsetX/offsetY (local, untransformed coords) by this size.
               resize={{ offsetSize: true }}
+              // 'demand' until the game starts: the Canvas stays mounted so
+              // assets keep streaming and the scene is warm on reveal, but it
+              // stops re-rendering a world nobody can see behind StartScreen.
+              frameloop={gameStarted ? 'always' : 'demand'}
               gl={{
                 antialias: !isMobile,
                 powerPreference: 'high-performance',
@@ -330,7 +334,7 @@ export default function App() {
                 padding: 'clamp(5px, 1vh, 7px) clamp(12px, 3vw, 22px)',
                 color: 'rgba(255,220,120,0.82)',
                 fontSize: 'clamp(8px, 1.1vw, 11px)',
-                fontFamily: 'monospace',
+                fontFamily: 'var(--font-mono)',
                 letterSpacing: '0.1em',
                 pointerEvents: 'none',
                 userSelect: 'none',

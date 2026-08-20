@@ -147,7 +147,7 @@ function Pedal({ label, sub, subSize = 20, color, style, onDown, onUp }) {
         border: `2px solid ${color}88`,
         borderRadius: 14,
         color,
-        fontFamily: 'monospace', fontWeight: 700,
+        fontFamily: 'var(--font-mono)', fontWeight: 700,
         fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 4,

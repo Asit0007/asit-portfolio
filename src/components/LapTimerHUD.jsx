@@ -53,7 +53,7 @@ export default function LapTimerHUD() {
   return (
     <div style={{
       position: 'fixed', top: 16, left: 16, zIndex: 30,
-      fontFamily: 'monospace', color: 'rgba(255,255,255,0.85)',
+      fontFamily: 'var(--font-mono)', color: 'rgba(255,255,255,0.85)',
       background: 'rgba(8,4,0,0.75)', backdropFilter: 'blur(10px)',
       border: '1px solid rgba(240,180,80,0.18)', borderRadius: 10,
       padding: '8px 14px', userSelect: 'none',
@@ -90,7 +90,7 @@ export default function LapTimerHUD() {
               style={{
                 width: 70, background: 'rgba(255,255,255,0.06)',
                 border: '1px solid rgba(240,180,80,0.3)', borderRadius: 6,
-                color: '#f0c060', fontFamily: 'monospace', fontSize: 11,
+                color: '#f0c060', fontFamily: 'var(--font-mono)', fontSize: 11,
                 padding: '3px 6px', outline: 'none',
               }}
             />
@@ -99,7 +99,7 @@ export default function LapTimerHUD() {
               disabled={submitting || !nameInput.trim()}
               style={{
                 background: 'rgba(240,180,80,0.18)', border: '1px solid rgba(240,180,80,0.4)',
-                borderRadius: 6, color: '#f0c060', fontFamily: 'monospace', fontSize: 10,
+                borderRadius: 6, color: '#f0c060', fontFamily: 'var(--font-mono)', fontSize: 10,
                 padding: '3px 10px', cursor: 'pointer',
                 opacity: submitting || !nameInput.trim() ? 0.5 : 1,
               }}

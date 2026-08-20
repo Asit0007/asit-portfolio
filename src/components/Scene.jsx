@@ -24,6 +24,14 @@ export default function Scene({ tierCfg }) {
   const joystick   = useGameStore((s) => s.joystick)
   const fogFar     = tierCfg.fog
 
+  // The world used to step a full physics simulation behind the opaque start
+  // screen (162 draw calls, 35k tris) during the exact seconds the rapier
+  // chunk and the GLBs were still streaming in. That's now handled by the
+  // Canvas's frameloop="demand" in App.jsx — <Physics> steps inside R3F's
+  // frame loop, so no frames means no stepping. Do NOT also pass rapier's
+  // `paused` prop: it's redundant with that, and pausing the world at mount
+  // leaves the raycast vehicle controller un-initialised, so the car never
+  // moves again even after unpausing (verified — 0 units travelled).
   return (
     <Physics gravity={[0, -20, 0]} timeStep={tierCfg.physicsStep}>
       <SkyBox />

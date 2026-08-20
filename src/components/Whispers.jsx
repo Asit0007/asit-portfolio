@@ -126,7 +126,7 @@ export function WhisperInput() {
   return (
     <div style={{
       position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
-      zIndex: 35, fontFamily: 'monospace',
+      zIndex: 35, fontFamily: 'var(--font-mono)',
       background: 'rgba(8,4,0,0.85)', backdropFilter: 'blur(14px)',
       border: '1px solid rgba(255,179,71,0.35)', borderRadius: 12,
       padding: '10px 16px', color: '#ffe0a0',
@@ -152,7 +152,7 @@ export function WhisperInput() {
               style={{
                 width: 200, background: 'rgba(255,255,255,0.06)',
                 border: '1px solid rgba(255,179,71,0.3)', borderRadius: 6,
-                color: '#ffe0a0', fontFamily: 'monospace', fontSize: 12,
+                color: '#ffe0a0', fontFamily: 'var(--font-mono)', fontSize: 12,
                 padding: '4px 8px', outline: 'none',
               }}
             />
@@ -161,7 +161,7 @@ export function WhisperInput() {
               disabled={submitting || !message.trim()}
               style={{
                 background: 'rgba(255,179,71,0.18)', border: '1px solid rgba(255,179,71,0.4)',
-                borderRadius: 6, color: '#ffe0a0', fontFamily: 'monospace', fontSize: 10,
+                borderRadius: 6, color: '#ffe0a0', fontFamily: 'var(--font-mono)', fontSize: 10,
                 padding: '4px 12px', cursor: 'pointer',
                 opacity: submitting || !message.trim() ? 0.5 : 1,
               }}

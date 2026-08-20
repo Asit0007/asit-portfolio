@@ -31,7 +31,7 @@ function BootLine({ text, delay, color }) {
   return (
     <div style={{
       color, fontSize: 'clamp(9px, 1.4vw, 11px)',
-      fontFamily: 'monospace', letterSpacing: '0.04em',
+      fontFamily: 'var(--font-mono)', letterSpacing: '0.04em',
       lineHeight: 1.7, whiteSpace: 'nowrap', overflow: 'hidden',
     }}>
       {typed}
@@ -73,14 +73,14 @@ function ModeCard({ mode, icon, label, subtitle, desc, tags, color, hovered, onC
         <span style={{ fontSize: 'clamp(20px, 4vw, 28px)' }}>{icon}</span>
         <div>
           <div style={{
-            fontFamily: 'monospace', fontWeight: 900,
+            fontFamily: 'var(--font-mono)', fontWeight: 900,
             fontSize: 'clamp(14px, 3vw, 20px)',
             color, letterSpacing: '0.15em',
           }}>
             {mode}
           </div>
           <div style={{
-            fontFamily: 'monospace', fontSize: 'clamp(7px, 1.2vw, 9px)',
+            fontFamily: 'var(--font-mono)', fontSize: 'clamp(7px, 1.2vw, 9px)',
             color: color + '88', letterSpacing: '0.12em',
             textTransform: 'uppercase',
           }}>
@@ -94,7 +94,7 @@ function ModeCard({ mode, icon, label, subtitle, desc, tags, color, hovered, onC
         color: 'rgba(255,255,255,0.38)',
         fontSize: 'clamp(10px, 1.5vw, 12px)',
         lineHeight: 1.55, margin: '0 0 10px',
-        fontFamily: 'monospace',
+        fontFamily: 'var(--font-mono)',
       }}>
         {desc}
       </p>
@@ -105,7 +105,7 @@ function ModeCard({ mode, icon, label, subtitle, desc, tags, color, hovered, onC
           <span key={t} style={{
             fontSize: 'clamp(7px, 1vw, 9px)',
             padding: '1px 6px', borderRadius: 99,
-            fontFamily: 'monospace', color,
+            fontFamily: 'var(--font-mono)', color,
             background: color + '15',
             border: `1px solid ${color}25`,
           }}>
@@ -116,7 +116,7 @@ function ModeCard({ mode, icon, label, subtitle, desc, tags, color, hovered, onC
 
       {/* CTA */}
       <div style={{
-        fontFamily: 'monospace',
+        fontFamily: 'var(--font-mono)',
         fontSize: 'clamp(8px, 1.2vw, 11px)',
         letterSpacing: '0.1em',
         color: hovered ? color : color + '50',
@@ -177,7 +177,7 @@ export default function StartScreen() {
         position: 'absolute', top: 'clamp(12px, 2vh, 24px)',
         left: 'clamp(12px, 3vw, 28px)', right: 'clamp(12px, 3vw, 28px)',
         display: 'flex', justifyContent: 'space-between',
-        fontFamily: 'monospace', fontSize: 'clamp(8px, 1.2vw, 10px)',
+        fontFamily: 'var(--font-mono)', fontSize: 'clamp(8px, 1.2vw, 10px)',
         color: 'rgba(240,192,96,0.22)', letterSpacing: '0.15em',
         zIndex: 2, pointerEvents: 'none',
       }}>
@@ -227,7 +227,7 @@ export default function StartScreen() {
           transition: 'opacity 0.6s ease 0.1s, transform 0.6s ease 0.1s',
         }}>
           <h1 style={{
-            fontFamily: '"Courier New", Courier, monospace',
+            fontFamily: 'var(--font-mono)',
             fontSize: 'clamp(32px, 9vw, 80px)',
             fontWeight: 900,
             letterSpacing: 'clamp(0.1em, 2vw, 0.2em)',
@@ -238,7 +238,7 @@ export default function StartScreen() {
             ASIT MINZ
           </h1>
           <p style={{
-            fontFamily: 'monospace',
+            fontFamily: 'var(--font-mono)',
             fontSize: 'clamp(8px, 1.5vw, 12px)',
             color: 'rgba(255,255,255,0.28)',
             letterSpacing: 'clamp(0.1em, 2vw, 0.28em)',
@@ -314,7 +314,7 @@ export default function StartScreen() {
           ].map(({ label, url }) => (
             <a key={label} href={url} target="_blank" rel="noreferrer"
               style={{
-                fontFamily: 'monospace',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 'clamp(8px, 1.2vw, 10px)',
                 color: 'rgba(255,255,255,0.18)',
                 letterSpacing: '0.14em',
@@ -352,7 +352,7 @@ function TraditionalPortfolio({ onBack, onGG }) {
       position: 'fixed', inset: 0, zIndex: 100,
       background: '#050301',
       overflowY: 'auto',
-      fontFamily: '"Courier New", Courier, monospace',
+      fontFamily: 'var(--font-mono)',
     }}>
       {/* Scanlines */}
       <div style={{
@@ -378,7 +378,7 @@ function TraditionalPortfolio({ onBack, onGG }) {
             background: 'transparent',
             border: '1px solid rgba(255,255,255,0.1)',
             color: 'rgba(255,255,255,0.35)',
-            fontFamily: 'monospace', fontSize: 9,
+            fontFamily: 'var(--font-mono)', fontSize: 9,
             letterSpacing: '0.1em', padding: '3px 8px',
             borderRadius: 4, cursor: 'pointer',
           }}
@@ -407,7 +407,7 @@ function TraditionalPortfolio({ onBack, onGG }) {
               background: active === s ? 'rgba(240,192,96,0.1)' : 'transparent',
               border: `1px solid ${active === s ? 'rgba(240,192,96,0.3)' : 'transparent'}`,
               color: active === s ? '#f0c060' : 'rgba(255,255,255,0.22)',
-              fontFamily: 'monospace',
+              fontFamily: 'var(--font-mono)',
               fontSize: 'clamp(7px, 1.1vw, 9px)',
               letterSpacing: '0.12em', padding: '3px 8px',
               borderRadius: 4, cursor: 'pointer',
@@ -424,7 +424,7 @@ function TraditionalPortfolio({ onBack, onGG }) {
           <button onClick={onGG} style={{
             background: 'rgba(0,212,255,0.08)',
             border: '1px solid rgba(0,212,255,0.3)',
-            color: '#00d4ff', fontFamily: 'monospace',
+            color: '#00d4ff', fontFamily: 'var(--font-mono)',
             fontSize: 'clamp(7px, 1.1vw, 9px)',
             letterSpacing: '0.1em',
             padding: 'clamp(3px, 0.5vh, 5px) clamp(6px, 1.5vw, 12px)',
@@ -435,7 +435,7 @@ function TraditionalPortfolio({ onBack, onGG }) {
           <a href="/resume.pdf" download style={{
             background: 'rgba(240,192,96,0.08)',
             border: '1px solid rgba(240,192,96,0.3)',
-            color: '#f0c060', fontFamily: 'monospace',
+            color: '#f0c060', fontFamily: 'var(--font-mono)',
             fontSize: 'clamp(7px, 1.1vw, 9px)',
             letterSpacing: '0.1em',
             padding: 'clamp(3px, 0.5vh, 5px) clamp(6px, 1.5vw, 12px)',
@@ -772,7 +772,7 @@ function TraditionalPortfolio({ onBack, onGG }) {
             <button onClick={onGG} style={{
               background: 'rgba(0,212,255,0.1)',
               border: '1px solid rgba(0,212,255,0.35)',
-              color: '#00d4ff', fontFamily: 'monospace',
+              color: '#00d4ff', fontFamily: 'var(--font-mono)',
               fontSize: 'clamp(10px, 1.5vw, 12px)',
               letterSpacing: '0.14em',
               padding: 'clamp(10px, 2vh, 12px) clamp(18px, 4vw, 28px)',
@@ -796,7 +796,7 @@ function Pill({ children, color }) {
     <span style={{
       fontSize: 'clamp(8px, 1.2vw, 10px)',
       padding: '2px 8px', borderRadius: 99,
-      fontFamily: 'monospace', color,
+      fontFamily: 'var(--font-mono)', color,
       background: `${color}12`, border: `1px solid ${color}28`,
     }}>
       {children}
@@ -809,7 +809,7 @@ function Divider({ label }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0' }}>
       <div style={{ flex: 1, height: 1, background: 'rgba(240,192,96,0.07)' }} />
       <span style={{
-        fontFamily: 'monospace', fontSize: 8,
+        fontFamily: 'var(--font-mono)', fontSize: 8,
         color: 'rgba(240,192,96,0.22)', letterSpacing: '0.2em', textTransform: 'uppercase',
       }}>
         {label}
@@ -844,7 +844,7 @@ function TimelineItem({ title, company, period, color, tags, points }) {
       <div style={{ flex: 1, paddingBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
           <h3 style={{
-            color, fontFamily: 'monospace',
+            color, fontFamily: 'var(--font-mono)',
             fontSize: 'clamp(11px, 1.6vw, 14px)',
             fontWeight: 700, margin: 0, letterSpacing: '0.04em',
           }}>
@@ -853,7 +853,7 @@ function TimelineItem({ title, company, period, color, tags, points }) {
           <span style={{
             color: 'rgba(255,255,255,0.22)',
             fontSize: 'clamp(8px, 1.1vw, 10px)',
-            fontFamily: 'monospace',
+            fontFamily: 'var(--font-mono)',
           }}>
             {period}
           </span>

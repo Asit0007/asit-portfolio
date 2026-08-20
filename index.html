@@ -2,9 +2,35 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Preload the one webfont so it starts downloading alongside the CSS
+         rather than after it. crossorigin is required even same-origin. -->
+    <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin />
+    <meta name="theme-color" content="#0d0500" />
+    <link rel="canonical" href="https://asitminz.com/" />
+
     <title>Asit Minz | Portfolio</title>
+    <meta name="description" content="Drive through an interactive 3D portfolio. Asit Minz — Cloud &amp; Infrastructure Engineer in Bangalore. Azure, AWS, Terraform. Explore the zones, race the circuit, leave a comment." />
+
+    <!-- Open Graph — controls how the link renders on LinkedIn, Slack, WhatsApp -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Asit Minz" />
+    <meta property="og:url" content="https://asitminz.com/" />
+    <meta property="og:title" content="Asit Minz — Drive Through My Portfolio" />
+    <meta property="og:description" content="An interactive 3D desert world where every zone is a resume section. Cloud &amp; Infrastructure Engineer — Azure, AWS, Terraform." />
+    <meta property="og:image" content="https://asitminz.com/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A low-poly desert world seen from behind a car, with road signs pointing to portfolio sections." />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Asit Minz — Drive Through My Portfolio" />
+    <meta name="twitter:description" content="An interactive 3D desert world where every zone is a resume section. Cloud &amp; Infrastructure Engineer — Azure, AWS, Terraform." />
+    <meta name="twitter:image" content="https://asitminz.com/og-image.jpg" />
   </head>
   <body>
     <div id="root"></div>

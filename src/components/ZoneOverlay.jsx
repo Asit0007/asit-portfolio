@@ -47,7 +47,7 @@ function ProjectSlideshow({ content, color }) {
         }}>
           <p style={{
             color: '#fff', fontSize: 12, fontWeight: 700,
-            fontFamily: 'monospace', margin: 0,
+            fontFamily: 'var(--font-mono)', margin: 0,
           }}>
             {slide.title}
           </p>
@@ -99,7 +99,7 @@ function ProjectSlideshow({ content, color }) {
       </div>
       <p style={{
         color: 'rgba(255,255,255,0.3)', fontSize: 9,
-        fontFamily: 'monospace', textAlign: 'center',
+        fontFamily: 'var(--font-mono)', textAlign: 'center',
         marginTop: 4, letterSpacing: '0.08em',
       }}>
         ← → ARROW KEYS TO NAVIGATE
@@ -138,7 +138,7 @@ function ContactOverlay({ zone }) {
           display: 'inline-block',
           background: `${zone.color}20`, border: `1px solid ${zone.color}40`,
           borderRadius: 5, padding: '2px 10px', fontSize: 10,
-          color: zone.color, fontFamily: 'monospace',
+          color: zone.color, fontFamily: 'var(--font-mono)',
           letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12,
         }}>
           {zone.label}
@@ -180,7 +180,7 @@ function ContactOverlay({ zone }) {
               <div>
                 <p style={{
                   color: 'rgba(255,255,255,0.4)', fontSize: 9,
-                  fontFamily: 'monospace', letterSpacing: '0.08em',
+                  fontFamily: 'var(--font-mono)', letterSpacing: '0.08em',
                   textTransform: 'uppercase', margin: 0,
                 }}>
                   {label}
@@ -208,7 +208,7 @@ function ContactOverlay({ zone }) {
             boxShadow: '0 0 6px #10b981',
             animation: 'contactPulse 2s ease-in-out infinite',
           }} />
-          <p style={{ color: '#10b981', fontSize: 11, fontFamily: 'monospace', margin: 0 }}>
+          <p style={{ color: '#10b981', fontSize: 11, fontFamily: 'var(--font-mono)', margin: 0 }}>
             Available for opportunities
           </p>
         </div>
@@ -242,7 +242,7 @@ export default function ZoneOverlay() {
           borderRadius: 14, padding: '14px 30px', textAlign: 'center',
         }}>
           <p style={{
-            fontFamily: 'monospace', fontSize: 20, fontWeight: 900,
+            fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 900,
             letterSpacing: '0.18em', color: '#f0c060', textTransform: 'uppercase',
           }}>
             Asit Minz
@@ -295,7 +295,7 @@ export default function ZoneOverlay() {
           display: 'inline-block',
           background: `${color}20`, border: `1px solid ${color}40`,
           borderRadius: 5, padding: '2px 10px', fontSize: 10,
-          color, fontFamily: 'monospace', letterSpacing: '0.1em',
+          color, fontFamily: 'var(--font-mono)', letterSpacing: '0.1em',
           textTransform: 'uppercase', marginBottom: 10,
         }}>
           {label}
@@ -326,7 +326,7 @@ export default function ZoneOverlay() {
           {content.tags.map((tag) => (
             <span key={tag} style={{
               fontSize: 10, padding: '2px 8px', borderRadius: 99,
-              fontFamily: 'monospace', background: `${color}15`,
+              fontFamily: 'var(--font-mono)', background: `${color}15`,
               color, border: `1px solid ${color}30`,
             }}>
               {tag}
@@ -356,7 +356,7 @@ export default function ZoneOverlay() {
                 background: `${color}18`,
                 border: `1px solid ${color}35`,
                 borderRadius: 7, color,
-                fontSize: 11, fontFamily: 'monospace',
+                fontSize: 11, fontFamily: 'var(--font-mono)',
                 textDecoration: 'none', letterSpacing: '0.06em',
               }}
             >

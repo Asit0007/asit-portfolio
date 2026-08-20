@@ -43,9 +43,9 @@ const ZONES = {
       ],
       tags: ['Go', 'Python', 'Docker', 'Terraform', 'GitHub Actions', 'Bash'],
       slides: [
-        { image: '/images/cloudpulse.png',  title: 'CloudPulse',        url: 'https://github.com/Asit0007' },
-        { image: '/images/quantbot.png',    title: 'QuantBot',          url: 'https://github.com/Asit0007' },
-        { image: '/images/magento.png',     title: 'Magento DeployKit', url: 'https://github.com/Asit0007' },
+        { image: '/images/cloudpulse.webp',  title: 'CloudPulse',        url: 'https://github.com/Asit0007' },
+        { image: '/images/quantbot.webp',    title: 'QuantBot',          url: 'https://github.com/Asit0007' },
+        { image: '/images/magento.webp',     title: 'Magento DeployKit', url: 'https://github.com/Asit0007' },
       ],
     },
   },

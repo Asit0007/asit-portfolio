@@ -189,7 +189,7 @@ export default function MapOverlay({ vehicleRef }) {
             ? 'rgba(240,192,96,0.9)'
             : 'rgba(240,192,96,0.5)',
           fontSize: 8,
-          fontFamily: 'monospace',
+          fontFamily: 'var(--font-mono)',
           letterSpacing: '0.12em',
           textTransform: 'uppercase',
           lineHeight: 1,
@@ -256,7 +256,7 @@ export default function MapOverlay({ vehicleRef }) {
                         background: 'rgba(0,0,0,0.85)',
                         color, fontSize: 10,
                         padding: '2px 8px', borderRadius: 99,
-                        fontFamily: 'monospace', letterSpacing: '0.06em',
+                        fontFamily: 'var(--font-mono)', letterSpacing: '0.06em',
                         whiteSpace: 'nowrap', marginTop: 2,
                       }}>
                         {label}
@@ -276,7 +276,7 @@ export default function MapOverlay({ vehicleRef }) {
               borderRadius: 12, padding: '18px 16px',
             }}>
               <p style={{
-                fontFamily: 'monospace', fontSize: 11,
+                fontFamily: 'var(--font-mono)', fontSize: 11,
                 color: 'rgba(240,192,96,0.7)',
                 letterSpacing: '0.15em', textTransform: 'uppercase',
                 margin: '0 0 16px',
@@ -308,13 +308,13 @@ export default function MapOverlay({ vehicleRef }) {
                     <div>
                       <p style={{
                         color: '#fff', fontSize: 12, fontWeight: 700,
-                        fontFamily: 'monospace', margin: 0, lineHeight: 1.2,
+                        fontFamily: 'var(--font-mono)', margin: 0, lineHeight: 1.2,
                       }}>
                         {icon} {label}
                       </p>
                       <p style={{
                         color: 'rgba(255,255,255,0.35)', fontSize: 10,
-                        margin: '2px 0 0', fontFamily: 'monospace',
+                        margin: '2px 0 0', fontFamily: 'var(--font-mono)',
                       }}>
                         {desc}
                       </p>
@@ -322,7 +322,7 @@ export default function MapOverlay({ vehicleRef }) {
                     {activeZone?.id === id && (
                       <div style={{
                         marginLeft: 'auto', fontSize: 9,
-                        color, fontFamily: 'monospace',
+                        color, fontFamily: 'var(--font-mono)',
                         letterSpacing: '0.08em',
                       }}>
                         HERE
@@ -355,11 +355,11 @@ export default function MapOverlay({ vehicleRef }) {
                       background:'rgba(255,255,255,0.08)',
                       color:'rgba(255,255,255,0.6)',
                       fontSize:10, padding:'1px 7px', borderRadius:4,
-                      fontFamily:'monospace', letterSpacing:'0.06em',
+                      fontFamily: 'var(--font-mono)', letterSpacing:'0.06em',
                     }}>{key}</span>
                     <span style={{
                       color:'rgba(255,255,255,0.35)',
-                      fontSize:10, fontFamily:'monospace',
+                      fontSize:10, fontFamily: 'var(--font-mono)',
                     }}>{label}</span>
                   </div>
                 ))}
@@ -367,7 +367,7 @@ export default function MapOverlay({ vehicleRef }) {
 
               <p style={{
                 color:'rgba(255,255,255,0.18)', fontSize:9,
-                fontFamily:'monospace', textAlign:'center',
+                fontFamily: 'var(--font-mono)', textAlign:'center',
                 marginTop:14, letterSpacing:'0.08em',
               }}>
                 Click anywhere outside to close

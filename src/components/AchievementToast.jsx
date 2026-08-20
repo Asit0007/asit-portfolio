@@ -20,12 +20,12 @@ export default function AchievementToast({ title, onDone }) {
       <span style={{ fontSize: 20 }}>🏆</span>
       <div>
         <div style={{
-          fontFamily: 'monospace', fontSize: 9, letterSpacing: '0.18em',
+          fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.18em',
           textTransform: 'uppercase', color: 'rgba(255,220,120,0.5)',
         }}>
           Achievement
         </div>
-        <div style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#f0c060' }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: '#f0c060' }}>
           {title}
         </div>
       </div>

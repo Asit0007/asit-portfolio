@@ -1,5 +1,33 @@
-@import "tailwindcss";
+/* Self-hosted JetBrains Mono — variable (400–800), Latin subset, 31 KB.
+   Replaces the bare `monospace` generic, which resolved to Menlo on macOS,
+   Consolas on Windows, Courier on iOS and Droid Sans Mono on Android: four
+   different looks from one stylesheet, with the spacing only ever tuned
+   against the first (DESIGN.md §3).
+
+   Self-hosted rather than loaded from the Google Fonts CDN because that
+   path is a chained request — fetch CSS from fonts.googleapis.com, parse
+   it, discover the gstatic URL, fetch the font — which can't be preloaded
+   and costs two extra DNS+TLS round trips. Same-origin is one warm request.
+
+   JetBrains Mono is SIL Open Font License 1.1 — see /fonts/OFL.txt */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/jetbrains-mono-latin-var.woff2') format('woff2');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Every fontFamily in the app points here. The fallbacks matter during the
+     font-display:swap window and if the woff2 ever fails to load. */
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { width: 100%; height: 100%; overflow: hidden; background: #1a0a00; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: #1a0a00;
+  font-family: var(--font-mono);
+}
 #root { width: 100%; height: 100%; position: fixed; inset: 0; }

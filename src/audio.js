@@ -55,6 +55,14 @@ function playNextTrack() {
 function loadAndPlay(src) {
   currentHowl = new Howl({
     src: [src], volume: 0.22,
+    // Stream through an <audio> element instead of Howler's default Web
+    // Audio path. The default (html5: false) XHRs the whole file as an
+    // arraybuffer and runs decodeAudioData over it before a single note
+    // plays — our tracks are 3.2-4.5 MB and decode to ~50 MB of PCM, on
+    // the main thread, at the exact moment the visitor clicks into the
+    // world. Streaming starts near-instantly and decodes incrementally.
+    // The SFX below stay on Web Audio, where the low latency matters.
+    html5: true,
     onend: playNextTrack,
     onloaderror: () => { console.warn(`Audio: could not load ${src}`); playNextTrack() },
   })

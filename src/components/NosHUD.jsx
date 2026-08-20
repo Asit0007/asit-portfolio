@@ -22,7 +22,7 @@ export default function NosHUD() {
       pointerEvents: 'none',
     }}>
       <div style={{
-        fontFamily: 'monospace',
+        fontFamily: 'var(--font-mono)',
         fontSize: 'clamp(7px, 1vw, 9px)',
         letterSpacing: '0.18em',
         textTransform: 'uppercase',
@@ -54,7 +54,7 @@ export default function NosHUD() {
       </div>
 
       <div style={{
-        fontFamily: 'monospace',
+        fontFamily: 'var(--font-mono)',
         fontSize: 8,
         color: boosting ? color : 'rgba(255,255,255,0.2)',
         letterSpacing: '0.1em',

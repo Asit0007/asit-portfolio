@@ -49,7 +49,7 @@ export default function MusicPlayer() {
           border: '1px solid rgba(240,180,80,0.2)',
           borderRadius: 8,
           padding: '5px 10px',
-          fontFamily: 'monospace',
+          fontFamily: 'var(--font-mono)',
           fontSize: 10,
           color: 'rgba(240,192,96,0.8)',
           letterSpacing: '0.08em',
