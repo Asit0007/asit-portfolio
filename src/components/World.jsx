@@ -219,9 +219,11 @@ function ScatterProps() {
           position={[r.x, r.sy * 0.5 + 0.1, r.z]}
           rotation={[0, r.ry, 0]}
           colliders="cuboid"
-          mass={0.6}
-          linearDamping={0.8}
-          angularDamping={0.8}
+          // Damping at 0.8/0.8 killed all momentum within a metre, which
+          // reads as weight even more than the mass does.
+          mass={0.3}
+          linearDamping={0.45}
+          angularDamping={0.5}
           restitution={0.3}
           friction={0.8}
         >

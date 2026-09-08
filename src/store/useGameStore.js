@@ -148,6 +148,12 @@ const useGameStore = create((set) => ({
   // watches it for a one-time "STRIKE!" unlock.
   strikeCount: 0,
 
+  // Set by Bowling.jsx while the car is sitting on the lane's reset pad.
+  // Written only when the value actually flips, never per-frame. BowlingHUD
+  // shows the ENTER prompt while this is true, and App.jsx's keydown handler
+  // only acts on Enter while it is true.
+  bowlingResetPrompt: false,
+
   // Set by Circuit.jsx on a new local best; LapTimerHUD.jsx watches it to
   // prompt for a name and submit to the global leaderboard, then clears it.
   pendingLeaderboardSubmit: null, // ms, or null

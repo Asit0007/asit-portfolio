@@ -27,8 +27,8 @@ function Cylinder({ position, args, color, rotation=[0,0,0] }) {
 
 function Crate({ position, size=[1.2,1.2,1.2], color='#c8b89a' }) {
   return (
-    <RigidBody position={position} colliders="cuboid" mass={0.4}
-      linearDamping={0.5} angularDamping={0.8} restitution={0.3}>
+    <RigidBody position={position} colliders="cuboid" mass={0.2}
+      linearDamping={0.3} angularDamping={0.45} restitution={0.3}>
       <mesh>
         <boxGeometry args={size} />
         <meshStandardMaterial color={color} roughness={0.9} flatShading />

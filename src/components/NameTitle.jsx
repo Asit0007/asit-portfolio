@@ -8,9 +8,11 @@ function PhysicsLetter({ char, position, color = '#ffffff', size = 3.2 }) {
       type="dynamic"
       position={position}
       colliders="cuboid"
-      mass={1.5}
-      linearDamping={0.35}
-      angularDamping={0.5}
+      // 1.5 was 75% of the car's own CHASSIS_MASS (2), so hitting a letter
+      // was closer to hitting another car than to knocking over a prop.
+      mass={0.5}
+      linearDamping={0.2}
+      angularDamping={0.3}
       restitution={0.18}
     >
       <Center>

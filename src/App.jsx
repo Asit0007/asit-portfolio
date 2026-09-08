@@ -14,6 +14,7 @@ import { keyMap }     from './Controls'
 import { toggleMusic } from './audio'
 import { usePerformanceTier, TIER_CONFIG } from './hooks/usePerformance'
 import { RendererInfoOverlay } from './components/DevStats'
+import BowlingHUD from './components/BowlingHUD'
 import { WhisperInput } from './components/Whispers'
 
 // Scene is the only import path to @react-three/rapier and the world
@@ -177,6 +178,14 @@ export default function App() {
       if (e.code === 'KeyR') window.__resetCar = true
       if (e.code === 'KeyM') toggleMusic()
       if (e.code === 'KeyC') useGameStore.getState().setWhisperInputOpen(true)
+      // Only while the car is parked on the bowling lane's reset pad, so
+      // Enter stays free everywhere else in the world. The typing guard
+      // above already keeps this off the leaderboard-name and comment
+      // fields, where Enter means submit.
+      if (e.code === 'Enter' && useGameStore.getState().bowlingResetPrompt) {
+        e.preventDefault()
+        if (typeof window.__resetBowling === 'function') window.__resetBowling()
+      }
       if (e.code === 'Tab') {
         e.preventDefault()
         document.getElementById('map-btn')?.click()
@@ -313,6 +322,7 @@ export default function App() {
             <NosHUD />
           </div>
 
+          <BowlingHUD />
           <MapOverlay vehicleRef={vehicleRef} />
           <MusicPlayer />
           <MobileControls />
