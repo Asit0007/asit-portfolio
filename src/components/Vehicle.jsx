@@ -27,6 +27,18 @@ const ENGINE_FORCE         = 32
 const BOOST_ENGINE_FORCE   = 65
 const REVERSE_ENGINE_FORCE = 22
 const BRAKE_FORCE          = 26
+// Fraction of BRAKE_FORCE the FRONT axle gets. Full force on both axles
+// pitched the car up over its front wheels — a stoppie — whenever reverse
+// was stabbed at speed, worst of all coming off boost at ~38 u/s.
+//
+// Rear-biasing fixes that by being self-limiting: braking transfers weight
+// onto the nose, which unloads the rear, so the rear brake's grip fades at
+// exactly the moment the tail starts to come up. A front-biased brake does
+// the opposite — it bites hardest precisely when the rear is lightest. Real
+// cars do bias forward (~70/30), but they have anti-dive suspension
+// geometry and a far lower centre of mass than this chassis, whose CoM sits
+// above the contact patches with nothing but PITCH_INERTIA resisting it.
+const BRAKE_BIAS_FRONT     = 0.35
 const IDLE_BRAKE           = 3
 // Reverse needs a much softer idle brake to coast down at the same RATE.
 // Rapier's setWheelBrake is a brake torque, not a plain force, so it can
@@ -490,7 +502,8 @@ function VehicleInner(props, ref) {
     if (backward && fwdSpeed > 0.5) {
       // Moving forward, pressing reverse → brake to a stop first instead
       // of instantly reversing direction.
-      brakeFront = brakeRear = BRAKE_FORCE
+      brakeRear  = BRAKE_FORCE
+      brakeFront = BRAKE_FORCE * BRAKE_BIAS_FRONT
     } else if (forward) {
       engineForce = FORWARD_SIGN * (canBoost ? BOOST_ENGINE_FORCE : ENGINE_FORCE) / (1 + overflow)
     } else if (backward && fwdSpeed > -MAX_REV_SPEED) {
@@ -498,7 +511,8 @@ function VehicleInner(props, ref) {
     }
 
     if (brake) {
-      brakeFront = brakeRear = BRAKE_FORCE
+      brakeRear  = BRAKE_FORCE
+      brakeFront = BRAKE_FORCE * BRAKE_BIAS_FRONT
     } else if (!forward && !backward) {
       // Idle "engine braking" only comes through the driven wheels in a real
       // RWD car — applying it to the front wheels too was pitching the nose
@@ -543,7 +557,13 @@ function VehicleInner(props, ref) {
     // `backward` while still rolling forwards is the brake-to-stop case
     // handled above, so it lights the lamps too — same as lifting off and
     // stabbing the brake would in a real car.
-    const braking = brake || (backward && fwdSpeed > 0.5)
+    // Lit whenever a brake input is HELD, not only while the car still
+    // happens to be rolling forwards. The old `backward && fwdSpeed > 0.5`
+    // cut the lamps the instant the car crossed into reverse, so holding
+    // the down arrow flashed them off mid-press. Down-arrow is this game's
+    // brake pedal — it brakes to a stop before it ever reverses — so it
+    // lights them for as long as it is held, which is what a car does.
+    const braking = brake || backward
     const tailTarget = braking ? TAIL_BRAKING : TAIL_IDLE
     const tailK = 1 - Math.exp(-20 * dt)
     for (const m of tailMats.current) {
