@@ -35,6 +35,17 @@ export default function LapTimerHUD() {
     fetchLeaderboard().then(setLeaderboard)
   }, [])
 
+  // The name prompt used to have no way out at all: no Escape handler, no
+  // dismiss control, and it only cleared itself on a successful submit. A
+  // visitor who set a personal best and didn't want their name on a public
+  // board had to submit one anyway. Clearing pendingLeaderboardSubmit only
+  // declines *this* prompt — the lap is already banked in localStorage by
+  // raceStorage.js, and the next new best asks again.
+  const dismissSubmit = () => {
+    setNameInput('')
+    useGameStore.setState({ pendingLeaderboardSubmit: null })
+  }
+
   const handleSubmit = async () => {
     const name = nameInput.trim().slice(0, 12)
     if (!name || submitting) return
@@ -76,14 +87,35 @@ export default function LapTimerHUD() {
 
       {pendingSubmit != null && (
         <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(240,180,80,0.15)' }}>
-          <div style={{ fontSize: 9, opacity: 0.6, marginBottom: 4 }}>
-            NEW RECORD — ADD TO LEADERBOARD?
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 8, marginBottom: 4,
+          }}>
+            <span style={{ fontSize: 9, opacity: 0.6 }}>NEW RECORD — ADD TO LEADERBOARD?</span>
+            {/* Escape covers desktop, but a phone has no Escape key and this
+                panel is the only thing on screen that can take the input —
+                so the dismiss has to be tappable, not just bindable. */}
+            <button
+              onClick={dismissSubmit}
+              title="Dismiss (Esc)"
+              aria-label="Dismiss leaderboard prompt"
+              style={{
+                background: 'none', border: 'none', color: 'rgba(255,255,255,0.55)',
+                fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1,
+                padding: '2px 4px', cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              ✕
+            </button>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <input
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
-              onKeyDown={(e) => { if (e.code === 'Enter') handleSubmit() }}
+              onKeyDown={(e) => {
+                if (e.code === 'Enter') handleSubmit()
+                if (e.code === 'Escape') dismissSubmit()
+              }}
               placeholder="NAME"
               maxLength={12}
               autoFocus

@@ -135,8 +135,28 @@ export function WhisperInput() {
         <div style={{ fontSize: 11 }}>You've already left a comment in this world.</div>
       ) : (
         <>
-          <div style={{ fontSize: 9, opacity: 0.6, marginBottom: 6, letterSpacing: '0.1em' }}>
-            LEAVE A COMMENT HERE (30 CHARS)
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 10, marginBottom: 6,
+          }}>
+            <span style={{ fontSize: 9, opacity: 0.6, letterSpacing: '0.1em' }}>
+              LEAVE A COMMENT HERE (30 CHARS)
+            </span>
+            {/* Escape already closed this, but nothing on screen said so and
+                a phone has no Escape key — C opened a box the visitor then
+                could not get rid of. */}
+            <button
+              onClick={close}
+              title="Cancel (Esc)"
+              aria-label="Cancel comment"
+              style={{
+                background: 'none', border: 'none', color: 'rgba(255,224,160,0.55)',
+                fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1,
+                padding: '2px 4px', cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              ✕
+            </button>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <input
