@@ -82,15 +82,27 @@ function ArrowSign({ position, text, color, rotationY = 0, pointLeft = false }) 
 
 // Hoisted out of the JSX so GroundShadows.jsx can read where the posts
 // stand without the two files keeping separate copies of the coordinates.
+// All four now stand on the white centre platform (World.jsx's 18x18
+// ZonePad at the origin, so x/z within +-9) instead of being planted in
+// open sand or, in two cases, in the middle of a road lane. One sign per
+// quadrant at +-6.4 keeps every post clear of both road arms (half-width
+// 4) with room to spare, and the arrows still point the way they always
+// did — the quadrant each sign sits in is the one adjacent to its zone.
+//
+// y = 0.02 is the platform's top face (ZonePad centre -0.58 + half-height
+// 0.6), so the plinths rest ON the white slab rather than sinking into it.
+const PLATFORM_Y = 0.02
+const SIGN_INSET = 6.4
+
 const SIGNS = [
-  // North → Cloud & Infra
-  { position: [2.5, 0, -11], text: 'CLOUD & INFRA', color: '#c47a0a', rotationY: Math.PI / 2 },
-  // East → Projects
-  { position: [11, 0, 2.5], text: 'PROJECTS', color: '#0a7a4a', rotationY: 0 },
-  // West → Easter Egg
-  { position: [-11, 0, -2.5], text: 'EASTER EGG', color: '#7a25b7', rotationY: 0, pointLeft: true },
-  // South → Contact
-  { position: [-2.5, 0, 11], text: 'CONTACT', color: '#c4154a', rotationY: Math.PI / 2, pointLeft: true },
+  // North → Cloud & Infra (NE quadrant)
+  { position: [SIGN_INSET, PLATFORM_Y, -SIGN_INSET], text: 'CLOUD & INFRA', color: '#c47a0a', rotationY: Math.PI / 2 },
+  // East → Projects (SE quadrant)
+  { position: [SIGN_INSET, PLATFORM_Y, SIGN_INSET], text: 'PROJECTS', color: '#0a7a4a', rotationY: 0 },
+  // West → Easter Egg (NW quadrant)
+  { position: [-SIGN_INSET, PLATFORM_Y, -SIGN_INSET], text: 'EASTER EGG', color: '#7a25b7', rotationY: 0, pointLeft: true },
+  // South → Contact (SW quadrant)
+  { position: [-SIGN_INSET, PLATFORM_Y, SIGN_INSET], text: 'CONTACT', color: '#c4154a', rotationY: Math.PI / 2, pointLeft: true },
 ]
 
 export const SIGN_POSITIONS = SIGNS.map((s) => s.position)

@@ -6,7 +6,7 @@ import * as THREE from 'three'
 import { Controls } from '../Controls'
 import useGameStore from '../store/useGameStore'
 import { playCollision, playBrake } from '../audio'
-import { applyShake } from '../utils/cameraShake'
+import { applyShake, triggerShake } from '../utils/cameraShake'
 import { getCarEnvMap } from '../utils/envMap'
 import { shadowTexture, DROP_X, DROP_Z, LEAN, SHADOW_Y } from './GroundShadows'
 
@@ -142,6 +142,49 @@ const CAR_SHADOW_H = 0.75
 // car's own shadow wins where it overlaps a tree's.
 const CAR_SHADOW_Y = SHADOW_Y + 0.01
 
+// ── Lamps ─────────────────────────────────────────────────────────────────
+// car-1.glb is a single mesh on a single texture-atlas material, so its
+// lamps are painted into the texture and there is no per-lamp material to
+// make emissive. These are emissive panels laid over those painted lenses.
+//
+// Positions are chassis-local and MUST come from the model's own bounds,
+// not the collider's: the collider is a 1.8 x 3.4 box but the bodywork is
+// 2.38 x 4.94 (glTF POSITION accessor min/max, then the -0.25 y offset and
+// the PI y-rotation the primitive is mounted with). Sizing these off the
+// collider put them 0.75 deep inside the bodywork, completely invisible.
+// Model-local extents after that mount: x +-1.19, y -0.49..1.21,
+// nose z = -2.47, tail z = +2.47.
+//
+// The y values were then dialled in against the model: a temporary bright
+// green emissive proved the panels render and sit proud of the bodywork,
+// but landed 0.13 low, straddling the chrome bumper instead of the painted
+// lens. Red-on-red made that invisible, which is why the brake flare
+// appeared to do nothing even while the material was measurably going
+// 0.25 -> 5.0. Re-check with that green trick if these ever drift.
+const HEADLIGHT_X   = 0.72
+// 0.28, not the tail's 0.55: this bodywork is a wedge and the nose is far
+// lower than the deck. At 0.40 the lamps cleared the bonnet line and read
+// as two white bars floating over the front wings from the chase camera,
+// which is the only angle this game ever shows.
+const HEADLIGHT_POS = [0.28, -2.42]   // [y, z]
+const TAILLIGHT_X   = 0.72
+const TAILLIGHT_POS = [0.55, 2.45]    // [y, z]
+// Tail lamps idle dim and flare under braking, like real running lights.
+// TAIL_IDLE has to stay low: emissive #ff1c08 is already saturated in the
+// red channel by ~0.9, so idling there and flaring to 5.0 produced a
+// measurable change (verified 0.9 -> 5.0 on the live material) that was
+// invisible on screen — both ends clipped to the same red. At 0.25 the
+// lamp sits at a deep rgb(135,~0,~0) and the brake flare reads as an
+// obvious jump to full.
+const TAIL_IDLE     = 0.25
+const TAIL_BRAKING  = 5.0
+// Bump feedback: a jump in the chassis' vertical velocity within one frame
+// means a wheel just rode up something. The rock colliders kick the body
+// directly (EnvironmentModels.jsx), but small stones are only ever touched
+// by the wheel raycasts, never by the chassis collider, so they'd otherwise
+// pass under the car in total silence.
+const BUMP_DV       = 1.1
+
 // ── GLTF car — rotation.y = PI flips model to face -Z (north) ───────────────
 // Most car GLB models face +Z by default. Our physics pushes in -Z.
 // Rotating 180° around Y makes the visual match the physics direction.
@@ -272,6 +315,8 @@ function VehicleInner(props, ref) {
   const bodyRef     = useRef()
   const vehicleRef  = useRef(null)
   const shadowRef   = useRef()
+  const tailMats    = useRef([])
+  const prevVy      = useRef(0)
   // Shared with every static blob in GroundShadows.jsx — one texture on the
   // GPU, and the car's contact shading matches the world's by construction.
   const carShadowTex = useMemo(() => shadowTexture(), [])
@@ -452,6 +497,26 @@ function VehicleInner(props, ref) {
 
     controller.updateVehicle(dt)
 
+    // ── Bump feedback ─────────────────────────────────────────────────────
+    // Reads the suspension's own reaction rather than any collision event,
+    // so it fires for anything the wheels ride over, rocks included.
+    const dvy = lv.y - prevVy.current
+    prevVy.current = lv.y
+    if (dvy > BUMP_DV && lastSpeed.current > 3) {
+      triggerShake(Math.min(dvy / 7, 0.32), 220)
+    }
+
+    // ── Brake lights ──────────────────────────────────────────────────────
+    // `backward` while still rolling forwards is the brake-to-stop case
+    // handled above, so it lights the lamps too — same as lifting off and
+    // stabbing the brake would in a real car.
+    const braking = brake || (backward && fwdSpeed > 0.5)
+    const tailTarget = braking ? TAIL_BRAKING : TAIL_IDLE
+    const tailK = 1 - Math.exp(-20 * dt)
+    for (const m of tailMats.current) {
+      if (m) m.emissiveIntensity += (tailTarget - m.emissiveIntensity) * tailK
+    }
+
     // ── Contact shadow ────────────────────────────────────────────────────
     // Kept outside the RigidBody and driven from here rather than parented
     // to the chassis: as a child it would inherit the body's roll and pitch
@@ -559,6 +624,37 @@ function VehicleInner(props, ref) {
       ) : (
         <BoxCar />
       )}
+
+      {/* Headlights — toneMapped={false} keeps the lens reading as a light
+          source instead of being pulled back down by ACES like paint is. */}
+      {[-HEADLIGHT_X, HEADLIGHT_X].map((x) => (
+        <mesh key={`hl${x}`} position={[x, HEADLIGHT_POS[0], HEADLIGHT_POS[1]]}>
+          <boxGeometry args={[0.42, 0.14, 0.05]} />
+          <meshStandardMaterial
+            color="#fff6e0"
+            emissive="#ffe6b8"
+            emissiveIntensity={1.7}
+            toneMapped={false}
+            roughness={0.25}
+          />
+        </mesh>
+      ))}
+
+      {/* Tail lights — materials are collected so the frame loop can flare
+          them under braking. */}
+      {[-TAILLIGHT_X, TAILLIGHT_X].map((x, i) => (
+        <mesh key={`tl${x}`} position={[x, TAILLIGHT_POS[0], TAILLIGHT_POS[1]]}>
+          <boxGeometry args={[0.48, 0.14, 0.05]} />
+          <meshStandardMaterial
+            ref={(m) => { if (m) tailMats.current[i] = m }}
+            color="#ff2f18"
+            emissive="#ff1c08"
+            emissiveIntensity={TAIL_IDLE}
+            toneMapped={false}
+            roughness={0.25}
+          />
+        </mesh>
+      ))}
     </RigidBody>
     </>
   )

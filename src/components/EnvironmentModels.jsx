@@ -3,6 +3,7 @@ import { useGLTF } from '@react-three/drei'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 import { triggerShake } from '../utils/cameraShake'
+import useGameStore from '../store/useGameStore'
 import { isNearTrack } from '../data/track'
 
 // Preload only the models we actually render
@@ -90,6 +91,29 @@ function makeRng(seed) {
   }
 }
 
+// Clipping a rock used to shake the camera and nothing else — the car
+// itself never reacted, because its pitch/roll inertia is deliberately
+// stiff (Vehicle.jsx locks it down to kill wheelies) so the chassis barely
+// tilts on its own. Kicking the body directly restores the thump without
+// touching that tuning: a short vertical impulse plus a torque impulse
+// weighted toward roll, which has the softest inertia (1.2 against pitch's
+// 9) and so reads as the car lurching to one side over the obstacle.
+function joltCar(scale) {
+  const body = useGameStore.getState().vehicleBody
+  if (!body) return
+  const lv = body.linvel()
+  const speed = Math.hypot(lv.x, lv.z)
+  // Parking against a rock shouldn't make the car buck in place.
+  if (speed < 2) return
+  const j = Math.min(speed / 12, 1) * scale
+  body.applyImpulse({ x: 0, y: 2.6 * j, z: 0 }, true)
+  body.applyTorqueImpulse({
+    x: (Math.random() - 0.5) * 0.25 * j,
+    y: 0,
+    z: (Math.random() - 0.5) * 0.85 * j,
+  }, true)
+}
+
 function RockScatter({ count }) {
   const placements = useMemo(() => {
     const rng = makeRng(137)
@@ -133,7 +157,10 @@ function RockScatter({ count }) {
             key={i}
             args={[0.35 * scale, 0.22 * scale, 0.35 * scale]}
             position={[x, 0.15 * scale, z]}
-            onCollisionEnter={() => triggerShake(0.16 * scale)}
+            onCollisionEnter={() => {
+              triggerShake(0.16 * scale)
+              joltCar(scale)
+            }}
           />
         ))}
       </RigidBody>
