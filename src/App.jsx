@@ -15,6 +15,7 @@ import { toggleMusic } from './audio'
 import { usePerformanceTier, TIER_CONFIG } from './hooks/usePerformance'
 import { RendererInfoOverlay } from './components/DevStats'
 import BowlingHUD from './components/BowlingHUD'
+import PerfNotice from './components/PerfNotice'
 import { WhisperInput } from './components/Whispers'
 
 // Scene is the only import path to @react-three/rapier and the world
@@ -149,8 +150,14 @@ export default function App() {
   // Canvas mount, so they're decided from the synchronous device check
   // rather than the async FPS-measured tier (which resolves ~1.5s later
   // and can only affect props that update reactively post-mount).
-  const perfTier = usePerformanceTier(gameStarted)
+  // The tier is no longer decided once and lived with — usePerformance keeps
+  // sampling and steps it down if this machine can't hold the frame rate,
+  // which is the actual repair for a stuttering visit. `downgraded` and
+  // `struggling` are what PerfNotice reports to the visitor.
+  const { tier: perfTier, downgraded, struggling } = usePerformanceTier(gameStarted)
   const tierCfg  = TIER_CONFIG[perfTier ?? 1]
+  const showResume    = useGameStore((s) => s.showResume)
+  const setShowResume = useGameStore((s) => s.setShowResume)
 
   useEffect(() => {
     let cleanup = () => {}
@@ -286,7 +293,10 @@ export default function App() {
               // 'demand' until the game starts: the Canvas stays mounted so
               // assets keep streaming and the scene is warm on reveal, but it
               // stops re-rendering a world nobody can see behind StartScreen.
-              frameloop={gameStarted ? 'always' : 'demand'}
+              // Also drops back to 'demand' behind the written portfolio.
+              // Someone reading the resume because the 3D was too slow for
+              // their machine should not still be paying for the 3D.
+              frameloop={gameStarted && !showResume ? 'always' : 'demand'}
               gl={{
                 antialias: !isMobile,
                 powerPreference: 'high-performance',
@@ -315,6 +325,13 @@ export default function App() {
           <LapTimerHUD />
           <AchievementSystem />
           <WhisperInput />
+          {!showResume && (
+            <PerfNotice
+              downgraded={downgraded}
+              struggling={struggling}
+              onResume={() => setShowResume(true)}
+            />
+          )}
 
           {/* NOS gauge */}
           <div className="nos-hud" style={{ position: 'fixed', bottom: 56, left: '50%',

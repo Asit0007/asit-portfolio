@@ -95,6 +95,13 @@ const useGameStore = create((set) => ({
   gameStarted:    false,
   setGameStarted: (v) => set({ gameStarted: v }),
 
+  // The written portfolio, shown OVER a running game. Lives here rather than
+  // in StartScreen's own state because PerfNotice offers it as the way out
+  // when the 3D world is too slow for the device, and App has to see it too
+  // so it can stop rendering that world behind it.
+  showResume:     false,
+  setShowResume:  (v) => set({ showResume: v }),
+
   musicOn:        true,
   setMusicOn:     (v) => set({ musicOn: v }),
 

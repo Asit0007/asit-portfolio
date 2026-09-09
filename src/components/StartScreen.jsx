@@ -134,7 +134,14 @@ export default function StartScreen() {
   const [phase,   setPhase]   = useState('boot')
   const [fading,  setFading]  = useState(false)
   const [hovered, setHovered] = useState(null)
-  const [showOG,  setShowOG]  = useState(false)
+  const [showOGLocal, setShowOGLocal] = useState(false)
+  // Either the visitor picked OG MODE on the boot screen, or PerfNotice
+  // offered it as the way out of a world their device can't render. Both end
+  // up here, and either way "back" has to clear both.
+  const showResume    = useGameStore((s) => s.showResume)
+  const setShowResume = useGameStore((s) => s.setShowResume)
+  const showOG = showOGLocal || showResume
+  const closeOG = () => { setShowOGLocal(false); setShowResume(false) }
 
   useEffect(() => {
     const t = setTimeout(() => setPhase('choice'), 2200)
@@ -145,15 +152,15 @@ export default function StartScreen() {
 
   const handleGG = () => {
     if (fading) return
-    setShowOG(false)
+    closeOG()
     setFading(true)
     initAudio()
     setTimeout(() => setGameStarted(true), 700)
   }
 
-  const handleOG = () => setShowOG(true)
+  const handleOG = () => setShowOGLocal(true)
 
-  if (showOG) return <TraditionalPortfolio onBack={() => setShowOG(false)} onGG={handleGG} />
+  if (showOG) return <TraditionalPortfolio onBack={closeOG} onGG={handleGG} />
 
   const ready = phase === 'choice'
 
