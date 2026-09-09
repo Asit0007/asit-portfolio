@@ -1,4 +1,5 @@
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { useThree } from '@react-three/fiber'
 import { useMemo } from 'react'
 import * as THREE from 'three'
 
@@ -10,8 +11,17 @@ function GradientFloor() {
   // texture on the same single ground draw call. Deliberately left in the
   // pre-color-managed brightness (no colorSpace tag) to keep the exact
   // saturated-orange look the old DataTexture rendered with.
+  // The sand is viewed almost edge-on for most of the frame, which is the
+  // exact case bilinear filtering handles worst — the far half of the plane
+  // smears. Anisotropic filtering is a sampler setting, not another pass,
+  // so it costs nothing per frame here.
+  const maxAniso = useThree((s) => s.gl.capabilities.getMaxAnisotropy())
+
   const texture = useMemo(() => {
-    const S = 256
+    // 256 stretched over a 400-unit plane is 0.64 texels per world unit —
+    // there was simply no detail to sample close up. 1024 is 4x that for
+    // one 4 MB upload, still a single texture on the same one draw call.
+    const S = 1024
     const canvas = document.createElement('canvas')
     canvas.width = canvas.height = S
     const ctx = canvas.getContext('2d')
@@ -37,7 +47,7 @@ function GradientFloor() {
     for (let i = 0; i < 70; i++) {
       const x = rand() * S
       const y = rand() * S
-      const r = 6 + rand() * 26
+      const r = (6 + rand() * 26) * (S / 256)
       const dark = rand() > 0.5
       const g = ctx.createRadialGradient(x, y, 0, x, y, r)
       g.addColorStop(0, dark ? 'rgba(168,80,26,0.10)' : 'rgba(255,232,170,0.10)')
@@ -54,9 +64,9 @@ function GradientFloor() {
     ctx.fillRect(0, 0, S, S)
 
     const tex = new THREE.CanvasTexture(canvas)
-    tex.anisotropy = 4
+    tex.anisotropy = maxAniso
     return tex
-  }, [])
+  }, [maxAniso])
 
   return (
     <RigidBody type="fixed" colliders={false} friction={1.2}>
@@ -122,16 +132,16 @@ function Roads() {
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y, 0]}>
         <planeGeometry args={[8, 220]} />
-        <meshStandardMaterial color="#4a4030" roughness={1} />
+        <meshStandardMaterial color="#4a4030" roughness={0.62} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y, 0]}>
         <planeGeometry args={[220, 8]} />
-        <meshStandardMaterial color="#4a4030" roughness={1} />
+        <meshStandardMaterial color="#4a4030" roughness={0.62} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]}
         position={[0, Y + 0.001, 0]}>
         <planeGeometry args={[9, 9]} />
-        <meshStandardMaterial color="#4a4030" roughness={1} />
+        <meshStandardMaterial color="#4a4030" roughness={0.62} />
       </mesh>
       {[-3.6, 3.6].map((x, i) => (
         <mesh key={`ns-${i}`} rotation={[-Math.PI / 2, 0, 0]}
@@ -191,7 +201,7 @@ function Boundaries() {
   )
 }
 
-const SCATTER_DATA = [
+export const SCATTER_DATA = [
   { x: -32, z: -28, sx: 1.2, sy: 0.8,  sz: 1.0, ry: 0.4  },
   { x:  42, z: -22, sx: 0.9, sy: 1.2,  sz: 0.9, ry: 1.1  },
   { x: -46, z:  26, sx: 1.4, sy: 0.7,  sz: 1.2, ry: 2.3  },

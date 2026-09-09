@@ -100,7 +100,7 @@ function randomTreePositions() {
 }
 
 // Frozen at module load — positions are stable across renders
-const TREES = randomTreePositions()
+export const TREES = randomTreePositions()
 
 // One instanced canopy per species. Split out so each gets its own ref and
 // its own geometry without duplicating the matrix/color loop three times.

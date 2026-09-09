@@ -80,42 +80,27 @@ function ArrowSign({ position, text, color, rotationY = 0, pointLeft = false }) 
   )
 }
 
+// Hoisted out of the JSX so GroundShadows.jsx can read where the posts
+// stand without the two files keeping separate copies of the coordinates.
+const SIGNS = [
+  // North → Cloud & Infra
+  { position: [2.5, 0, -11], text: 'CLOUD & INFRA', color: '#c47a0a', rotationY: Math.PI / 2 },
+  // East → Projects
+  { position: [11, 0, 2.5], text: 'PROJECTS', color: '#0a7a4a', rotationY: 0 },
+  // West → Easter Egg
+  { position: [-11, 0, -2.5], text: 'EASTER EGG', color: '#7a25b7', rotationY: 0, pointLeft: true },
+  // South → Contact
+  { position: [-2.5, 0, 11], text: 'CONTACT', color: '#c4154a', rotationY: Math.PI / 2, pointLeft: true },
+]
+
+export const SIGN_POSITIONS = SIGNS.map((s) => s.position)
+
 export default function SignPosts() {
   return (
     <group>
-      {/* North → Cloud & Infra */}
-      <ArrowSign
-        position={[2.5, 0, -11]}
-        text="CLOUD & INFRA"
-        color="#c47a0a"
-        rotationY={Math.PI / 2}
-      />
-
-      {/* East → Projects */}
-      <ArrowSign
-        position={[11, 0, 2.5]}
-        text="PROJECTS"
-        color="#0a7a4a"
-        rotationY={0}
-      />
-
-      {/* West → Easter Egg */}
-      <ArrowSign
-        position={[-11, 0, -2.5]}
-        text="EASTER EGG"
-        color="#7a25b7"
-        rotationY={0}
-        pointLeft
-      />
-
-      {/* South → Contact */}
-      <ArrowSign
-        position={[-2.5, 0, 11]}
-        text="CONTACT"
-        color="#c4154a"
-        rotationY={Math.PI / 2}
-        pointLeft
-      />
+      {SIGNS.map((sign, i) => (
+        <ArrowSign key={i} {...sign} />
+      ))}
     </group>
   )
 }

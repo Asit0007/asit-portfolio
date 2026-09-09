@@ -1,5 +1,5 @@
-import { useRef, forwardRef, Suspense, useEffect } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useRef, forwardRef, Suspense, useEffect, useMemo } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import { RigidBody, CuboidCollider, useRapier } from '@react-three/rapier'
 import { useKeyboardControls, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
@@ -7,6 +7,8 @@ import { Controls } from '../Controls'
 import useGameStore from '../store/useGameStore'
 import { playCollision, playBrake } from '../audio'
 import { applyShake } from '../utils/cameraShake'
+import { getCarEnvMap } from '../utils/envMap'
+import { shadowTexture, DROP_X, DROP_Z, LEAN, SHADOW_Y } from './GroundShadows'
 
 // ── Tuning — starting values for Rapier's raycast vehicle controller.
 // Gravity here is [0,-20,0] (2x real-world). Tuned for a low, wide American
@@ -113,12 +115,53 @@ const _look   = new THREE.Vector3()
 const _ideal  = new THREE.Vector3()
 const _carPos = new THREE.Vector3()
 
+// ── Contact shadow (see GroundShadows.jsx for why blobs, not shadow maps) ──
+// Roughly the chassis footprint (collider half-extents 0.9 x 1.7) with a
+// margin, since a soft blob that stops exactly at the bodywork reads as a
+// hard edge. Length runs along the car's forward axis.
+const CAR_SHADOW_W = 2.9
+const CAR_SHADOW_L = 5.0
+// Height used to lean the blob away from the sun — the body's centre of
+// mass, not the roof, so the shadow stays tucked under the car.
+const CAR_SHADOW_H = 0.75
+// The ground is a single flat plane at y=0 (World.jsx), so the blob never
+// needs to be projected onto varying terrain — a fixed height just above
+// the sand is exact everywhere. Sits above the static blobs (0.02) so the
+// car's own shadow wins where it overlaps a tree's.
+const CAR_SHADOW_Y = SHADOW_Y + 0.01
+
 // ── GLTF car — rotation.y = PI flips model to face -Z (north) ───────────────
 // Most car GLB models face +Z by default. Our physics pushes in -Z.
 // Rotating 180° around Y makes the visual match the physics direction.
 function GLTFCar() {
   const { scene } = useGLTF('/models/car-1.glb')
-  const cloned = scene.clone()
+  const gl = useThree((st) => st.gl)
+  // Was cloning on every render; memoised so the traversal below runs once
+  // and doesn't rebuild the car's material set behind itself.
+  const cloned = useMemo(() => scene.clone(), [scene])
+
+  useEffect(() => {
+    const envMap = getCarEnvMap(gl)
+    if (!envMap) return
+    const owned = []
+    cloned.traverse((o) => {
+      if (!o.isMesh || !o.material || Array.isArray(o.material)) return
+      if (!('envMap' in o.material)) return
+      // Object3D.clone() shares material references with the cached GLTF, so
+      // assigning straight onto o.material would mutate drei's useGLTF cache
+      // and leak into any future clone of this model.
+      o.material = o.material.clone()
+      o.material.envMap = envMap
+      // Restrained on purpose: this is a stylised desert diorama, not a
+      // showroom render. Enough to put a horizon line in the glass.
+      o.material.envMapIntensity = 0.55
+      o.material.needsUpdate = true
+      owned.push(o.material)
+    })
+    // These clones are ours, not drei's cache — nothing else will free them.
+    return () => owned.forEach((m) => m.dispose())
+  }, [cloned, gl])
+
   return (
     <primitive
       object={cloned}
@@ -216,6 +259,10 @@ function VehicleInner(props, ref) {
   const { world }   = useRapier()
   const bodyRef     = useRef()
   const vehicleRef  = useRef(null)
+  const shadowRef   = useRef()
+  // Shared with every static blob in GroundShadows.jsx — one texture on the
+  // GPU, and the car's contact shading matches the world's by construction.
+  const carShadowTex = useMemo(() => shadowTexture(), [])
   const steer       = useRef(0)
   const bodySet     = useRef(false)
   const lastSpeed   = useRef(0)
@@ -388,6 +435,43 @@ function VehicleInner(props, ref) {
 
     controller.updateVehicle(dt)
 
+    // ── Contact shadow ────────────────────────────────────────────────────
+    // Kept outside the RigidBody and driven from here rather than parented
+    // to the chassis: as a child it would inherit the body's roll and pitch
+    // and tilt off the ground with every bump.
+    const shadow = shadowRef.current
+    if (shadow) {
+      const sp = body.translation()
+      shadow.position.set(
+        sp.x + DROP_X * CAR_SHADOW_H * LEAN,
+        CAR_SHADOW_Y,
+        sp.z + DROP_Z * CAR_SHADOW_H * LEAN,
+      )
+      // Euler XYZ applies Z first, so rotation.z spins the quad inside its
+      // own plane before rotation.x lays it flat. After that flattening the
+      // plane's local +y points along world -z, so aligning local +y with
+      // the car's forward vector needs atan2(-fwd.x, -fwd.z).
+      shadow.rotation.set(-Math.PI / 2, 0, Math.atan2(-_fwd.x, -_fwd.z))
+
+      // Fade and shrink with airtime. Rapier reports per-wheel ground
+      // contact, which is exact and free here — deriving it from chassis
+      // height would need a rest-height constant that drifts the moment the
+      // suspension tuning above changes.
+      let grounded = 4
+      if (typeof controller.wheelIsInContact === 'function') {
+        grounded = 0
+        for (let i = 0; i < 4; i++) if (controller.wheelIsInContact(i)) grounded++
+      }
+      const g = grounded / 4
+      shadow.material.opacity = 0.25 + g * 0.75
+      shadow.scale.set(
+        CAR_SHADOW_W * (1 + (1 - g) * 0.35),
+        CAR_SHADOW_L * (1 + (1 - g) * 0.35),
+        1,
+      )
+      shadow.visible = g > 0.01
+    }
+
     // Camera — always follows car; still no hard zone override (the
     // billboard needs a fairly consistent approach angle to stay face-on),
     // just a brief additive bias below that decays on its own.
@@ -419,6 +503,16 @@ function VehicleInner(props, ref) {
   })
 
   return (
+    <>
+      <mesh ref={shadowRef} rotation={[-Math.PI / 2, 0, 0]} renderOrder={-1} frustumCulled={false}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial
+          map={carShadowTex}
+          transparent
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
     <RigidBody
       ref={bodyRef}
       position={[0, 2.5, 0]}
@@ -449,6 +543,7 @@ function VehicleInner(props, ref) {
         <BoxCar />
       )}
     </RigidBody>
+    </>
   )
 }
 

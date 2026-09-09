@@ -86,7 +86,14 @@ export const TIER_CONFIG = {
   2: { // High / desktop
     maxTrees:        100,
     maxProps:        22,
-    dpr:             [1, 2],
+    // Capped at 1.5, not 2. Measured on an M1 against production: the scene
+    // is fill-rate bound, not geometry or draw-call bound — at 4.03 MP it
+    // ran 49.5 fps, and at 1.52 MP it ran a locked 60 with the same 170ish
+    // draw calls and the same 44k triangles. A retina desktop at dpr 2 was
+    // therefore never actually hitting 60. Pixels are the budget here, so
+    // this is the single highest-leverage number in the file; raise it back
+    // to 2 only alongside a real reduction in shaded area.
+    dpr:             [1, 1.5],
     fog:             300,
     antialias:       true,
     physicsStep:     1/60,

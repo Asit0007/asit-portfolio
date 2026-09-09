@@ -4,6 +4,7 @@ import useGameStore from '../store/useGameStore'
 import Lights            from './Lights'
 import World             from './World'
 import Trees             from './Trees'
+import GroundShadows     from './GroundShadows'
 import Vehicle           from './Vehicle'
 import Zones             from './Zones'
 import SkyBox            from './Sky'
@@ -37,6 +38,9 @@ export default function Scene({ tierCfg }) {
       <SkyBox />
       <Lights />
       <World />
+      {/* After World so the blobs blend over the finished ground, and fed the
+          same tier cap as Trees so it never shadows a tree that isn't there. */}
+      <GroundShadows maxTrees={tierCfg.maxTrees} />
       <Trees maxTrees={tierCfg.maxTrees} />
       <Suspense fallback={null}>
         <EnvironmentModels maxProps={tierCfg.maxProps} />
