@@ -60,17 +60,40 @@ function GroundText({ text, position, tiltZ = 0, size = 0.75, color = '#ffffff' 
   )
 }
 
+// Hoisted out of the component so the rest of the world can avoid spawning
+// on top of the name. The letters are dynamic bodies and can be shoved
+// around, but this is where they start, which is what placement cares about.
+const LETTERS = [
+  { char: 'A', pos: [-22, 1.9, -18] },
+  { char: 'S', pos: [-17, 1.9, -20] },
+  { char: 'I', pos: [-13, 1.9, -21] },
+  { char: 'T', pos: [-9,  1.9, -22] },
+  { char: 'M', pos: [-4,  1.9, -28] },
+  { char: 'I', pos: [0.5, 1.9, -30] },
+  { char: 'N', pos: [5,   1.9, -31] },
+  { char: 'Z', pos: [10,  1.9, -30] },
+]
+
+// Axis-aligned keep-out around the name. Derived from the letters rather
+// than written out, so moving a letter moves the exclusion with it. The 5
+// unit pad covers a letter's half-width (~1.75 at size 3.2) plus a full
+// tree canopy radius (~2.5 at the largest instance scale), so a trunk can't
+// sit far enough outside the box for its crown to still cross a letter.
+const NAME_PAD = 5
+export const NAME_KEEPOUT = {
+  minX: Math.min(...LETTERS.map((l) => l.pos[0])) - NAME_PAD,
+  maxX: Math.max(...LETTERS.map((l) => l.pos[0])) + NAME_PAD,
+  minZ: Math.min(...LETTERS.map((l) => l.pos[2])) - NAME_PAD,
+  maxZ: Math.max(...LETTERS.map((l) => l.pos[2])) + NAME_PAD,
+}
+
+export function isOnName(x, z) {
+  return x > NAME_KEEPOUT.minX && x < NAME_KEEPOUT.maxX
+      && z > NAME_KEEPOUT.minZ && z < NAME_KEEPOUT.maxZ
+}
+
 export default function NameTitle() {
-  const letters = [
-    { char: 'A', pos: [-22, 1.9, -18] },
-    { char: 'S', pos: [-17, 1.9, -20] },
-    { char: 'I', pos: [-13, 1.9, -21] },
-    { char: 'T', pos: [-9,  1.9, -22] },
-    { char: 'M', pos: [-4,  1.9, -28] },
-    { char: 'I', pos: [0.5, 1.9, -30] },
-    { char: 'N', pos: [5,   1.9, -31] },
-    { char: 'Z', pos: [10,  1.9, -30] },
-  ]
+  const letters = LETTERS
 
   return (
     <Suspense fallback={null}>

@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { isNearTrack } from '../data/track'
+import { isOnName } from './NameTitle'
 
 const TREE_COUNT = 100
 
@@ -82,6 +83,9 @@ function randomTreePositions() {
     if (zoneCenters.some(([zx,zz]) =>
       Math.abs(x-zx) < 20 && Math.abs(z-zz) < 20)) continue
     if (isNearTrack(x, z, 6)) continue
+    // Keep the name legible — trees were growing straight through the
+    // letters, which is the one piece of the world that has to stay clean.
+    if (isOnName(x, z)) continue
     positions.push({
       x, z,
       scale: 0.7 + Math.random() * 0.9,
