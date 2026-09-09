@@ -13,6 +13,8 @@ const PLAYLIST = [
 
 let ctx         = null
 let engine      = null
+let gravel      = null
+let lastGravel  = -1
 let initialized = false
 let lastBrake   = 0
 let lastCollide = 0
@@ -101,7 +103,67 @@ export function initAudio() {
     engine = { osc1, osc2, gain: gainNode, filter }
   } catch (_) {}
 
+  initGravel()
+
   startPlaylist()
+}
+
+// ── Tyre-on-gravel bed ─────────────────────────────────────────────────────
+// Broadband noise on a permanent loop, with the gain and the filter corner
+// ridden from Vehicle.jsx's surface-roughness figure. Synthesising it costs
+// one buffer and one filter; a sample would cost a download, and this is a
+// 15 MB-budget project (see the payload pass in CLAUDE.md).
+//
+// Follows the same rule as every other sound here (DESIGN.md 7): loudness
+// and brightness scale with the physics, not with the input — faster over
+// rougher ground is louder and brighter, and standing still is silent.
+function initGravel() {
+  if (!ctx) return
+  try {
+    const frames = Math.floor(ctx.sampleRate * 1.5)
+    const buf    = ctx.createBuffer(1, frames, ctx.sampleRate)
+    const d      = buf.getChannelData(0)
+    // White noise alone hisses. Mixing in a one-pole-smoothed copy of it
+    // adds low-frequency body underneath the hiss, which is what turns it
+    // from radio static into stones under a tyre.
+    let smooth = 0
+    for (let i = 0; i < frames; i++) {
+      const w = Math.random() * 2 - 1
+      smooth = 0.6 * smooth + 0.4 * w
+      d[i] = w * 0.55 + smooth * 0.85
+    }
+
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    src.loop   = true
+
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'; lp.frequency.value = 400; lp.Q.value = 0.7
+
+    const gain = ctx.createGain()
+    gain.gain.value = 0
+
+    src.connect(lp); lp.connect(gain); gain.connect(ctx.destination)
+    src.start()
+    gravel = { src, lp, gain }
+  } catch (_) {}
+}
+
+// `level` is 0..1 roughness, `speed` is the car's ground speed. Safe to call
+// every frame — it early-outs once the bed has already been faded to silence.
+export function updateGravel(level = 0, speed = 0) {
+  if (!gravel || !ctx) return
+  const l = level > 1 ? 1 : level < 0 ? 0 : level
+  if (l === 0 && lastGravel === 0) return
+  lastGravel = l
+  try {
+    const t = ctx.currentTime
+    gravel.gain.gain.setTargetAtTime(l * (0.035 + Math.min(speed * 0.004, 0.055)), t, 0.05)
+    gravel.lp.frequency.setTargetAtTime(350 + speed * 55 + l * 500, t, 0.08)
+    // A touch of pitch with speed, so the grain rate tracks the road rather
+    // than sitting at one fixed texture the whole way across a patch.
+    gravel.src.playbackRate.setTargetAtTime(0.8 + Math.min(speed / 22, 0.7), t, 0.1)
+  } catch (_) {}
 }
 
 export function updateEngine(speed) {

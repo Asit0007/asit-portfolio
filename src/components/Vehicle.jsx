@@ -6,8 +6,10 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { Controls } from '../Controls'
 import useGameStore from '../store/useGameStore'
-import { playCollision, playBrake } from '../audio'
-import { applyShake, triggerShake } from '../utils/cameraShake'
+import { playCollision, playBrake, updateGravel } from '../audio'
+import {
+  applyShake, applyShakeRotation, updateShake, triggerShake, addRumble, shakeNoise,
+} from '../utils/cameraShake'
 import { getCarEnvMap } from '../utils/envMap'
 import { shadowTexture, DROP_X, DROP_Z, LEAN, SHADOW_Y } from './GroundShadows'
 
@@ -233,6 +235,54 @@ const TAIL_BRAKING  = 6.0
 // pass under the car in total silence.
 const BUMP_DV       = 1.1
 
+// ── Surface roughness ──────────────────────────────────────────────────────
+// Read straight off the wheels. wheelContactPoint(i).y is the height of
+// whatever each tyre is standing on this frame, so the frame-to-frame change
+// in it IS the profile of the surface being driven over — no collision
+// events, no material tags, no per-surface bookkeeping. Summed across the
+// four wheels and divided by the distance the car actually covered, it
+// becomes a slope: dimensionless, and identical at 30 fps and 60 fps, where
+// a raw per-frame height delta would read twice as rough at half the frame
+// rate.
+//
+// Averaged over the wheels actually touching the ground, not summed, so the
+// figure is a per-tyre slope. That matters at the edge of a patch: with two
+// wheels on gravel and two on sand the average halves, and the car rumbles
+// half as hard, which is the correct answer. A sum would instead report the
+// same roughness for two rough wheels as for four half-rough ones.
+//
+// Sand, asphalt and the circuit are all one flat collider here, so this
+// reads exactly 0 on them — measured in the running game, not assumed. A
+// gravel heightfield (EnvironmentModels.jsx) measured ~0.27 per tyre while
+// crossing at 16 u/s, so 0.40 puts an ordinary crossing near 0.7 and leaves
+// headroom for the roughest lines. Retune by logging this against speed on
+// a real 60 fps frame, never off a throttled tab: `travelled` comes from
+// the render delta, so if the render loop and the physics step drift apart
+// the slope is wrong by exactly that ratio.
+//
+// One known limit: past ~25 u/s a wheel covers more than a whole 0.42 cell
+// per frame, so consecutive samples stop being correlated and the figure
+// under-reads — a boost run over gravel rumbles at about two thirds of a
+// cruise. Fixing it would mean teaching this file the heightfield's cell
+// size, which is a worse trade than the error.
+const ROUGH_FULL_SLOPE = 0.40  // per-tyre slope counting as full rumble
+const ROUGH_RELEASE    = 7     // per second, once the wheels find smooth ground
+const ROUGH_MIN_SPEED  = 1.5   // below this the slope figure is division noise
+const ROUGH_FADE_SPEED = 11    // rumble is at full strength from here up
+
+// A shiver through the bodywork, on top of the suspension's own reaction.
+// Random but zero-mean, so it cannot push the car anywhere — it only shakes
+// it in place. Weighted onto roll, which has by far the softest inertia
+// (1.2 against pitch's 14) and so shows the most for the least disturbance.
+const CHATTER_TORQUE = 3.0
+
+// Gravel tugs at the steering. Smooth noise rather than per-frame random, so
+// the car wanders as if the tyres were following ruts instead of buzzing on
+// the spot; ~1 degree at full rumble against a 24-degree lock, which is felt
+// without ever becoming a fight for control.
+const STEER_NIBBLE = 0.019
+const NIBBLE_FREQ  = 6   // Hz
+
 // Two round lenses merged into one geometry, so a pair costs one draw call.
 function quadLampGeometry(radius, depth) {
   const parts = [-HEAD_SPLIT, HEAD_SPLIT].map((dx) => {
@@ -395,6 +445,8 @@ function VehicleInner(props, ref) {
   const shadowRef   = useRef()
   const tailMats    = useRef([])
   const prevVy      = useRef(0)
+  const wheelGroundY = useRef([null, null, null, null])
+  const roughRef     = useRef(0)
   const brakePress  = useRef(0)
   // Shared with every static blob in GroundShadows.jsx — one texture on the
   // GPU, and the car's contact shading matches the world's by construction.
@@ -578,7 +630,12 @@ function VehicleInner(props, ref) {
     steer.current = THREE.MathUtils.lerp(
       steer.current, steerInput, 1 - Math.exp(-STEER_LERP_SPEED * dt)
     )
+    // roughRef still holds LAST frame's value here — the roughness block
+    // below can only run after updateVehicle() has produced this frame's
+    // wheel contacts. One frame of lag on a 6 Hz wander is not observable.
     const steerAngle = steer.current * STEER_MAX
+      + shakeNoise(state.clock.elapsedTime * NIBBLE_FREQ, 17)
+        * STEER_NIBBLE * roughRef.current
 
     for (const i of STEERED_WHEELS) {
       controller.setWheelSteering(i, steerAngle)
@@ -605,6 +662,13 @@ function VehicleInner(props, ref) {
 
     controller.updateVehicle(dt)
 
+    // Both the roughness read and the contact-shadow fade below need these;
+    // guarded once because older rapier builds ship the controller without
+    // the per-wheel query methods.
+    const canQueryWheels =
+      typeof controller.wheelIsInContact === 'function' &&
+      typeof controller.wheelContactPoint === 'function'
+
     // ── Bump feedback ─────────────────────────────────────────────────────
     // Reads the suspension's own reaction rather than any collision event,
     // so it fires for anything the wheels ride over, rocks included.
@@ -613,6 +677,54 @@ function VehicleInner(props, ref) {
     if (dvy > BUMP_DV && lastSpeed.current > 3) {
       triggerShake(Math.min(dvy / 7, 0.32), 220)
     }
+
+    // ── Surface roughness → vibration ─────────────────────────────────────
+    // See ROUGH_FULL_SLOPE above for what is being measured and why it is
+    // divided by distance rather than by time.
+    let stepSum = 0
+    let contacts = 0
+    if (canQueryWheels) {
+      for (let i = 0; i < 4; i++) {
+        if (!controller.wheelIsInContact(i)) { wheelGroundY.current[i] = null; continue }
+        const cp = controller.wheelContactPoint(i)
+        if (!cp) { wheelGroundY.current[i] = null; continue }
+        contacts++
+        const prev = wheelGroundY.current[i]
+        wheelGroundY.current[i] = cp.y
+        // A wheel that was airborne last frame has no previous height to
+        // difference against — landing is a bump, not a rough surface, and
+        // BUMP_DV above already covers it.
+        if (prev !== null) stepSum += Math.abs(cp.y - prev)
+      }
+    }
+    const travelled = lastSpeed.current * dt
+    const roughTarget = (contacts > 0 && lastSpeed.current > ROUGH_MIN_SPEED && travelled > 1e-4)
+      ? Math.min((stepSum / contacts / travelled) / ROUGH_FULL_SLOPE, 1)
+      : 0
+    // Instant attack, smoothed release: the first stone is felt on the frame
+    // it is hit, but the rumble doesn't strobe off in the gaps between them.
+    roughRef.current = roughTarget > roughRef.current
+      ? roughTarget
+      : roughRef.current + (roughTarget - roughRef.current) * (1 - Math.exp(-ROUGH_RELEASE * dt))
+
+    // Crawling over gravel is a series of individual clonks, not a
+    // vibration; the rumble has to earn its intensity from road speed.
+    const rumble = roughRef.current *
+      THREE.MathUtils.smoothstep(lastSpeed.current, ROUGH_MIN_SPEED, ROUGH_FADE_SPEED)
+
+    if (rumble > 0.01) {
+      addRumble(rumble)
+      const k = rumble * CHATTER_TORQUE * dt
+      body.applyTorqueImpulse({
+        x: (Math.random() - 0.5) * k * 0.30,
+        y: (Math.random() - 0.5) * k * 0.12,
+        z: (Math.random() - 0.5) * k,
+      }, true)
+    }
+    // Called unconditionally, including with 0 — the gravel bed is a
+    // permanently running noise source whose gain is ridden, so skipping the
+    // call on smooth ground would leave it stuck at its last level.
+    updateGravel(gameStarted ? rumble : 0, lastSpeed.current)
 
     // ── Brake lights ──────────────────────────────────────────────────────
     // `backward` while still rolling forwards is the brake-to-stop case
@@ -654,7 +766,7 @@ function VehicleInner(props, ref) {
       // height would need a rest-height constant that drifts the moment the
       // suspension tuning above changes.
       let grounded = 4
-      if (typeof controller.wheelIsInContact === 'function') {
+      if (canQueryWheels) {
         grounded = 0
         for (let i = 0; i < 4; i++) if (controller.wheelIsInContact(i)) grounded++
       }
@@ -692,10 +804,14 @@ function VehicleInner(props, ref) {
     if (zoneBiasT > 0) _ideal.addScaledVector(ZONE_BIAS_OFFSET, zoneBiasT)
 
     _cam.lerp(_ideal, 1 - Math.exp(-CAM_LERP * dt))
+    updateShake(dt)
     applyShake(_cam)
     state.camera.position.copy(_cam)
     _look.set(pos.x, pos.y + 0.5, pos.z)
     state.camera.lookAt(_look)
+    // After lookAt, never before — lookAt writes the full orientation and
+    // would overwrite any roll added ahead of it.
+    applyShakeRotation(state.camera)
   })
 
   return (
