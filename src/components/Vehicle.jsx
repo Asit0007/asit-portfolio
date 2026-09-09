@@ -138,9 +138,12 @@ const CAR_SHADOW_L = 5.0
 const CAR_SHADOW_H = 0.75
 // The ground is a single flat plane at y=0 (World.jsx), so the blob never
 // needs to be projected onto varying terrain — a fixed height just above
-// the sand is exact everywhere. Sits above the static blobs (0.02) so the
-// car's own shadow wins where it overlaps a tree's.
-const CAR_SHADOW_Y = SHADOW_Y + 0.01
+// the sand is exact everywhere. Sits above the static blobs so the car's
+// own shadow wins where it overlaps a tree's, and 0.02 clear of them puts
+// it over the circuit kerbs (0.088) too. At the old 0.03 it was BELOW the
+// road surface (0.06), so the car's shadow silently disappeared the whole
+// time it was driving on asphalt — see the decal stack in GroundShadows.
+const CAR_SHADOW_Y = SHADOW_Y + 0.02
 
 // ── Lamps ─────────────────────────────────────────────────────────────────
 // car-1.glb is a single mesh on a single texture-atlas material, so its
@@ -625,35 +628,71 @@ function VehicleInner(props, ref) {
         <BoxCar />
       )}
 
-      {/* Headlights — toneMapped={false} keeps the lens reading as a light
-          source instead of being pulled back down by ACES like paint is. */}
+      {/* Headlights. A single emissive panel read as a flat white sticker
+          pasted on the nose: one blown-out face, no housing, no falloff.
+          Three parts fix that for two extra draw calls each, which this
+          scene has room for — it is fill-bound, not draw-call bound.
+
+          toneMapped={false} on the emitters keeps them reading as light
+          sources rather than being pulled back down by ACES like paint. */}
       {[-HEADLIGHT_X, HEADLIGHT_X].map((x) => (
-        <mesh key={`hl${x}`} position={[x, HEADLIGHT_POS[0], HEADLIGHT_POS[1]]}>
-          <boxGeometry args={[0.42, 0.14, 0.05]} />
-          <meshStandardMaterial
-            color="#fff6e0"
-            emissive="#ffe6b8"
-            emissiveIntensity={1.7}
-            toneMapped={false}
-            roughness={0.25}
-          />
-        </mesh>
+        <group key={`hl${x}`} position={[x, HEADLIGHT_POS[0], HEADLIGHT_POS[1]]}>
+          {/* Bezel — a hair behind and wider all round, so a dark rim shows
+              and the lamp reads as set INTO the wing rather than stuck on. */}
+          <mesh position={[0, 0, 0.006]}>
+            <boxGeometry args={[0.50, 0.21, 0.05]} />
+            <meshStandardMaterial color="#15110d" roughness={0.45} metalness={0.5} />
+          </mesh>
+          {/* Lens — warmer and dimmer than before. The old 1.7 on a near
+              white emissive clipped every channel, which is exactly why it
+              looked like flat paper; 1.15 on a warm amber keeps colour in
+              it. */}
+          <mesh>
+            <boxGeometry args={[0.42, 0.13, 0.055]} />
+            <meshStandardMaterial
+              color="#fff3d6"
+              emissive="#ffd89a"
+              emissiveIntensity={1.15}
+              toneMapped={false}
+              roughness={0.12}
+            />
+          </mesh>
+          {/* Hot core — a small bright centre inside the lens. Real lamps
+              are brightest at the filament and fall off to the edge; one
+              uniform face is what made these look printed on. */}
+          <mesh position={[0, 0, -0.014]}>
+            <boxGeometry args={[0.20, 0.055, 0.035]} />
+            <meshStandardMaterial
+              color="#ffffff"
+              emissive="#fff4dc"
+              emissiveIntensity={2.8}
+              toneMapped={false}
+            />
+          </mesh>
+        </group>
       ))}
 
       {/* Tail lights — materials are collected so the frame loop can flare
           them under braking. */}
       {[-TAILLIGHT_X, TAILLIGHT_X].map((x, i) => (
-        <mesh key={`tl${x}`} position={[x, TAILLIGHT_POS[0], TAILLIGHT_POS[1]]}>
-          <boxGeometry args={[0.48, 0.14, 0.05]} />
-          <meshStandardMaterial
-            ref={(m) => { if (m) tailMats.current[i] = m }}
-            color="#ff2f18"
-            emissive="#ff1c08"
-            emissiveIntensity={TAIL_IDLE}
-            toneMapped={false}
-            roughness={0.25}
-          />
-        </mesh>
+        <group key={`tl${x}`} position={[x, TAILLIGHT_POS[0], TAILLIGHT_POS[1]]}>
+          {/* Matching bezel, mirrored: the tail faces +Z, so "behind" is -Z. */}
+          <mesh position={[0, 0, -0.006]}>
+            <boxGeometry args={[0.56, 0.22, 0.05]} />
+            <meshStandardMaterial color="#15110d" roughness={0.45} metalness={0.5} />
+          </mesh>
+          <mesh>
+            <boxGeometry args={[0.48, 0.14, 0.055]} />
+            <meshStandardMaterial
+              ref={(m) => { if (m) tailMats.current[i] = m }}
+              color="#ff2f18"
+              emissive="#ff1c08"
+              emissiveIntensity={TAIL_IDLE}
+              toneMapped={false}
+              roughness={0.25}
+            />
+          </mesh>
+        </group>
       ))}
     </RigidBody>
     </>

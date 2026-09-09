@@ -66,10 +66,27 @@ export const DROP_Z = -SUN_POSITION[2] / SUN_POSITION[1]
 // contact point covered while still leaning the right way.
 export const LEAN = 0.45
 
-// Just above the sand (y=0) and below the tile paths (0.04) and roads
-// (0.06) — a blob never needs to sit on top of those, and staying under
-// them avoids z-fighting with surfaces at the same height.
-export const SHADOW_Y = 0.02
+// Ground decals in this world stack at fixed heights, and a blob has to
+// clear ALL of them or it either z-fights or is quietly drawn underneath:
+//
+//   0.000  sand            World.jsx GradientFloor
+//   0.020  centre platform World.jsx ZonePad top face (-0.58 + 1.2/2)
+//   0.030  circuit asphalt Circuit.jsx TrackPath
+//   0.040  tile paths      World.jsx TilePaths
+//   0.043  start/finish    Circuit.jsx
+//   0.048  circuit dashes  Circuit.jsx
+//   0.060  road surface    World.jsx Roads
+//   0.065  lane lines      World.jsx Roads
+//   0.070  centre dashes   World.jsx Roads
+//   0.088  circuit kerbs   Circuit.jsx (raised geometry, not a decal)
+//
+// This was 0.02 — EXACTLY the centre platform's top face. That was
+// invisible while the signposts stood out on sand, but the moment they
+// moved onto the slab their blobs became coplanar with it and z-fought,
+// which is the flicker. 0.075 clears every decal above; it stays under the
+// circuit kerbs, which are raised geometry a blob has no business sitting
+// on anyway.
+export const SHADOW_Y = 0.075
 
 // [x, z, radius, height] for every static caster in the world.
 function staticCasters(maxTrees) {
