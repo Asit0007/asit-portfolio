@@ -8,7 +8,7 @@ import { Controls } from '../Controls'
 import useGameStore from '../store/useGameStore'
 import { playCollision, playBrake, updateGravel } from '../audio'
 import {
-  applyShake, applyShakeRotation, updateShake, triggerShake, addRumble, shakeNoise,
+  applyShake, applyShakeRotation, updateShake, triggerShake, shakeNoise,
 } from '../utils/cameraShake'
 import { getCarEnvMap } from '../utils/envMap'
 import { shadowTexture, DROP_X, DROP_Z, LEAN, SHADOW_Y } from './GroundShadows'
@@ -251,30 +251,78 @@ const BUMP_DV       = 1.1
 // half as hard, which is the correct answer. A sum would instead report the
 // same roughness for two rough wheels as for four half-rough ones.
 //
+// The divisor is the distance the chassis ACTUALLY moved since the previous
+// sample, not speed x frame delta. Those two disagree the moment the render
+// loop and the physics step drift apart — a backgrounded tab, a dropped
+// frame, a slow device — and the slope is then wrong by exactly that ratio,
+// which silently retunes the whole effect. Differencing the position makes
+// the measurement true at any frame rate, and means this can be tuned from
+// a log taken anywhere.
+//
 // Sand, asphalt and the circuit are all one flat collider here, so this
-// reads exactly 0 on them — measured in the running game, not assumed. A
-// gravel heightfield (EnvironmentModels.jsx) measured ~0.27 per tyre while
-// crossing at 16 u/s, so 0.40 puts an ordinary crossing near 0.7 and leaves
-// headroom for the roughest lines. Retune by logging this against speed on
-// a real 60 fps frame, never off a throttled tab: `travelled` comes from
-// the render delta, so if the render loop and the physics step drift apart
-// the slope is wrong by exactly that ratio.
+// reads exactly 0 on them — measured in the running game, not assumed. That
+// clean zero is what makes the constant below safe to set low.
+//
+// And it IS deliberately low. Tracing a wheel's line across the heightfield
+// offline puts the per-tyre slope near 0.04; logging the same crossing in
+// the running game puts it nearer 0.28, because the contact point is not a
+// point sliding along fixed geometry — the chassis pitches and rolls, the
+// ray origins move with it, and each hit lands somewhere slightly different.
+// Rather than pick a threshold that only works if one of those two numbers
+// is right, 0.10 sits below both, so gravel reads strongly either way. The
+// cost is that the roughest and mildest gravel feel similar, which is a
+// cheap price when gravel is the only rough surface in the world — and
+// partial contact still grades down, because the average is per tyre.
 //
 // One known limit: past ~25 u/s a wheel covers more than a whole 0.42 cell
-// per frame, so consecutive samples stop being correlated and the figure
-// under-reads — a boost run over gravel rumbles at about two thirds of a
-// cruise. Fixing it would mean teaching this file the heightfield's cell
-// size, which is a worse trade than the error.
-const ROUGH_FULL_SLOPE = 0.40  // per-tyre slope counting as full rumble
+// of the gravel heightfield per frame, so consecutive samples stop being
+// correlated and the figure under-reads — a boost run over gravel rumbles
+// at about two thirds of a cruise. Fixing it would mean teaching this file
+// the heightfield's cell size, which is a worse trade than the error.
+const ROUGH_FULL_SLOPE = 0.10  // per-tyre slope counting as full rumble
 const ROUGH_RELEASE    = 7     // per second, once the wheels find smooth ground
 const ROUGH_MIN_SPEED  = 1.5   // below this the slope figure is division noise
 const ROUGH_FADE_SPEED = 11    // rumble is at full strength from here up
 
-// A shiver through the bodywork, on top of the suspension's own reaction.
-// Random but zero-mean, so it cannot push the car anywhere — it only shakes
-// it in place. Weighted onto roll, which has by far the softest inertia
-// (1.2 against pitch's 14) and so shows the most for the least disturbance.
-const CHATTER_TORQUE = 3.0
+// ── Where the vibration is shown ──────────────────────────────────────────
+// On the CAR, not on the camera. Shaking the camera moves the sky, the road
+// and the horizon along with the car, which reads as a fault in the display
+// rather than as a vehicle on a rough surface; the car is the thing on the
+// gravel, so the car is the thing that shakes and the camera holds the shot
+// level (cameraShake.js keeps only discrete impacts).
+//
+// Two layers do it:
+//
+// 1. A real torque on the chassis. Random but zero-mean, so it can never
+//    push the car anywhere — it only shakes it in place. Weighted onto
+//    roll, which has by far the softest inertia (1.2 against pitch's 14)
+//    and so shows the most for the least disturbance. Kept modest: this
+//    goes through the physics, and a raycast vehicle with full rotation
+//    freedom can trip itself over if it is shoved hard enough.
+const CHATTER_TORQUE = 3.6
+
+// 2. A cosmetic judder on the bodywork, applied to a group INSIDE the rigid
+//    body so it cannot touch handling at all — the collider and the wheel
+//    raycasts stay exactly where physics put them, and only the visible
+//    shell moves. This layer carries most of the effect, because the honest
+//    amount of body movement is invisible from here: at this camera
+//    distance the car is ~22 px per world unit, and a real car juddering on
+//    gravel moves its body a centimetre or two, which is a fifth of a
+//    pixel. So it is exaggerated on purpose, the same way the whole world
+//    is stylised.
+//
+//    Rotation does the heavy lifting again — tilting the roofline reads far
+//    more strongly than sliding the whole shape a pixel sideways.
+//    These five are the dial. Turn them down together for a subtler shimmy,
+//    up for a rougher one; nothing else has to change, and none of it can
+//    affect how the car drives. Measured on an ordinary crossing the rumble
+//    runs about 0.65, which puts the roll swing near +-3 degrees.
+const BODY_SHAKE_FREQ  = 18     // Hz
+const BODY_SHAKE_Y     = 0.070  // world units at full rumble
+const BODY_SHAKE_XZ    = 0.028
+const BODY_SHAKE_ROLL  = 0.070  // rad, ~4 degrees
+const BODY_SHAKE_PITCH = 0.048
+const BODY_SHAKE_YAW   = 0.020
 
 // Gravel tugs at the steering. Smooth noise rather than per-frame random, so
 // the car wanders as if the tyres were following ruts instead of buzzing on
@@ -447,6 +495,8 @@ function VehicleInner(props, ref) {
   const prevVy      = useRef(0)
   const wheelGroundY = useRef([null, null, null, null])
   const roughRef     = useRef(0)
+  const prevPos      = useRef(null)
+  const bodyShakeRef = useRef()
   const brakePress  = useRef(0)
   // Shared with every static blob in GroundShadows.jsx — one texture on the
   // GPU, and the car's contact shading matches the world's by construction.
@@ -697,7 +747,13 @@ function VehicleInner(props, ref) {
         if (prev !== null) stepSum += Math.abs(cp.y - prev)
       }
     }
-    const travelled = lastSpeed.current * dt
+    const here = body.translation()
+    const prevP = prevPos.current
+    const travelled = prevP
+      ? Math.hypot(here.x - prevP.x, here.z - prevP.z)
+      : 0
+    if (prevP) { prevP.x = here.x; prevP.z = here.z }
+    else prevPos.current = { x: here.x, z: here.z }
     const roughTarget = (contacts > 0 && lastSpeed.current > ROUGH_MIN_SPEED && travelled > 1e-4)
       ? Math.min((stepSum / contacts / travelled) / ROUGH_FULL_SLOPE, 1)
       : 0
@@ -713,13 +769,33 @@ function VehicleInner(props, ref) {
       THREE.MathUtils.smoothstep(lastSpeed.current, ROUGH_MIN_SPEED, ROUGH_FADE_SPEED)
 
     if (rumble > 0.01) {
-      addRumble(rumble)
       const k = rumble * CHATTER_TORQUE * dt
       body.applyTorqueImpulse({
         x: (Math.random() - 0.5) * k * 0.30,
         y: (Math.random() - 0.5) * k * 0.12,
         z: (Math.random() - 0.5) * k,
       }, true)
+    }
+
+    // Cosmetic judder on the shell. Smoothstepped so a whisper of roughness
+    // stays a whisper — a linear map made the faintest ground texture read
+    // as a real vibration. Written every frame including at zero, or the
+    // bodywork would stay frozen at whatever offset it had when the car
+    // rolled back onto smooth ground.
+    const shell = bodyShakeRef.current
+    if (shell) {
+      const a = rumble * rumble * (3 - 2 * rumble)
+      const t = state.clock.elapsedTime * BODY_SHAKE_FREQ
+      shell.position.set(
+        shakeNoise(t, 21) * BODY_SHAKE_XZ * a,
+        shakeNoise(t, 22) * BODY_SHAKE_Y  * a,
+        shakeNoise(t, 23) * BODY_SHAKE_XZ * a,
+      )
+      shell.rotation.set(
+        shakeNoise(t, 24) * BODY_SHAKE_PITCH * a,
+        shakeNoise(t, 25) * BODY_SHAKE_YAW   * a,
+        shakeNoise(t, 26) * BODY_SHAKE_ROLL  * a,
+      )
     }
     // Called unconditionally, including with 0 — the gravel bed is a
     // permanently running noise source whose gain is ridden, so skipping the
@@ -847,59 +923,68 @@ function VehicleInner(props, ref) {
           would fight each other (the body resting on this collider directly,
           independent of and inconsistent with the suspension). */}
       <CuboidCollider args={[0.9, 0.3, 1.7]} position={[0, -0.05, 0]} />
-      {HAS_GLTF ? (
-        <Suspense fallback={<BoxCar />}>
-          <GLTFCar />
-        </Suspense>
-      ) : (
-        <BoxCar />
-      )}
 
-      {/* Headlamps — quad round, sunk behind a dark bezel. Two lenses per
-          side are merged into one geometry, so each pair is one draw call. */}
-      {[-LAMP_X, LAMP_X].map((x) => (
-        <group key={`hl${x}`} position={[x, LAMP_Y_FRONT, LAMP_Z_FRONT]}>
-          {/* Bezel sits a touch behind and 0.032 wider, so a dark ring shows
-              round each lens and the unit reads as set INTO the fascia. */}
-          <mesh geometry={HEAD_BEZEL_GEO} position={[0, 0, 0.007]}>
-            <meshStandardMaterial color="#0d0b09" roughness={0.35} metalness={0.75} />
-          </mesh>
-          {/* Warm, and deliberately not blown out — the old 1.7 on a near
-              white emissive clipped every channel, which is exactly what
-              made these look like flat paper cut-outs. */}
-          <mesh geometry={HEAD_LENS_GEO}>
-            <meshStandardMaterial
-              color="#fff4dd"
-              emissive="#ffd89a"
-              emissiveIntensity={1.05}
-              toneMapped={false}
-              roughness={0.1}
-            />
-          </mesh>
-        </group>
-      ))}
+      {/* Everything visible hangs off this group, and nothing physical does.
+          The frame loop judders it over rough ground (BODY_SHAKE_* above);
+          because the collider above is a sibling and not a child, none of
+          that reaches the simulation — the shell shivers, the car drives
+          exactly as it did. Lamps are inside it too, or they would hang in
+          the air while the bodywork moved out from under them. */}
+      <group ref={bodyShakeRef}>
+        {HAS_GLTF ? (
+          <Suspense fallback={<BoxCar />}>
+            <GLTFCar />
+          </Suspense>
+        ) : (
+          <BoxCar />
+        )}
 
-      {/* Tail lamps — three vertical bars per side in a recessed housing.
-          Materials are collected so the frame loop can flare them. */}
-      {[-LAMP_X, LAMP_X].map((x, i) => (
-        <group key={`tl${x}`} position={[x, LAMP_Y_REAR, LAMP_Z_REAR]}>
-          {/* Housing behind the bars — the tail faces +Z, so "behind" is -Z. */}
-          <mesh position={[0, 0, -0.009]}>
-            <boxGeometry args={[0.40, 0.27, 0.05]} />
-            <meshStandardMaterial color="#0d0b09" roughness={0.4} metalness={0.6} />
-          </mesh>
-          <mesh geometry={TAIL_BAR_GEO}>
-            <meshStandardMaterial
-              ref={(m) => { if (m) tailMats.current[i] = m }}
-              color="#4a0d05"
-              emissive="#ff2008"
-              emissiveIntensity={TAIL_IDLE}
-              toneMapped={false}
-              roughness={0.2}
-            />
-          </mesh>
-        </group>
-      ))}
+        {/* Headlamps — quad round, sunk behind a dark bezel. Two lenses per
+            side are merged into one geometry, so each pair is one draw call. */}
+        {[-LAMP_X, LAMP_X].map((x) => (
+          <group key={`hl${x}`} position={[x, LAMP_Y_FRONT, LAMP_Z_FRONT]}>
+            {/* Bezel sits a touch behind and 0.032 wider, so a dark ring shows
+                round each lens and the unit reads as set INTO the fascia. */}
+            <mesh geometry={HEAD_BEZEL_GEO} position={[0, 0, 0.007]}>
+              <meshStandardMaterial color="#0d0b09" roughness={0.35} metalness={0.75} />
+            </mesh>
+            {/* Warm, and deliberately not blown out — the old 1.7 on a near
+                white emissive clipped every channel, which is exactly what
+                made these look like flat paper cut-outs. */}
+            <mesh geometry={HEAD_LENS_GEO}>
+              <meshStandardMaterial
+                color="#fff4dd"
+                emissive="#ffd89a"
+                emissiveIntensity={1.05}
+                toneMapped={false}
+                roughness={0.1}
+              />
+            </mesh>
+          </group>
+        ))}
+
+        {/* Tail lamps — three vertical bars per side in a recessed housing.
+            Materials are collected so the frame loop can flare them. */}
+        {[-LAMP_X, LAMP_X].map((x, i) => (
+          <group key={`tl${x}`} position={[x, LAMP_Y_REAR, LAMP_Z_REAR]}>
+            {/* Housing behind the bars — the tail faces +Z, so "behind" is -Z. */}
+            <mesh position={[0, 0, -0.009]}>
+              <boxGeometry args={[0.40, 0.27, 0.05]} />
+              <meshStandardMaterial color="#0d0b09" roughness={0.4} metalness={0.6} />
+            </mesh>
+            <mesh geometry={TAIL_BAR_GEO}>
+              <meshStandardMaterial
+                ref={(m) => { if (m) tailMats.current[i] = m }}
+                color="#4a0d05"
+                emissive="#ff2008"
+                emissiveIntensity={TAIL_IDLE}
+                toneMapped={false}
+                roughness={0.2}
+              />
+            </mesh>
+          </group>
+        ))}
+      </group>
     </RigidBody>
     </>
   )

@@ -1,14 +1,16 @@
-// Camera shake and vibration. Two independent channels feed one camera
-// offset:
+// Camera shake for discrete HITS only — a boulder clipped, a bowling
+// strike, a wheel dropping off something. Fed by triggerShake(), decaying
+// on its own over a few hundred ms.
 //
-//   IMPULSE  discrete hits — a boulder clipped, a bowling strike, a wheel
-//            dropping off something. Fed by triggerShake() and decaying on
-//            its own over a few hundred ms.
-//   RUMBLE   sustained surface vibration — the tyres chattering across a
-//            gravel patch. Fed every frame by addRumble() for as long as it
-//            lasts, and falling away fast the moment the feeding stops.
+// Sustained surface vibration deliberately does NOT live here. Shaking the
+// camera because the tyres found gravel moves the whole world, including
+// the sky and the road, which reads as a fault in the display rather than
+// as a car on a rough surface. The car is the thing on the gravel, so the
+// car is the thing that shakes: see BODY_SHAKE_* in Vehicle.jsx, which
+// judders the bodywork inside a camera that stays level. The camera's job
+// is to hold the shot steady while the subject moves.
 //
-// Both are sampled from smooth value noise rather than Math.random(). White
+// Shake is sampled from smooth value noise rather than Math.random(). White
 // noise is uncorrelated frame to frame, so it reads as television static
 // stapled over the viewport; a real camera on a shaking mount traces a
 // continuous path through space. Sampling one continuous noise curve at a
@@ -16,8 +18,8 @@
 // free — 30 fps samples the same curve half as often, it doesn't get a
 // different curve.
 //
-// The ROTATIONAL output is what actually sells this. The follow-cam sits
-// ~30 units back, where a 0.15-unit positional nudge is about three pixels;
+// The ROTATIONAL output is what sells an impact. The follow-cam sits ~30
+// units back, where a 0.15-unit positional nudge is about three pixels;
 // half a degree of roll swings the entire frame. Position alone is why the
 // old white-noise version read as a glitch rather than as a bump.
 
@@ -39,28 +41,8 @@ export function shakeNoise(t, seed = 0) {
   return (a + (b - a) * u) * 2 - 1
 }
 
-// Two octaves — the second adds the grain that makes a rumble feel like
-// stones rather than a sine wobble, without pushing the base frequency up
-// where a 60 Hz frame can no longer resolve it.
-function grain(t, seed) {
-  return shakeNoise(t, seed) * 0.72 + shakeNoise(t * 2.37, seed + 40) * 0.28
-}
-
 // ── Tuning ──────────────────────────────────────────────────────────────────
 const IMPULSE_FREQ = 9    // Hz
-// High enough to buzz, low enough that a 60 Hz frame still gets ~3.5 samples
-// per cycle. Past roughly 20 Hz the sampling aliases and the coherent noise
-// collapses back into the white-noise mush this replaced.
-const RUMBLE_FREQ    = 17
-const RUMBLE_RELEASE = 8      // per second, once addRumble() stops feeding
-
-// Peak positional offset in world units at full rumble, and peak rotation in
-// radians. 0.016 rad is ~0.9 degrees of roll — clearly felt, still under
-// DESIGN.md's <=0.3 shake ceiling in spirit.
-const RUMBLE_POS   = 0.13
-const RUMBLE_ROLL  = 0.016
-const RUMBLE_PITCH = 0.009
-const RUMBLE_YAW   = 0.005
 
 // Rotation an impulse gets, per unit of its positional magnitude. A typical
 // triggerShake(0.16) therefore rolls the camera ~0.01 rad at its peak.
@@ -73,7 +55,6 @@ let clock        = 0
 let impulse      = 0   // 0..1 envelope
 let impulsePeak  = 0   // magnitude the envelope scales
 let impulseRate  = 4   // envelope units per second
-let rumble       = 0   // 0..1
 
 const offset = { x: 0, y: 0, z: 0 }
 const rot    = { pitch: 0, yaw: 0, roll: 0 }
@@ -88,17 +69,8 @@ export function triggerShake(magnitude = 0.18, durationMs = 260) {
   impulseRate = 1000 / durationMs
 }
 
-// Sustained vibration, 0..1. Call every frame while the surface is rough —
-// this takes the loudest feeder rather than summing, so several sources
-// can't stack into nausea.
-export function addRumble(level) {
-  if (level > rumble) rumble = level > 1 ? 1 : level
-}
-
-export function getRumble() { return rumble }
-
-// Advances both channels and computes this frame's offsets. Must run once
-// per frame, before applyShake()/applyShakeRotation() read them.
+// Advances the impulse envelope and computes this frame's offsets. Must run
+// once per frame, before applyShake()/applyShakeRotation() read them.
 export function updateShake(dt) {
   const d = dt > 0.05 ? 0.05 : dt
   clock += d
@@ -108,21 +80,15 @@ export function updateShake(dt) {
   // of trailing a long low-amplitude shimmer.
   const imp = impulsePeak * impulse * impulse
 
-  rumble = Math.max(0, rumble - RUMBLE_RELEASE * d)
-  // Smoothstepped so a whisper of roughness stays a whisper — a linear map
-  // made the faintest ground texture register as a real vibration.
-  const rum = rumble * rumble * (3 - 2 * rumble)
-
   const ti = clock * IMPULSE_FREQ
-  const tr = clock * RUMBLE_FREQ
 
-  offset.x = imp * shakeNoise(ti, 0) + rum * RUMBLE_POS * grain(tr, 3)
-  offset.y = (imp * shakeNoise(ti, 1) + rum * RUMBLE_POS * grain(tr, 4)) * 0.6
-  offset.z = imp * shakeNoise(ti, 2) + rum * RUMBLE_POS * grain(tr, 5)
+  offset.x = imp * shakeNoise(ti, 0)
+  offset.y = imp * shakeNoise(ti, 1) * 0.6
+  offset.z = imp * shakeNoise(ti, 2)
 
-  rot.roll  = imp * IMPULSE_ROLL  * shakeNoise(ti, 6) + rum * RUMBLE_ROLL  * grain(tr, 9)
-  rot.pitch = imp * IMPULSE_PITCH * shakeNoise(ti, 7) + rum * RUMBLE_PITCH * grain(tr, 10)
-  rot.yaw   = imp * IMPULSE_YAW   * shakeNoise(ti, 8) + rum * RUMBLE_YAW   * grain(tr, 11)
+  rot.roll  = imp * IMPULSE_ROLL  * shakeNoise(ti, 6)
+  rot.pitch = imp * IMPULSE_PITCH * shakeNoise(ti, 7)
+  rot.yaw   = imp * IMPULSE_YAW   * shakeNoise(ti, 8)
 }
 
 // Mutates and returns `vec3` with this frame's positional shake added.
