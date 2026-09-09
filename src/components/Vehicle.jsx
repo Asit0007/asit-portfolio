@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { RigidBody, CuboidCollider, useRapier } from '@react-three/rapier'
 import { useKeyboardControls, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { Controls } from '../Controls'
 import useGameStore from '../store/useGameStore'
 import { playCollision, playBrake } from '../audio'
@@ -146,47 +147,76 @@ const CAR_SHADOW_H = 0.75
 const CAR_SHADOW_Y = SHADOW_Y + 0.02
 
 // ── Lamps ─────────────────────────────────────────────────────────────────
-// car-1.glb is a single mesh on a single texture-atlas material, so its
+// car-1.glb is a single Draco mesh on one texture-atlas material, so its
 // lamps are painted into the texture and there is no per-lamp material to
-// make emissive. These are emissive panels laid over those painted lenses.
+// make emissive. These are lamp units laid over those painted lenses.
 //
-// Positions are chassis-local and MUST come from the model's own bounds,
-// not the collider's: the collider is a 1.8 x 3.4 box but the bodywork is
-// 2.38 x 4.94 (glTF POSITION accessor min/max, then the -0.25 y offset and
-// the PI y-rotation the primitive is mounted with). Sizing these off the
-// collider put them 0.75 deep inside the bodywork, completely invisible.
-// Model-local extents after that mount: x +-1.19, y -0.49..1.21,
-// nose z = -2.47, tail z = +2.47.
+// The first pass put one flat emissive slab on each end. They read as
+// aftermarket parts bolted to the bumper, because that is essentially what
+// they were: rectangular, oversized, and standing proud of the bodywork.
+// Period muscle cars are the opposite — QUAD ROUND headlamps sunk into the
+// front fascia behind a dark bezel, and vertical TRI-BAR tail lamps
+// recessed into the rear panel. Both are modelled that way now, and both
+// are pulled ~0.07 back from the body's extremes so the bezel sits in the
+// panel instead of hovering off it.
 //
-// The y values were then dialled in against the model: a temporary bright
-// green emissive proved the panels render and sit proud of the bodywork,
-// but landed 0.13 low, straddling the chrome bumper instead of the painted
-// lens. Red-on-red made that invisible, which is why the brake flare
-// appeared to do nothing even while the material was measurably going
-// 0.25 -> 5.0. Re-check with that green trick if these ever drift.
-const HEADLIGHT_X   = 0.72
-// 0.28, not the tail's 0.55: this bodywork is a wedge and the nose is far
-// lower than the deck. At 0.40 the lamps cleared the bonnet line and read
-// as two white bars floating over the front wings from the chase camera,
-// which is the only angle this game ever shows.
-const HEADLIGHT_POS = [0.28, -2.42]   // [y, z]
-const TAILLIGHT_X   = 0.72
-const TAILLIGHT_POS = [0.55, 2.45]    // [y, z]
-// Tail lamps idle dim and flare under braking, like real running lights.
-// TAIL_IDLE has to stay low: emissive #ff1c08 is already saturated in the
-// red channel by ~0.9, so idling there and flaring to 5.0 produced a
-// measurable change (verified 0.9 -> 5.0 on the live material) that was
-// invisible on screen — both ends clipped to the same red. At 0.25 the
-// lamp sits at a deep rgb(135,~0,~0) and the brake flare reads as an
-// obvious jump to full.
-const TAIL_IDLE     = 0.25
-const TAIL_BRAKING  = 5.0
+// Positions are chassis-local and come from the model's own bounds, not the
+// collider's: the collider is 1.8 x 3.4 but the bodywork is 2.38 x 4.94
+// (glTF POSITION accessor, then the -0.25 y offset and the PI y-rotation
+// the primitive is mounted with). Extents: x +-1.19, y -0.49..1.21,
+// nose z -2.47, tail z +2.47. Sizing off the collider buries them.
+const LAMP_X        = 0.66
+const LAMP_Y_FRONT  = 0.32
+const LAMP_Z_FRONT  = -2.40
+const LAMP_Y_REAR   = 0.52
+const LAMP_Z_REAR   = 2.40
+const HEAD_RADIUS   = 0.125
+const HEAD_SPLIT    = 0.16   // half the gap between each pair's two lamps
+
+// Tail idle must be BOTH a dim emissive and a dark base colour. The lens
+// used to idle bright red, so flaring it just clipped an already-saturated
+// channel and the brake did nothing visible even though the material was
+// measurably changing. Dark red at 0.18 -> full glow at 6.0 is a jump you
+// cannot miss.
+const TAIL_IDLE     = 0.18
+const TAIL_BRAKING  = 6.0
+
 // Bump feedback: a jump in the chassis' vertical velocity within one frame
 // means a wheel just rode up something. The rock colliders kick the body
 // directly (EnvironmentModels.jsx), but small stones are only ever touched
 // by the wheel raycasts, never by the chassis collider, so they'd otherwise
 // pass under the car in total silence.
 const BUMP_DV       = 1.1
+
+// Two round lenses merged into one geometry, so a pair costs one draw call.
+function quadLampGeometry(radius, depth) {
+  const parts = [-HEAD_SPLIT, HEAD_SPLIT].map((dx) => {
+    const g = new THREE.CylinderGeometry(radius, radius, depth, 16)
+    g.rotateX(Math.PI / 2)   // barrel axis along Z, lens facing the road
+    g.translate(dx, 0, 0)
+    return g
+  })
+  const merged = mergeGeometries(parts)
+  parts.forEach((p) => p.dispose())
+  return merged
+}
+
+// Three vertical bars merged into one geometry — the Mustang tail-lamp
+// signature, and one material means the brake flare drives all three.
+function triBarGeometry() {
+  const parts = [-0.105, 0, 0.105].map((dx) => {
+    const g = new THREE.BoxGeometry(0.085, 0.20, 0.045)
+    g.translate(dx, 0, 0)
+    return g
+  })
+  const merged = mergeGeometries(parts)
+  parts.forEach((p) => p.dispose())
+  return merged
+}
+
+const HEAD_LENS_GEO  = quadLampGeometry(HEAD_RADIUS, 0.05)
+const HEAD_BEZEL_GEO = quadLampGeometry(HEAD_RADIUS + 0.032, 0.055)
+const TAIL_BAR_GEO   = triBarGeometry()
 
 // ── GLTF car — rotation.y = PI flips model to face -Z (north) ───────────────
 // Most car GLB models face +Z by default. Our physics pushes in -Z.
@@ -628,68 +658,47 @@ function VehicleInner(props, ref) {
         <BoxCar />
       )}
 
-      {/* Headlights. A single emissive panel read as a flat white sticker
-          pasted on the nose: one blown-out face, no housing, no falloff.
-          Three parts fix that for two extra draw calls each, which this
-          scene has room for — it is fill-bound, not draw-call bound.
-
-          toneMapped={false} on the emitters keeps them reading as light
-          sources rather than being pulled back down by ACES like paint. */}
-      {[-HEADLIGHT_X, HEADLIGHT_X].map((x) => (
-        <group key={`hl${x}`} position={[x, HEADLIGHT_POS[0], HEADLIGHT_POS[1]]}>
-          {/* Bezel — a hair behind and wider all round, so a dark rim shows
-              and the lamp reads as set INTO the wing rather than stuck on. */}
-          <mesh position={[0, 0, 0.006]}>
-            <boxGeometry args={[0.50, 0.21, 0.05]} />
-            <meshStandardMaterial color="#15110d" roughness={0.45} metalness={0.5} />
+      {/* Headlamps — quad round, sunk behind a dark bezel. Two lenses per
+          side are merged into one geometry, so each pair is one draw call. */}
+      {[-LAMP_X, LAMP_X].map((x) => (
+        <group key={`hl${x}`} position={[x, LAMP_Y_FRONT, LAMP_Z_FRONT]}>
+          {/* Bezel sits a touch behind and 0.032 wider, so a dark ring shows
+              round each lens and the unit reads as set INTO the fascia. */}
+          <mesh geometry={HEAD_BEZEL_GEO} position={[0, 0, 0.007]}>
+            <meshStandardMaterial color="#0d0b09" roughness={0.35} metalness={0.75} />
           </mesh>
-          {/* Lens — warmer and dimmer than before. The old 1.7 on a near
-              white emissive clipped every channel, which is exactly why it
-              looked like flat paper; 1.15 on a warm amber keeps colour in
-              it. */}
-          <mesh>
-            <boxGeometry args={[0.42, 0.13, 0.055]} />
+          {/* Warm, and deliberately not blown out — the old 1.7 on a near
+              white emissive clipped every channel, which is exactly what
+              made these look like flat paper cut-outs. */}
+          <mesh geometry={HEAD_LENS_GEO}>
             <meshStandardMaterial
-              color="#fff3d6"
+              color="#fff4dd"
               emissive="#ffd89a"
-              emissiveIntensity={1.15}
+              emissiveIntensity={1.05}
               toneMapped={false}
-              roughness={0.12}
-            />
-          </mesh>
-          {/* Hot core — a small bright centre inside the lens. Real lamps
-              are brightest at the filament and fall off to the edge; one
-              uniform face is what made these look printed on. */}
-          <mesh position={[0, 0, -0.014]}>
-            <boxGeometry args={[0.20, 0.055, 0.035]} />
-            <meshStandardMaterial
-              color="#ffffff"
-              emissive="#fff4dc"
-              emissiveIntensity={2.8}
-              toneMapped={false}
+              roughness={0.1}
             />
           </mesh>
         </group>
       ))}
 
-      {/* Tail lights — materials are collected so the frame loop can flare
-          them under braking. */}
-      {[-TAILLIGHT_X, TAILLIGHT_X].map((x, i) => (
-        <group key={`tl${x}`} position={[x, TAILLIGHT_POS[0], TAILLIGHT_POS[1]]}>
-          {/* Matching bezel, mirrored: the tail faces +Z, so "behind" is -Z. */}
-          <mesh position={[0, 0, -0.006]}>
-            <boxGeometry args={[0.56, 0.22, 0.05]} />
-            <meshStandardMaterial color="#15110d" roughness={0.45} metalness={0.5} />
+      {/* Tail lamps — three vertical bars per side in a recessed housing.
+          Materials are collected so the frame loop can flare them. */}
+      {[-LAMP_X, LAMP_X].map((x, i) => (
+        <group key={`tl${x}`} position={[x, LAMP_Y_REAR, LAMP_Z_REAR]}>
+          {/* Housing behind the bars — the tail faces +Z, so "behind" is -Z. */}
+          <mesh position={[0, 0, -0.009]}>
+            <boxGeometry args={[0.40, 0.27, 0.05]} />
+            <meshStandardMaterial color="#0d0b09" roughness={0.4} metalness={0.6} />
           </mesh>
-          <mesh>
-            <boxGeometry args={[0.48, 0.14, 0.055]} />
+          <mesh geometry={TAIL_BAR_GEO}>
             <meshStandardMaterial
               ref={(m) => { if (m) tailMats.current[i] = m }}
-              color="#ff2f18"
-              emissive="#ff1c08"
+              color="#4a0d05"
+              emissive="#ff2008"
               emissiveIntensity={TAIL_IDLE}
               toneMapped={false}
-              roughness={0.25}
+              roughness={0.2}
             />
           </mesh>
         </group>
