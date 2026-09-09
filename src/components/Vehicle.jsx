@@ -26,7 +26,15 @@ import { shadowTexture, DROP_X, DROP_Z, LEAN, SHADOW_Y } from './GroundShadows'
 const ENGINE_FORCE         = 32
 const BOOST_ENGINE_FORCE   = 65
 const REVERSE_ENGINE_FORCE = 22
-const BRAKE_FORCE          = 26
+// Was 26. That was the actual cause of the stoppie, and no amount of
+// inertia or bias tuning could hide it: at 26 the car shed 39.7 u/s in
+// 430ms over 7.4 units, about 92 u/s^2 or 4.6g. Nothing with wheels stops
+// like that, and the pitch impulse that comes with it put the nose 78
+// degrees down. At 6 a clean stop from 19.8 u/s takes ~300-365ms over 3
+// units (~55-67 u/s^2) and the nose dips 8.7 degrees — inside the ~9 the
+// suspension can absorb on its own, so the rear stays planted. Braking
+// still feels immediate; it just no longer outruns the tyres.
+const BRAKE_FORCE          = 6
 // Fraction of BRAKE_FORCE the FRONT axle gets. Full force on both axles
 // pitched the car up over its front wheels — a stoppie — whenever reverse
 // was stabbed at speed, worst of all coming off boost at ~38 u/s.
@@ -39,6 +47,25 @@ const BRAKE_FORCE          = 26
 // geometry and a far lower centre of mass than this chassis, whose CoM sits
 // above the contact patches with nothing but PITCH_INERTIA resisting it.
 const BRAKE_BIAS_FRONT     = 0.35
+// Brake pressure ramps in instead of slamming to full in a single frame.
+// This is what actually causes the stoppie: statically the car cannot lift
+// at all — total brake force is ~35 against a rear-lift threshold of ~112
+// (m*g*d = 40*1.4 against a CoM only ~0.5 up) — so it was never a force
+// problem, it was an IMPULSE problem. A step input straight to full brake
+// hands PITCH_INERTIA the whole change in one tick, and the nose snaps
+// down far enough to bottom the front suspension and flick the tail up.
+// Spreading the same peak force over ~0.2s removes the spike and costs
+// nothing in stopping distance. Real pedals build pressure this way too.
+const BRAKE_RAMP_UP        = 55    // force units per second, building
+const BRAKE_RAMP_DOWN      = 300   // released fast, so it never feels laggy
+
+// Anti-dive. This chassis has no anti-dive suspension geometry, so once the
+// nose does start to drop there is nothing but PITCH_INERTIA to stop it.
+// A corrective torque proportional to how far it has pitched stands in for
+// that missing geometry. Deadzoned so ordinary brake dive still reads, and
+// capped so it can never launch the car the other way.
+const ANTI_DIVE_DEADZONE   = 0.035 // ~2 degrees of nose-down before it acts
+const ANTI_DIVE_GAIN       = 145
 const IDLE_BRAKE           = 3
 // Reverse needs a much softer idle brake to coast down at the same RATE.
 // Rapier's setWheelBrake is a brake torque, not a plain force, so it can
@@ -99,10 +126,15 @@ const DRIVEN_WHEELS   = [2, 3]
 // yaw or roll, so the chassis still leans/bounces naturally over rocks and
 // corners but can't rotate end-over-end from engine/brake torque alone.
 const CHASSIS_MASS   = 2
-const PITCH_INERTIA  = 9    // local X — resists wheelie/stoppie
+const PITCH_INERTIA  = 14   // local X — resists wheelie/stoppie (was 9; 9 still let a hard stop reach 31 deg nose-down)
 const YAW_INERTIA    = 2.6  // local Y — steering turn-in response
 const ROLL_INERTIA   = 1.2  // local Z — cornering lean / bump response
-const CHASSIS_COM    = { x: 0, y: -0.05, z: 0 } // matches the collider position below
+// Dropped from -0.05. Braking torque is force x CoM HEIGHT, so the moment
+// arm is the most direct lever on dive there is: at -0.05 the CoM sat ~0.50
+// above the contact patches, and every braking newton got that much leverage
+// to rotate the car about its front axle. At -0.20 it is ~0.35, cutting the
+// pitch torque ~30% for free. Also a real muscle car's mass sits low.
+const CHASSIS_COM    = { x: 0, y: -0.12, z: 0 }
 
 // ── Camera ──────────────────────────────────────────────────────────────────
 // Camera sits at +Z (south) relative to car
@@ -139,6 +171,7 @@ const _cam    = new THREE.Vector3()
 const _look   = new THREE.Vector3()
 const _ideal  = new THREE.Vector3()
 const _carPos = new THREE.Vector3()
+const _lat    = new THREE.Vector3()
 
 // ── Contact shadow (see GroundShadows.jsx for why blobs, not shadow maps) ──
 // Roughly the chassis footprint (collider half-extents 0.9 x 1.7) with a
@@ -362,6 +395,7 @@ function VehicleInner(props, ref) {
   const shadowRef   = useRef()
   const tailMats    = useRef([])
   const prevVy      = useRef(0)
+  const brakePress  = useRef(0)
   // Shared with every static blob in GroundShadows.jsx — one texture on the
   // GPU, and the car's contact shading matches the world's by construction.
   const carShadowTex = useMemo(() => shadowTexture(), [])
@@ -483,7 +517,11 @@ function VehicleInner(props, ref) {
     // gating, camera follow, and collision-sound loudness.
     const rot = body.rotation()
     _quat.set(rot.x, rot.y, rot.z, rot.w)
-    _fwd.set(0, 0, -1).applyQuaternion(_quat).setY(0).normalize()
+    _fwd.set(0, 0, -1).applyQuaternion(_quat)
+    // Sign of the un-flattened forward vector's y: negative = nose down.
+    // Grabbed before setY(0) below, which is what the steering/camera want.
+    const noseY = _fwd.y
+    _fwd.setY(0).normalize()
     const lv = body.linvel()
     _vel.set(lv.x, lv.y, lv.z)
     const fwdSpeed = _fwd.dot(_vel)
@@ -499,11 +537,20 @@ function VehicleInner(props, ref) {
     let brakeFront  = 0
     let brakeRear   = 0
 
+    // One ramped pressure drives both hard-brake paths below.
+    const wantsHardBrake = brake || (backward && fwdSpeed > 0.5)
+    brakePress.current += THREE.MathUtils.clamp(
+      (wantsHardBrake ? BRAKE_FORCE : 0) - brakePress.current,
+      -BRAKE_RAMP_DOWN * dt,
+      BRAKE_RAMP_UP * dt,
+    )
+    const bp = brakePress.current
+
     if (backward && fwdSpeed > 0.5) {
       // Moving forward, pressing reverse → brake to a stop first instead
       // of instantly reversing direction.
-      brakeRear  = BRAKE_FORCE
-      brakeFront = BRAKE_FORCE * BRAKE_BIAS_FRONT
+      brakeRear  = bp
+      brakeFront = bp * BRAKE_BIAS_FRONT
     } else if (forward) {
       engineForce = FORWARD_SIGN * (canBoost ? BOOST_ENGINE_FORCE : ENGINE_FORCE) / (1 + overflow)
     } else if (backward && fwdSpeed > -MAX_REV_SPEED) {
@@ -511,8 +558,8 @@ function VehicleInner(props, ref) {
     }
 
     if (brake) {
-      brakeRear  = BRAKE_FORCE
-      brakeFront = BRAKE_FORCE * BRAKE_BIAS_FRONT
+      brakeRear  = bp
+      brakeFront = bp * BRAKE_BIAS_FRONT
     } else if (!forward && !backward) {
       // Idle "engine braking" only comes through the driven wheels in a real
       // RWD car — applying it to the front wheels too was pitching the nose
@@ -522,7 +569,7 @@ function VehicleInner(props, ref) {
       // road through the driven wheels whichever way the car is rolling.
       // Only the magnitude changes: see IDLE_BRAKE_REVERSE above for why
       // the same number bites roughly 40% harder going backwards.
-      brakeRear = fwdSpeed < -0.5 ? IDLE_BRAKE_REVERSE : IDLE_BRAKE
+      brakeRear = Math.max(bp, fwdSpeed < -0.5 ? IDLE_BRAKE_REVERSE : IDLE_BRAKE)
     }
 
     // Steering — smoothed so a tapped key eases toward full lock instead of
@@ -540,6 +587,20 @@ function VehicleInner(props, ref) {
     for (const i of DRIVEN_WHEELS) {
       controller.setWheelEngineForce(i, engineForce)
       controller.setWheelBrake(i, brakeRear)
+    }
+
+    // ── Anti-dive ─────────────────────────────────────────────────────────
+    // Applied AFTER the vehicle step, so it corrects the pitch the brake
+    // just produced rather than being overwritten by it. Torque about the
+    // car's own lateral axis: rotating positively about local +X lifts the
+    // nose (forward is -Z, so y' = +sin(theta)). Proportional to how far
+    // past the deadzone it has dived, and clamped, so it can only ever damp
+    // the dive — never drive the car nose-up on its own.
+    if (bp > 1 && noseY < -ANTI_DIVE_DEADZONE && lastSpeed.current > 3) {
+      const dive = Math.min(-noseY - ANTI_DIVE_DEADZONE, 0.45)
+      const k = dive * ANTI_DIVE_GAIN * dt
+      _lat.set(1, 0, 0).applyQuaternion(_quat)
+      body.applyTorqueImpulse({ x: _lat.x * k, y: _lat.y * k, z: _lat.z * k }, true)
     }
 
     controller.updateVehicle(dt)
