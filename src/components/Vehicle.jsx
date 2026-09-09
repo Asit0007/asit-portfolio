@@ -27,6 +27,18 @@ const BOOST_ENGINE_FORCE   = 65
 const REVERSE_ENGINE_FORCE = 22
 const BRAKE_FORCE          = 26
 const IDLE_BRAKE           = 3
+// Reverse needs a much softer idle brake to coast down at the same RATE.
+// Rapier's setWheelBrake is a brake torque, not a plain force, so it can
+// effectively lock the wheel and hand deceleration over to tire friction —
+// which is why 3 behaves nothing like the ~3 u/s^2 that force/mass implies.
+// Measured coast-down over the same 8 -> 4 speed window: forward 14.7
+// u/s^2, reverse with the same 3 about 21-33, reverse with none about 6.
+// 1.0 lands reverse inside forward's own run-to-run spread, so letting go
+// of reverse rolls to a stop instead of grabbing. Retune by measuring the
+// 6->2 window in both directions, not by feel — the run-to-run variance is
+// wide enough (forward alone measured 17.9 and 24.4 back to back) that a
+// single run will happily justify any number you like.
+const IDLE_BRAKE_REVERSE   = 1.0
 const TOP_SPEED            = 20
 const TOP_SPEED_BOOST      = 38
 const MAX_REV_SPEED        = 12
@@ -413,7 +425,12 @@ function VehicleInner(props, ref) {
       // Idle "engine braking" only comes through the driven wheels in a real
       // RWD car — applying it to the front wheels too was pitching the nose
       // down hard (a "stoppie") when coasting off the accelerator at speed.
-      brakeRear = IDLE_BRAKE
+      //
+      // Stays on the rear in both directions — engine braking reaches the
+      // road through the driven wheels whichever way the car is rolling.
+      // Only the magnitude changes: see IDLE_BRAKE_REVERSE above for why
+      // the same number bites roughly 40% harder going backwards.
+      brakeRear = fwdSpeed < -0.5 ? IDLE_BRAKE_REVERSE : IDLE_BRAKE
     }
 
     // Steering — smoothed so a tapped key eases toward full lock instead of

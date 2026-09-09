@@ -41,11 +41,18 @@ const RESET_DELAY_MS = 4000 // after a strike, before pins reset
 // 0.135. That silhouette is a skittle, not a bowling pin, and it's what
 // made the pin/ball proportion read wrong.
 //
-// Regulation ball is 8.5" across, so pin height : ball diameter = 1.76 : 1.
-// Ours was 1.53 : 1. Keeping BALL_RADIUS at 0.85 and taking the pin to 3.0
-// lands on 1.765 : 1 — regulation, and it keeps the "pins tower over the
-// car" gag this area was built around rather than shrinking the ball.
-const PIN_HEIGHT   = 3.0
+// Regulation ball is 8.5" across, so pin height : ball diameter = 1.76 : 1,
+// and 3.0 against our 1.7 ball landed exactly there. Regulation turned out
+// to be the wrong target: at 3.0 a pin stood taller than the car is wide
+// and nearly as tall as it is long, which read as oversized rather than as
+// the intended gag, and it made strikes genuinely hard — a 1.7 ball barely
+// spans one 1.75 gap, so it split the rack instead of plowing it.
+//
+// 2.2 keeps the pins taller than the car's body (the gag survives) while
+// the ball now spans 1.33 pin gaps instead of 0.97, so it carries into the
+// neighbours the way a real ball does. Everything below scales off this,
+// so the rack keeps its proportions at any height.
+const PIN_HEIGHT   = 2.2
 const PIN_START_Y  = PIN_HEIGHT / 2
 
 // Profile of one half of the pin, revolved by LatheGeometry: [t, r] where t
@@ -120,11 +127,18 @@ function buildPinGeometry() {
 // Regulation is 12" between pins on a 42" lane = 0.8 of pin height, which
 // here would be 2.4 and put the back row 7.2 wide on a 7-wide lane — so
 // this is as close to real as the alley's own width allows.
+// Derived from PIN_HEIGHT rather than written out, so shrinking the pin
+// tightens the rack with it. 0.583 reproduces the previous hand-tuned 1.75
+// spacing exactly at the old 3.0 height — the proportions are unchanged,
+// only the scale.
+const PIN_SPACING = PIN_HEIGHT * 0.583
+const PIN_ROW     = PIN_SPACING * Math.cos(Math.PI / 6)
 const PIN_LOCAL_POSITIONS = [
   [0, 0],
-  [-1.515, -0.875], [-1.515, 0.875],
-  [-3.030, -1.750], [-3.030, 0], [-3.030, 1.750],
-  [-4.545, -2.625], [-4.545, -0.875], [-4.545, 0.875], [-4.545, 2.625],
+  [-PIN_ROW, -PIN_SPACING / 2], [-PIN_ROW, PIN_SPACING / 2],
+  [-2 * PIN_ROW, -PIN_SPACING], [-2 * PIN_ROW, 0], [-2 * PIN_ROW, PIN_SPACING],
+  [-3 * PIN_ROW, -1.5 * PIN_SPACING], [-3 * PIN_ROW, -PIN_SPACING / 2],
+  [-3 * PIN_ROW, PIN_SPACING / 2], [-3 * PIN_ROW, 1.5 * PIN_SPACING],
 ]
 
 // A separate physics ball the car pushes into the pins — matching folio's
@@ -182,6 +196,10 @@ const ZERO_VEC      = { x: 0, y: 0, z: 0 }
 function pinWorldPosition([lx, lz]) {
   return [BOWLING_CENTER[0] + lx, PIN_START_Y, BOWLING_CENTER[1] + lz]
 }
+
+// Each pin's spot on the rack, so the strike test can tell a pin that was
+// driven off its position from one that merely wobbled.
+const PIN_RACK_WORLD = PIN_LOCAL_POSITIONS.map(pinWorldPosition)
 
 function ballWorldPosition() {
   return [BOWLING_CENTER[0] + BALL_LOCAL[0], BALL_START_Y, BOWLING_CENTER[1] + BALL_LOCAL[1]]
@@ -315,7 +333,10 @@ function Pin({ pinRef, position, geometry }) {
       // culprit here rather than the mass — it bled off spin the instant
       // the pin started to topple, so pins slumped over in place instead
       // of cartwheeling off the deck.
-      mass={0.045}
+      // Scaled with the pin's volume (0.045 * (2.2/3.0)^3 ~= 0.018), rounded
+      // up slightly so a clipped pin still topples rather than flicking away
+      // like a skittle.
+      mass={0.020}
       linearDamping={0.06}
       angularDamping={0.12}
       restitution={0.5}
@@ -471,7 +492,15 @@ export default function Bowling({ vehicleRef }) {
       const rot = body.rotation()
       _quat.set(rot.x, rot.y, rot.z, rot.w)
       _up.set(0, 1, 0).applyQuaternion(_quat)
-      const isDown = _up.y < 0.5
+      // Tilted past ~60 degrees, OR knocked clean off its spot. Tilt alone
+      // missed the pin that gets punted down the lane and happens to land
+      // back on its base — in any real alley that pin is down, but here one
+      // upright survivor in the gutter blocked the strike until the rack
+      // reset itself, which is a good part of why strikes felt unwinnable.
+      const t = body.translation()
+      const rack = PIN_RACK_WORLD[i]
+      const displaced = Math.hypot(t.x - rack[0], t.z - rack[2]) > PIN_SPACING
+      const isDown = _up.y < 0.5 || displaced
       if (isDown) anyDown = true
       else allDown = false
     }
