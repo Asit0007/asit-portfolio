@@ -34,32 +34,6 @@ function PhysicsLetter({ char, position, color = '#ffffff', size = 3.2 }) {
   )
 }
 
-function GroundText({ text, position, tiltZ = 0, size = 0.75, color = '#ffffff' }) {
-  return (
-    <Center position={position} rotation={[-Math.PI / 2, 0, tiltZ]}>
-      <Text3D
-        font="/fonts/helvetiker_bold.typeface.json"
-        size={size}
-        height={0.15}
-        curveSegments={3}
-        bevelEnabled={false}
-      >
-        {text}
-        {/* Slight emissive so instruction text reads against the warm sand
-            under the static sun (in-world sign text — DESIGN.md §3/§6) */}
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={0.3}
-          roughness={0.5}
-          metalness={0.05}
-          side={2}
-        />
-      </Text3D>
-    </Center>
-  )
-}
-
 // Hoisted out of the component so the rest of the world can avoid spawning
 // on top of the name. The letters are dynamic bodies and can be shoved
 // around, but this is where they start, which is what placement cares about.
@@ -107,22 +81,6 @@ export default function NameTitle() {
           />
         ))}
 
-        {/* White, not amber — amber vanished into the sand. Matches the
-            white 3D letters (DESIGN.md: in-world text is white or emphasis) */}
-        <GroundText
-          text="USE ARROW KEYS TO EXPLORE"
-          position={[7, 0.58, -9]}
-          tiltZ={-0.06}
-          size={0.65}
-          color="#ffffff"
-        />
-        <GroundText
-          text="R=RESET  M=MUTE  TAB=MAP  SHIFT=BOOST"
-          position={[7.5, 0.58, -11.2]}
-          tiltZ={-0.06}
-          size={0.45}
-          color="#fff4e0"
-        />
       </group>
     </Suspense>
   )

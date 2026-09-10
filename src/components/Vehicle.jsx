@@ -391,29 +391,42 @@ function triBarGeometry() {
 // the wheel about local +X sends it toward +Z, so rolling forward is the
 // other way round.
 //
-// Slightly proud of the physics radius so they cover the painted wheels
-// underneath rather than z-fighting with them.
-const WHEEL_VIS_RADIUS = 0.385
-const WHEEL_VIS_WIDTH  = 0.26
+// Sized to bury the painted wheels underneath rather than merely overlap
+// them — at 0.385 the model's own tyre still showed as a ring around the
+// outside, which is exactly what made the wheels read as stickers.
+//
+// Going bigger than the PHYSICS radius has a catch worth spelling out. The
+// controller puts the hub exactly WHEEL_RADIUS above the ground, so drawing
+// a 0.45 wheel there would sink 0.09 of it into the asphalt. VIS_LIFT
+// cancels that: the visual hub rides that much higher so the tread sits on
+// the road, at the cost of the wheel sitting 0.09 higher in its arch, which
+// at this size is invisible and is much the lesser evil.
+const WHEEL_VIS_RADIUS = 0.45
+const WHEEL_VIS_WIDTH  = 0.34
+const VIS_LIFT         = WHEEL_VIS_RADIUS - WHEEL_RADIUS
 
-// Tyre and hub merged into one geometry with vertex colours, so a wheel is
-// one draw call instead of two and all four share a single material.
+// Tyre, rim and hub merged into one vertex-coloured geometry, so a wheel is
+// still a single draw call and all four share one material. Three parts is
+// what it takes to stop reading as a black puck: the rim has to stand
+// slightly proud of the tyre or the wheel has no face at all from the side,
+// and the dark hub gives the eye something to track as it spins — without
+// it, a smooth dark disc looks stationary however fast it turns.
 function wheelGeometry() {
-  const tyre = new THREE.CylinderGeometry(WHEEL_VIS_RADIUS, WHEEL_VIS_RADIUS, WHEEL_VIS_WIDTH, 16)
-  // A hub that stands slightly proud on both faces, so the wheel reads as
-  // having a rim from the side rather than being a plain black puck.
-  const hub  = new THREE.CylinderGeometry(WHEEL_VIS_RADIUS * 0.46, WHEEL_VIS_RADIUS * 0.46,
-                                          WHEEL_VIS_WIDTH * 1.06, 12)
+  const R = WHEEL_VIS_RADIUS, W = WHEEL_VIS_WIDTH
+  const tyre = new THREE.CylinderGeometry(R, R, W, 20)
+  const rim  = new THREE.CylinderGeometry(R * 0.62, R * 0.62, W * 1.06, 16)
+  const hub  = new THREE.CylinderGeometry(R * 0.2,  R * 0.2,  W * 1.12, 10)
   const paint = (g, r, gr, b) => {
     const n = g.attributes.position.count
     const c = new Float32Array(n * 3)
     for (let i = 0; i < n; i++) { c[i * 3] = r; c[i * 3 + 1] = gr; c[i * 3 + 2] = b }
     g.setAttribute('color', new THREE.BufferAttribute(c, 3))
   }
-  paint(tyre, 0.055, 0.05, 0.045)   // near-black rubber
-  paint(hub,  0.62,  0.60, 0.56)    // dull alloy
-  const merged = mergeGeometries([tyre, hub])
-  tyre.dispose(); hub.dispose()
+  paint(tyre, 0.045, 0.042, 0.040)  // near-black rubber
+  paint(rim,  0.66,  0.645, 0.60)   // brushed alloy
+  paint(hub,  0.16,  0.15,  0.14)   // dark centre cap
+  const merged = mergeGeometries([tyre, rim, hub])
+  tyre.dispose(); rim.dispose(); hub.dispose()
   // Barrel axis along X so the wheel rolls about its own local X.
   merged.rotateZ(Math.PI / 2)
   return merged
@@ -956,7 +969,8 @@ function VehicleInner(props, ref) {
         const susp = controller.wheelSuspensionLength(i)
         w.position.set(
           conn.x,
-          conn.y - (typeof susp === 'number' && isFinite(susp) ? susp : SUSPENSION_REST_LENGTH),
+          conn.y - (typeof susp === 'number' && isFinite(susp) ? susp : SUSPENSION_REST_LENGTH)
+            + VIS_LIFT,
           conn.z,
         )
         w.rotation.y = controller.wheelSteering(i) || 0

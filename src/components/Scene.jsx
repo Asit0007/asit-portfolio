@@ -9,6 +9,7 @@ import Vehicle           from './Vehicle'
 import Zones             from './Zones'
 import SkyBox            from './Sky'
 import NameTitle         from './NameTitle'
+import RoadInstructions  from './RoadInstructions'
 import ZoneDecorations   from './ZoneDecorations'
 import SignPosts          from './SignPosts'
 import AudioManager      from './AudioManager'
@@ -52,6 +53,7 @@ export default function Scene({ tierCfg }) {
       <Ramps />
       <ExplosiveCrates />
       <NameTitle />
+      <RoadInstructions />
       <ZoneDecorations />
       <SignPosts />
       <ContactZone />
