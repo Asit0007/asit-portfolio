@@ -403,11 +403,16 @@ function triBarGeometry() {
 // and moving it would change how the car drives. Instead the visual wheels
 // get their own offset from the physics ones — the two were never the same
 // thing and only looked it by coincidence.
+// x is aligned to the painted wheel's own centre (±0.964, measured), not
+// pushed outboard. That alignment is what stops the painted tyre swinging
+// into view at full lock: off-centre by even 0.056, its far corner reaches
+// 0.320 from our axle at 24 degrees of steer and would need a 0.64-wide
+// wheel to stay hidden; centred, the same corner reaches only 0.268.
 const WHEEL_VIS_OFFSET = [
-  { x: -0.07, z: -0.10 },  // front-left
-  { x:  0.07, z: -0.10 },  // front-right
-  { x: -0.07, z: -0.03 },  // rear-left
-  { x:  0.07, z: -0.03 },  // rear-right
+  { x: -0.014, z: -0.10 },  // front-left
+  { x:  0.014, z: -0.10 },  // front-right
+  { x: -0.014, z: -0.03 },  // rear-left
+  { x:  0.014, z: -0.03 },  // rear-right
 ]
 
 // Jumbo, and deliberately proud of the arches: a 1.04 diameter on a 4.94
@@ -416,7 +421,16 @@ const WHEEL_VIS_OFFSET = [
 // past the arch line — a hot rod stance, and the reason they now bury the
 // painted wheels underneath instead of merely overlapping them.
 const WHEEL_VIS_RADIUS = 0.52
-const WHEEL_VIS_WIDTH  = 0.40
+// Wide enough to keep the painted tyre buried through FULL steering lock.
+// The painted wheel doesn't turn — it is part of the bodywork — so at 24
+// degrees its corners swing out from behind ours. Measured against its real
+// footprint (0.32 wide, radius 0.30) it needs 0.537, but the radius is the
+// one figure the mesh won't give cleanly — the arch geometry sits in the
+// same bins as the tyre, and the plausible range runs to 0.34, which would
+// need 0.57. 0.60 covers the whole range instead of the midpoint of it.
+// Fat, but that is what a drag radial looks like, and it is the whole
+// reason the wheel stops showing its seams at lock.
+const WHEEL_VIS_WIDTH  = 0.60
 // The controller puts the hub exactly WHEEL_RADIUS above the ground, so
 // drawing a bigger wheel there would sink the difference into the asphalt.
 // This lifts the visual hub so the tread sits on the road. Physics is
@@ -433,6 +447,13 @@ const VIS_LIFT = WHEEL_VIS_RADIUS - WHEEL_RADIUS
 // Rim/tyre proportions are deliberately low-profile — a big dish inside a
 // thin sidewall is what "alloy" looks like at a glance.
 const SPOKE_COUNT = 5
+
+// Lifts the visible shell — bodywork and lamps together — off the wheels a
+// touch, so the jumbo tyres don't look like they are swallowing the arches.
+// Cosmetic only: it moves the drawn car, never the collider, the axles or
+// the suspension, so the ride height the physics uses is untouched and the
+// car drives exactly as before.
+const BODY_LIFT = 0.07
 
 function wheelGeometry() {
   const R = WHEEL_VIS_RADIUS, W = WHEEL_VIS_WIDTH
@@ -917,7 +938,7 @@ function VehicleInner(props, ref) {
       const t = state.clock.elapsedTime * BODY_SHAKE_FREQ
       shell.position.set(
         shakeNoise(t, 21) * BODY_SHAKE_XZ * a,
-        shakeNoise(t, 22) * BODY_SHAKE_Y  * a,
+        BODY_LIFT + shakeNoise(t, 22) * BODY_SHAKE_Y * a,
         shakeNoise(t, 23) * BODY_SHAKE_XZ * a,
       )
       shell.rotation.set(
