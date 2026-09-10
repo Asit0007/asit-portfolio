@@ -14,6 +14,7 @@ import SignPosts          from './SignPosts'
 import AudioManager      from './AudioManager'
 import ContactZone       from './ContactZone'
 import EnvironmentModels from './EnvironmentModels'
+import Ramps             from './Ramps'
 import DevStats           from './DevStats'
 import Circuit            from './Circuit'
 import Bowling            from './Bowling'
@@ -45,6 +46,7 @@ export default function Scene({ tierCfg }) {
       <Suspense fallback={null}>
         <EnvironmentModels maxProps={tierCfg.maxProps} />
       </Suspense>
+      <Ramps />
       <NameTitle />
       <ZoneDecorations />
       <SignPosts />

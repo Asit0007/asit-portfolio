@@ -7,6 +7,7 @@ import useGameStore from '../store/useGameStore'
 import { isNearTrack } from '../data/track'
 import { SCATTER_DATA } from './World'
 import { NAME_KEEPOUT } from './NameTitle'
+import { isOnRamp } from './Ramps'
 
 // Preload only the models we actually render
 ;[
@@ -126,6 +127,7 @@ function isOpenGround(x, z) {
   if (Math.abs(x) < 8 || Math.abs(z) < 8) return false
   if (ZONE_CENTERS.some(([zx, zz]) => Math.abs(x - zx) < 22 && Math.abs(z - zz) < 22)) return false
   if (isNearTrack(x, z, 6)) return false
+  if (isOnRamp(x, z, 3)) return false
   return true
 }
 

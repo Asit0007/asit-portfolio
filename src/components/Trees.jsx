@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { isNearTrack } from '../data/track'
+import { isOnRamp } from './Ramps'
 import { isOnName } from './NameTitle'
 
 const TREE_COUNT = 100
@@ -86,6 +87,9 @@ function randomTreePositions() {
     // Keep the name legible — trees were growing straight through the
     // letters, which is the one piece of the world that has to stay clean.
     if (isOnName(x, z)) continue
+    // Same for the ramps: the approach has to be clear or the jump is a
+    // collision with a trunk.
+    if (isOnRamp(x, z, 3)) continue
     positions.push({
       x, z,
       scale: 0.7 + Math.random() * 0.9,
