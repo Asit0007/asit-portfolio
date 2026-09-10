@@ -15,6 +15,7 @@ let ctx         = null
 let engine      = null
 let gravel      = null
 let lastGravel  = -1
+let lastGravelAt = 0
 let initialized = false
 let lastBrake   = 0
 let lastCollide = 0
@@ -151,10 +152,24 @@ function initGravel() {
 
 // `level` is 0..1 roughness, `speed` is the car's ground speed. Safe to call
 // every frame — it early-outs once the bed has already been faded to silence.
+// Rate-limited on purpose. Called from the vehicle's frame loop, this would
+// otherwise schedule three AudioParam ramps every frame — 180 a second, on a
+// graph whose own time constants are 50-100ms, so 170 of them are describing
+// a curve the previous one was already drawing. Every scheduled event is
+// also work for the audio thread, and starving that thread produces exactly
+// the kind of general "the site feels laggy" that never shows up in a frame
+// counter. 20 updates a second is far finer than the ear can follow here.
+const GRAVEL_MIN_GAP = 50   // ms
+
 export function updateGravel(level = 0, speed = 0) {
   if (!gravel || !ctx) return
   const l = level > 1 ? 1 : level < 0 ? 0 : level
   if (l === 0 && lastGravel === 0) return
+  const now = performance.now()
+  // A fade to silence always goes through, so the bed can never be left
+  // running by a rate limit.
+  if (l !== 0 && now - lastGravelAt < GRAVEL_MIN_GAP) return
+  lastGravelAt = now
   lastGravel = l
   try {
     const t = ctx.currentTime

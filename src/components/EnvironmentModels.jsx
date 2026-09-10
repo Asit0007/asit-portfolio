@@ -5,6 +5,8 @@ import * as THREE from 'three'
 import { triggerShake } from '../utils/cameraShake'
 import useGameStore from '../store/useGameStore'
 import { isNearTrack } from '../data/track'
+import { SCATTER_DATA } from './World'
+import { NAME_KEEPOUT } from './NameTitle'
 
 // Preload only the models we actually render
 ;[
@@ -204,6 +206,26 @@ function sampleHeight(heights, dx, dz) {
   return heights[i * n + j]
 }
 
+// Gravel is a rough surface, and this world has loose DYNAMIC props resting
+// on the ground for the whole session: the shoveable crates (World.jsx) and
+// the name's letters (NameTitle.jsx). Drop one of those onto a bumpy
+// heightfield and it never settles — it rocks against the slope, never
+// reaches Rapier's sleep threshold, and goes on costing solver time and
+// twitching visibly forever. Measured before this filter: 2-4 crates and up
+// to 3 letters sat on gravel at every tier.
+//
+// Only patch CENTRES are filtered, not boulder placement. A boulder too
+// close to a crate simply goes without its apron; it does not move, so the
+// existing world layout is untouched.
+const PROP_CLEARANCE = PATCH_HALF + 2
+function clearOfLooseProps(x, z) {
+  for (const r of SCATTER_DATA) {
+    if (Math.abs(x - r.x) < PROP_CLEARANCE && Math.abs(z - r.z) < PROP_CLEARANCE) return false
+  }
+  return !(x > NAME_KEEPOUT.minX - PATCH_HALF && x < NAME_KEEPOUT.maxX + PATCH_HALF &&
+           z > NAME_KEEPOUT.minZ - PATCH_HALF && z < NAME_KEEPOUT.maxZ + PATCH_HALF)
+}
+
 function buildPatches(centers, rng) {
   return centers.map(([cx, cz]) => {
     const heights = buildHeights(rng)
@@ -386,7 +408,9 @@ function RockScatter({ count }) {
     // all — gravel without a rock sitting in it is the commoner sight, and
     // it roughly doubles the chance of driving across some while exploring
     // for the cost of a few dozen more colliders.
-    const centers = result.map(({ x, z }) => [x, z])
+    const centers = result
+      .filter(({ x, z }) => clearOfLooseProps(x, z))
+      .map(({ x, z }) => [x, z])
     let extra = Math.round(count * 0.8)
     attempts = 0
     while (extra > 0 && attempts < count * 20) {
@@ -395,7 +419,7 @@ function RockScatter({ count }) {
       const radius = 18 + rng() * 70
       const x = Math.cos(angle) * radius
       const z = Math.sin(angle) * radius
-      if (!isOpenGround(x, z)) continue
+      if (!isOpenGround(x, z) || !clearOfLooseProps(x, z)) continue
       centers.push([x, z])
       extra--
     }

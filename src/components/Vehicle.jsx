@@ -144,6 +144,16 @@ const CHASSIS_COM    = { x: 0, y: -0.12, z: 0 }
 // W pressed → car moves in -Z → moves north → away from camera → FORWARD ✓
 const CAM_OFFSET = new THREE.Vector3(8, 18, 20)
 const CAM_LERP   = 3.5
+// The camera's AIM is smoothed separately from its position, and only
+// vertically. Horizontally it tracks the car exactly, or the car drifts off
+// centre; vertically it must not, because the chassis bobs on its
+// suspension over every bump and the look-at target is what sets the whole
+// frame's orientation. At ~30 units back, half a suspension stroke swings
+// the view about a tenth of a degree — per frame, in a random direction,
+// which is precisely what "the camera isn't smooth" looks like. Flat ground
+// hid this completely: before there was rough ground to drive on, the car's
+// y never moved.
+const LOOK_Y_LERP = 4
 
 // Continuous speed-based zoom replaces the old binary boost/non-boost
 // offset swap — boost already raises speed toward TOP_SPEED_BOOST, so it
@@ -496,6 +506,11 @@ function VehicleInner(props, ref) {
   const wheelGroundY = useRef([null, null, null, null])
   const roughRef     = useRef(0)
   const prevPos      = useRef(null)
+  // The smoothed camera position BEFORE shake is added. Kept apart from
+  // camera.position on purpose — see the camera block for why reading the
+  // rendered position back is a feedback loop.
+  const camBase      = useRef(null)
+  const lookY        = useRef(null)
   const bodyShakeRef = useRef()
   const brakePress  = useRef(0)
   // Shared with every static blob in GroundShadows.jsx — one texture on the
@@ -724,7 +739,13 @@ function VehicleInner(props, ref) {
     // so it fires for anything the wheels ride over, rocks included.
     const dvy = lv.y - prevVy.current
     prevVy.current = lv.y
-    if (dvy > BUMP_DV && lastSpeed.current > 3) {
+    // Rough ground clears BUMP_DV several times a second, so on gravel this
+    // was firing a fresh camera impulse continuously — reintroducing exactly
+    // the camera rumble that was deliberately moved onto the car. Gravel is
+    // already represented by the body judder below; this channel is for
+    // one-off events (landing a jump, clipping a boulder), so it stands down
+    // once the wheels report a rough surface.
+    if (dvy > BUMP_DV && lastSpeed.current > 3 && roughRef.current < 0.25) {
       triggerShake(Math.min(dvy / 7, 0.32), 220)
     }
 
@@ -762,6 +783,11 @@ function VehicleInner(props, ref) {
     roughRef.current = roughTarget > roughRef.current
       ? roughTarget
       : roughRef.current + (roughTarget - roughRef.current) * (1 - Math.exp(-ROUGH_RELEASE * dt))
+    // Exponential decay approaches zero without ever arriving, and a
+    // roughness of 1e-8 is still not zero to everything downstream — the
+    // gravel bed below would keep scheduling Web Audio ramps on every frame
+    // for the rest of the session. Snap the tail off.
+    if (roughRef.current < 0.002) roughRef.current = 0
 
     // Crawling over gravel is a series of individual clonks, not a
     // vibration; the rumble has to earn its intensity from road speed.
@@ -864,7 +890,8 @@ function VehicleInner(props, ref) {
     // camera back further through this curve without a special case.
     const pos = body.translation()
     _carPos.set(pos.x, pos.y, pos.z)
-    _cam.copy(state.camera.position)
+    if (!camBase.current) camBase.current = state.camera.position.clone()
+    _cam.copy(camBase.current)
     const zoomT = THREE.MathUtils.smoothstep(lastSpeed.current, ZOOM_SPEED_MIN, ZOOM_SPEED_MAX)
     const zoom  = THREE.MathUtils.lerp(ZOOM_NEAR, ZOOM_FAR, zoomT)
     _ideal.copy(_carPos).addScaledVector(CAM_OFFSET, zoom)
@@ -880,10 +907,25 @@ function VehicleInner(props, ref) {
     if (zoneBiasT > 0) _ideal.addScaledVector(ZONE_BIAS_OFFSET, zoneBiasT)
 
     _cam.lerp(_ideal, 1 - Math.exp(-CAM_LERP * dt))
+    // Bank the SMOOTHED position before the shake goes on. Reading
+    // camera.position back at the top of the next frame instead — which is
+    // what this used to do — feeds the shake offset into its own smoothing
+    // filter: the lerp starts from an already-displaced point, displaces it
+    // again, and the error integrates. White noise mostly cancelled itself
+    // out through that loop, which is why it was survivable before; smooth
+    // noise is correlated frame to frame, so it accumulates into a slow
+    // wander that reads as the camera never quite settling.
+    camBase.current.copy(_cam)
+
     updateShake(dt)
     applyShake(_cam)
     state.camera.position.copy(_cam)
-    _look.set(pos.x, pos.y + 0.5, pos.z)
+
+    // Aim: exact horizontally, damped vertically (see LOOK_Y_LERP).
+    const wantY = pos.y + 0.5
+    if (lookY.current === null) lookY.current = wantY
+    lookY.current += (wantY - lookY.current) * (1 - Math.exp(-LOOK_Y_LERP * dt))
+    _look.set(pos.x, lookY.current, pos.z)
     state.camera.lookAt(_look)
     // After lookAt, never before — lookAt writes the full orientation and
     // would overwrite any roll added ahead of it.
