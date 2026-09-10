@@ -16,6 +16,7 @@ import ContactZone       from './ContactZone'
 import EnvironmentModels from './EnvironmentModels'
 import Ramps             from './Ramps'
 import ExplosiveCrates   from './ExplosiveCrates'
+import EndlessDesert     from './EndlessDesert'
 import DevStats           from './DevStats'
 import Circuit            from './Circuit'
 import Bowling            from './Bowling'
@@ -40,6 +41,7 @@ export default function Scene({ tierCfg }) {
       <SkyBox />
       <Lights />
       <World />
+      <EndlessDesert />
       {/* After World so the blobs blend over the finished ground, and fed the
           same tier cap as Trees so it never shadows a tree that isn't there. */}
       <GroundShadows maxTrees={tierCfg.maxTrees} />

@@ -75,7 +75,12 @@ function GradientFloor() {
           collider with real vertical extent to hit reliably; a near-zero-
           thickness auto-collider was letting raycasts miss intermittently
           away from the (separately, more solidly collided) start zone pad. */}
-      <CuboidCollider args={[200, 0.15, 200]} position={[0, -0.15, 0]} />
+      {/* Reaches far past the 400x400 visible plane. The boundary walls are
+          gone (EndlessDesert.jsx), so a crate shoved over the old edge would
+          otherwise fall forever — and the dune tiles only exist near the car,
+          so they cannot be relied on to catch anything. A single oversized
+          cuboid costs nothing and guarantees there is always a floor. */}
+      <CuboidCollider args={[2000, 0.15, 2000]} position={[0, -0.15, 0]} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
         <planeGeometry args={[400, 400]} />
         <meshLambertMaterial map={texture} />
@@ -174,31 +179,10 @@ function Roads() {
   )
 }
 
-function Boundaries() {
-  // Pushed out from ±100 to ±160 to make room for the racing circuit — the
-  // big wraparound track (src/data/track.js) reaches x/z ≈±142 at its
-  // widest, verified to stay clear of these walls with margin. The ground
-  // plane is already 400x400 (half-extent 200), so there's plenty of
-  // margin without touching any floor geometry.
-  const walls = [
-    { pos: [0,   3, -160], size: [340, 6, 2] },
-    { pos: [0,   3,  160], size: [340, 6, 2] },
-    { pos: [-160, 3,  0],  size: [2, 6, 340] },
-    { pos: [160,  3,  0],  size: [2, 6, 340] },
-  ]
-  return (
-    <>
-      {walls.map(({ pos, size }, i) => (
-        <RigidBody key={i} type="fixed" colliders="cuboid" position={pos}>
-          <mesh>
-            <boxGeometry args={size} />
-            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-          </mesh>
-        </RigidBody>
-      ))}
-    </>
-  )
-}
+// The world used to end in four invisible walls at +-160. It doesn't end
+// any more — EndlessDesert.jsx grows dune tiles around the car for as long
+// as anyone keeps driving — so there is nothing left to wall off. Hitting an
+// invisible wall was the worst edge this world had.
 
 export const SCATTER_DATA = [
   { x: -32, z: -28, sx: 1.2, sy: 0.8,  sz: 1.0, ry: 0.4  },
@@ -251,7 +235,6 @@ export default function World() {
     <group>
       <GradientFloor />
       <Roads />
-      <Boundaries />
       <TilePaths />
       <ZonePad position={[0,   -0.58, -55]} size={[30, 1.2, 30]} color="#f5efe6" />
       <ZonePad position={[55,  -0.58,  0]}  size={[30, 1.2, 30]} color="#f5efe6" />
