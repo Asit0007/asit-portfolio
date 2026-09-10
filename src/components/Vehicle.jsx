@@ -367,6 +367,59 @@ function triBarGeometry() {
   return merged
 }
 
+// ── Wheels ────────────────────────────────────────────────────────────────
+// car-1.glb is a single Draco mesh on one atlas material (one node, one
+// mesh — checked), so its wheels are painted into the bodywork exactly like
+// its lamps were. There is nothing in the model to rotate. These are real
+// wheels laid over those painted ones, and Rapier already knows everything
+// they need: wheelRotation gives the rolling angle, wheelSteering the front
+// toe, and wheelSuspensionLength where the hub currently sits under the
+// chassis. All three come free from the vehicle controller that is already
+// running — the car has simply never drawn them.
+//
+// The roll angle is integrated here rather than read from the controller.
+// Rapier documents wheelRotation(i) as "the wheel's current rotation angle
+// on its axle", but in this build it does not accumulate: driving 29.5
+// units — about 82 radians of roll — moved the reported angle by 0.1. So
+// the angle comes from the one number that is unarguably right, the speed
+// the car is actually travelling over the ground, divided by the radius the
+// eye can see. Using the VISUAL radius rather than the physics one is
+// deliberate: it makes the tread track the ground exactly, where the
+// slightly smaller physics radius would read as a faint permanent slip.
+//
+// Negative because the car's forward is -Z: rotating a point at the top of
+// the wheel about local +X sends it toward +Z, so rolling forward is the
+// other way round.
+//
+// Slightly proud of the physics radius so they cover the painted wheels
+// underneath rather than z-fighting with them.
+const WHEEL_VIS_RADIUS = 0.385
+const WHEEL_VIS_WIDTH  = 0.26
+
+// Tyre and hub merged into one geometry with vertex colours, so a wheel is
+// one draw call instead of two and all four share a single material.
+function wheelGeometry() {
+  const tyre = new THREE.CylinderGeometry(WHEEL_VIS_RADIUS, WHEEL_VIS_RADIUS, WHEEL_VIS_WIDTH, 16)
+  // A hub that stands slightly proud on both faces, so the wheel reads as
+  // having a rim from the side rather than being a plain black puck.
+  const hub  = new THREE.CylinderGeometry(WHEEL_VIS_RADIUS * 0.46, WHEEL_VIS_RADIUS * 0.46,
+                                          WHEEL_VIS_WIDTH * 1.06, 12)
+  const paint = (g, r, gr, b) => {
+    const n = g.attributes.position.count
+    const c = new Float32Array(n * 3)
+    for (let i = 0; i < n; i++) { c[i * 3] = r; c[i * 3 + 1] = gr; c[i * 3 + 2] = b }
+    g.setAttribute('color', new THREE.BufferAttribute(c, 3))
+  }
+  paint(tyre, 0.055, 0.05, 0.045)   // near-black rubber
+  paint(hub,  0.62,  0.60, 0.56)    // dull alloy
+  const merged = mergeGeometries([tyre, hub])
+  tyre.dispose(); hub.dispose()
+  // Barrel axis along X so the wheel rolls about its own local X.
+  merged.rotateZ(Math.PI / 2)
+  return merged
+}
+const WHEEL_GEO = wheelGeometry()
+
 const HEAD_LENS_GEO  = quadLampGeometry(HEAD_RADIUS, 0.05)
 const HEAD_BEZEL_GEO = quadLampGeometry(HEAD_RADIUS + 0.032, 0.055)
 const TAIL_BAR_GEO   = triBarGeometry()
@@ -512,6 +565,8 @@ function VehicleInner(props, ref) {
   const camBase      = useRef(null)
   const lookY        = useRef(null)
   const bodyShakeRef = useRef()
+  const wheelRefs    = useRef([])
+  const wheelSpin    = useRef(0)
   const brakePress  = useRef(0)
   // Shared with every static blob in GroundShadows.jsx — one texture on the
   // GPU, and the car's contact shading matches the world's by construction.
@@ -882,6 +937,33 @@ function VehicleInner(props, ref) {
       shadow.visible = g > 0.01
     }
 
+    // ── Wheels ────────────────────────────────────────────────────────────
+    // Deliberately NOT children of the judder group above: the bodywork
+    // shivers on rough ground, the wheels are the thing actually touching
+    // it. Keeping them out of that group means the shell shakes over planted
+    // wheels, which is what a car does — and it is more convincing than
+    // moving both together.
+    // Signed, so reversing rolls them backwards and braking slows them; and
+    // it keeps running while airborne, because the car is still travelling.
+    wheelSpin.current -= (fwdSpeed / WHEEL_VIS_RADIUS) * dt
+    if (canQueryWheels) {
+      for (let i = 0; i < 4; i++) {
+        const w = wheelRefs.current[i]
+        if (!w) continue
+        const conn = WHEEL_POSITIONS[i]
+        // Ride height: the hub hangs below its chassis mounting point by
+        // however far the suspension is currently extended.
+        const susp = controller.wheelSuspensionLength(i)
+        w.position.set(
+          conn.x,
+          conn.y - (typeof susp === 'number' && isFinite(susp) ? susp : SUSPENSION_REST_LENGTH),
+          conn.z,
+        )
+        w.rotation.y = controller.wheelSteering(i) || 0
+        w.children[0].rotation.x = wheelSpin.current
+      }
+    }
+
     // Camera — always follows car; still no hard zone override (the
     // billboard needs a fairly consistent approach angle to stay face-on),
     // just a brief additive bias below that decays on its own.
@@ -965,6 +1047,16 @@ function VehicleInner(props, ref) {
           would fight each other (the body resting on this collider directly,
           independent of and inconsistent with the suspension). */}
       <CuboidCollider args={[0.9, 0.3, 1.7]} position={[0, -0.05, 0]} />
+
+      {/* Outer group steers, inner mesh rolls — two axes that must not fight
+          each other, so they get a level of nesting each. */}
+      {WHEEL_POSITIONS.map((w, i) => (
+        <group key={`wh${i}`} ref={(g) => { wheelRefs.current[i] = g }} position={[w.x, w.y, w.z]}>
+          <mesh geometry={WHEEL_GEO}>
+            <meshLambertMaterial vertexColors flatShading />
+          </mesh>
+        </group>
+      ))}
 
       {/* Everything visible hangs off this group, and nothing physical does.
           The frame loop judders it over rough ground (BODY_SHAKE_* above);
