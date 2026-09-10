@@ -85,6 +85,30 @@ export default function LapTimerHUD() {
         </div>
       )}
 
+      {/* Abandon a ruined lap. R does this too (App.jsx) and is the faster
+          way out on a keyboard, but a phone has no R key and this panel is
+          the only lap UI on screen — so the way out has to be tappable, the
+          same reasoning as the dismiss on the leaderboard prompt below
+          (DESIGN.md §8.4). Shown only while a lap is actually running. */}
+      {raceState === 'racing' && (
+        <button
+          onClick={() => useGameStore.getState().cancelRace()}
+          title="Abandon this lap (R)"
+          aria-label="Abandon this lap"
+          style={{
+            marginTop: 6, width: '100%',
+            background: 'rgba(240,192,96,0.14)',
+            border: '1px solid rgba(240,192,96,0.32)',
+            borderRadius: 7, color: 'rgba(240,192,96,0.85)',
+            fontFamily: 'var(--font-mono)', fontSize: 9,
+            letterSpacing: '0.14em', padding: '5px 8px',
+            cursor: 'pointer',
+          }}
+        >
+          CANCEL LAP
+        </button>
+      )}
+
       {pendingSubmit != null && (
         <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(240,180,80,0.15)' }}>
           <div style={{

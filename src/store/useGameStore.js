@@ -140,6 +140,18 @@ const useGameStore = create((set) => ({
   currentCheckpoint:    0,
   setCurrentCheckpoint: (i) => set({ currentCheckpoint: i }),
 
+  // Abandon a lap in progress. There was no way out of one before: once the
+  // start gate was crossed the clock ran until the lap was finished, so a
+  // spin, a wrong turn or a shove off the track left the visitor driving a
+  // lap they already knew was ruined, with no option but to complete it.
+  //
+  // Deliberately does NOT touch lastLapTime or bestLapTime — an abandoned
+  // attempt never happened, so it must not overwrite the last real one or
+  // count as a personal best. Sending currentCheckpoint back to 0 re-arms
+  // the start gate, so the next crossing begins a clean lap.
+  cancelRace: () => set((st) =>
+    st.raceState === 'racing' ? { raceState: 'idle', currentCheckpoint: 0 } : {}),
+
   lastLapTime:          null, // ms
   setLastLapTime:       (ms) => set({ lastLapTime: ms }),
 

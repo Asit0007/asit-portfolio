@@ -182,7 +182,14 @@ export default function App() {
       // car and C re-opens the comment box mid-sentence.
       const el = e.target
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
-      if (e.code === 'KeyR') window.__resetCar = true
+      // R has always teleported the car home; it now voids a lap in
+      // progress too. Resetting mid-lap and having the clock keep running
+      // is the opposite of what "reset" means, and the timer would go on
+      // measuring an attempt the visitor had already abandoned.
+      if (e.code === 'KeyR') {
+        window.__resetCar = true
+        useGameStore.getState().cancelRace()
+      }
       if (e.code === 'KeyM') toggleMusic()
       if (e.code === 'KeyC') useGameStore.getState().setWhisperInputOpen(true)
       // Only while the car is parked on the bowling lane's reset pad, so

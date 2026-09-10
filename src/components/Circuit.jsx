@@ -320,6 +320,10 @@ export default function Circuit({ vehicleRef }) {
         if (target.id === 0 && state.raceState !== 'racing') {
           // Crossing the start/finish gate while idle or after a previous
           // finish starts a new lap attempt.
+          // Drop any pending finished->idle timeout first: a lap cancelled
+          // (or finished) moments ago still has one in flight, and it would
+          // knock this brand-new attempt back to idle mid-lap.
+          clearTimeout(idleTimeoutRef.current)
           startTimeRef.current = performance.now()
           state.setRaceState('racing')
           state.setCurrentCheckpoint(1)
