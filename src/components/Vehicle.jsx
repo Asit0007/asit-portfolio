@@ -391,42 +391,77 @@ function triBarGeometry() {
 // the wheel about local +X sends it toward +Z, so rolling forward is the
 // other way round.
 //
-// Sized to bury the painted wheels underneath rather than merely overlap
-// them — at 0.385 the model's own tyre still showed as a ring around the
-// outside, which is exactly what made the wheels read as stickers.
+// ── Jumbo alloys ──────────────────────────────────────────────────────────
+// Where the model's own wheels are was MEASURED, not guessed. Binning the
+// body's vertices below y=-0.28 on the outer flank gives two clean clusters
+// with nothing at all between them — front centroid z=-1.50, rear z=+1.37.
+// The physics axles sit at ∓1.40, so the front wheel was being drawn 0.10
+// BEHIND its own arch, which is what made it look bolted on wrong.
 //
-// Going bigger than the PHYSICS radius has a catch worth spelling out. The
-// controller puts the hub exactly WHEEL_RADIUS above the ground, so drawing
-// a 0.45 wheel there would sink 0.09 of it into the asphalt. VIS_LIFT
-// cancels that: the visual hub rides that much higher so the tread sits on
-// the road, at the cost of the wheel sitting 0.09 higher in its arch, which
-// at this size is invisible and is much the lesser evil.
-const WHEEL_VIS_RADIUS = 0.45
-const WHEEL_VIS_WIDTH  = 0.34
-const VIS_LIFT         = WHEEL_VIS_RADIUS - WHEEL_RADIUS
+// The fix is not to move the axles. Their wheelbase was stretched past the
+// bodywork on purpose (see WHEEL_POSITIONS) for leverage against pitching,
+// and moving it would change how the car drives. Instead the visual wheels
+// get their own offset from the physics ones — the two were never the same
+// thing and only looked it by coincidence.
+const WHEEL_VIS_OFFSET = [
+  { x: -0.07, z: -0.10 },  // front-left
+  { x:  0.07, z: -0.10 },  // front-right
+  { x: -0.07, z: -0.03 },  // rear-left
+  { x:  0.07, z: -0.03 },  // rear-right
+]
 
-// Tyre, rim and hub merged into one vertex-coloured geometry, so a wheel is
-// still a single draw call and all four share one material. Three parts is
-// what it takes to stop reading as a black puck: the rim has to stand
-// slightly proud of the tyre or the wheel has no face at all from the side,
-// and the dark hub gives the eye something to track as it spins — without
-// it, a smooth dark disc looks stationary however fast it turns.
+// Jumbo, and deliberately proud of the arches: a 1.04 diameter on a 4.94
+// body is about a fifth of the car's length where a stock muscle car is
+// nearer a seventh. The bodywork is NOT raised to clear them, so they bulge
+// past the arch line — a hot rod stance, and the reason they now bury the
+// painted wheels underneath instead of merely overlapping them.
+const WHEEL_VIS_RADIUS = 0.52
+const WHEEL_VIS_WIDTH  = 0.40
+// The controller puts the hub exactly WHEEL_RADIUS above the ground, so
+// drawing a bigger wheel there would sink the difference into the asphalt.
+// This lifts the visual hub so the tread sits on the road. Physics is
+// untouched: same axles, same radius, same suspension, same handling.
+const VIS_LIFT = WHEEL_VIS_RADIUS - WHEEL_RADIUS
+
+// Tyre, rim dish, five spokes and a hub cap, merged into one vertex-coloured
+// geometry — so a whole alloy wheel is still ONE draw call and all four
+// share a single material.
+//
+// The spokes are what make it read as an alloy rather than a black disc.
+// They also give the eye something to track: a smooth wheel looks stationary
+// however fast it turns, which was half of why the old ones looked fake.
+// Rim/tyre proportions are deliberately low-profile — a big dish inside a
+// thin sidewall is what "alloy" looks like at a glance.
+const SPOKE_COUNT = 5
+
 function wheelGeometry() {
   const R = WHEEL_VIS_RADIUS, W = WHEEL_VIS_WIDTH
-  const tyre = new THREE.CylinderGeometry(R, R, W, 20)
-  const rim  = new THREE.CylinderGeometry(R * 0.62, R * 0.62, W * 1.06, 16)
-  const hub  = new THREE.CylinderGeometry(R * 0.2,  R * 0.2,  W * 1.12, 10)
+  const parts = []
   const paint = (g, r, gr, b) => {
     const n = g.attributes.position.count
     const c = new Float32Array(n * 3)
     for (let i = 0; i < n; i++) { c[i * 3] = r; c[i * 3 + 1] = gr; c[i * 3 + 2] = b }
     g.setAttribute('color', new THREE.BufferAttribute(c, 3))
+    parts.push(g)
   }
-  paint(tyre, 0.045, 0.042, 0.040)  // near-black rubber
-  paint(rim,  0.66,  0.645, 0.60)   // brushed alloy
-  paint(hub,  0.16,  0.15,  0.14)   // dark centre cap
-  const merged = mergeGeometries([tyre, rim, hub])
-  tyre.dispose(); rim.dispose(); hub.dispose()
+
+  paint(new THREE.CylinderGeometry(R, R, W, 22), 0.035, 0.033, 0.031)          // tyre
+  paint(new THREE.CylinderGeometry(R * 0.72, R * 0.72, W * 1.02, 18), 0.70, 0.69, 0.66) // dish
+
+  // Spokes radiate in the wheel's own plane. Built before the final
+  // rotateZ, so the barrel axis is still Y and the face plane is XZ.
+  const rIn = R * 0.18, rOut = R * 0.70
+  for (let i = 0; i < SPOKE_COUNT; i++) {
+    const g = new THREE.BoxGeometry(rOut - rIn, W * 1.04, R * 0.17)
+    g.translate((rIn + rOut) / 2, 0, 0)
+    g.rotateY((i / SPOKE_COUNT) * Math.PI * 2)
+    paint(g, 0.80, 0.79, 0.76)
+  }
+
+  paint(new THREE.CylinderGeometry(R * 0.19, R * 0.19, W * 1.08, 12), 0.20, 0.19, 0.18) // hub cap
+
+  const merged = mergeGeometries(parts)
+  parts.forEach((g) => g.dispose())
   // Barrel axis along X so the wheel rolls about its own local X.
   merged.rotateZ(Math.PI / 2)
   return merged
@@ -964,14 +999,15 @@ function VehicleInner(props, ref) {
         const w = wheelRefs.current[i]
         if (!w) continue
         const conn = WHEEL_POSITIONS[i]
+        const off  = WHEEL_VIS_OFFSET[i]
         // Ride height: the hub hangs below its chassis mounting point by
         // however far the suspension is currently extended.
         const susp = controller.wheelSuspensionLength(i)
         w.position.set(
-          conn.x,
+          conn.x + off.x,
           conn.y - (typeof susp === 'number' && isFinite(susp) ? susp : SUSPENSION_REST_LENGTH)
             + VIS_LIFT,
-          conn.z,
+          conn.z + off.z,
         )
         w.rotation.y = controller.wheelSteering(i) || 0
         w.children[0].rotation.x = wheelSpin.current
@@ -1065,7 +1101,11 @@ function VehicleInner(props, ref) {
       {/* Outer group steers, inner mesh rolls — two axes that must not fight
           each other, so they get a level of nesting each. */}
       {WHEEL_POSITIONS.map((w, i) => (
-        <group key={`wh${i}`} ref={(g) => { wheelRefs.current[i] = g }} position={[w.x, w.y, w.z]}>
+        <group
+          key={`wh${i}`}
+          ref={(g) => { wheelRefs.current[i] = g }}
+          position={[w.x + WHEEL_VIS_OFFSET[i].x, w.y, w.z + WHEEL_VIS_OFFSET[i].z]}
+        >
           <mesh geometry={WHEEL_GEO}>
             <meshLambertMaterial vertexColors flatShading />
           </mesh>
