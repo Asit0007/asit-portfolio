@@ -379,7 +379,7 @@ function Gravel({ patches }) {
           args={[STONE_GEO, undefined, stones.length]}
           frustumCulled={false}
         >
-          <meshStandardMaterial color="#ffffff" roughness={0.95} metalness={0} flatShading />
+          <meshLambertMaterial color="#ffffff" flatShading />
         </instancedMesh>
       )}
     </group>

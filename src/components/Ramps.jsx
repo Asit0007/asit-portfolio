@@ -106,7 +106,7 @@ export default function Ramps() {
         {/* Warm amber, matching the circuit ramp — a built object, clearly
             not sand. Flat shading so the wedge's slope reads from any angle
             under the static sun (DESIGN.md §6). */}
-        <meshStandardMaterial color="#d8a850" roughness={0.72} metalness={0.05} flatShading />
+        <meshLambertMaterial color="#d8a850" flatShading />
       </instancedMesh>
 
       {/* Physics. The hull is taken straight off the rendered geometry, so

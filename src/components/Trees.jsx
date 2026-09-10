@@ -152,7 +152,7 @@ function Canopy({ species, trees }) {
     >
       {/* White base color — the real color rides on instanceColor, which
           three multiplies against this. */}
-      <meshStandardMaterial color="#ffffff" roughness={0.9} flatShading />
+      <meshLambertMaterial color="#ffffff" flatShading />
     </instancedMesh>
   )
 }
@@ -203,7 +203,7 @@ export default function Trees({ maxTrees = TREE_COUNT }) {
         args={[trunkGeo, undefined, count]}
         frustumCulled={false}
       >
-        <meshStandardMaterial color="#ffffff" roughness={1} flatShading />
+        <meshLambertMaterial color="#ffffff" flatShading />
       </instancedMesh>
 
       {/* Visual canopies — one instanced mesh per species */}

@@ -189,10 +189,10 @@ function TrackPath() {
   return (
     <group>
       <mesh geometry={roadGeometry}>
-        <meshStandardMaterial vertexColors roughness={0.96} />
+        <meshLambertMaterial vertexColors />
       </mesh>
       <mesh geometry={detailGeometry}>
-        <meshStandardMaterial vertexColors roughness={0.8} />
+        <meshLambertMaterial vertexColors />
       </mesh>
     </group>
   )
@@ -236,17 +236,17 @@ function StartFinish() {
   return (
     <group position={pos} rotation={[0, angle, 0]}>
       <mesh geometry={stripGeometry}>
-        <meshStandardMaterial vertexColors />
+        <meshLambertMaterial vertexColors />
       </mesh>
       {[-6.2, 6.2].map((z) => (
         <mesh key={z} position={[0, 2.75, z]}>
           <cylinderGeometry args={[0.14, 0.14, 5.5, 8]} />
-          <meshStandardMaterial color="#2a2a30" roughness={0.7} />
+          <meshLambertMaterial color="#2a2a30" />
         </mesh>
       ))}
       <mesh position={[0, 5.6, 0]}>
         <boxGeometry args={[0.5, 0.7, 13.4]} />
-        <meshStandardMaterial color="#c4154a" roughness={0.6} />
+        <meshLambertMaterial color="#c4154a" />
       </mesh>
       {[-1, 1].map((side) => (
         <Text key={side} position={[side * 0.28, 5.6, 0]}
@@ -276,7 +276,7 @@ function CheckpointGate({ position, label, isTarget, isPassed }) {
     <group position={[position[0], 0, position[1]]}>
       <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.5, 0]}>
         <ringGeometry args={[CHECK_RADIUS - 1.2, CHECK_RADIUS, 32]} />
-        <meshStandardMaterial color={color} transparent opacity={0.16}
+        <meshBasicMaterial color={color} transparent opacity={0.16}
           side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
