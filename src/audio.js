@@ -215,6 +215,43 @@ export function playCollision(speed = 5) {
   } catch (_) {}
 }
 
+// Bigger, lower and longer than playCollision: a noise burst under a
+// pitch-dropping sine thump. Same synthesis-not-samples rule as the gravel
+// bed — a real explosion sample would cost a download on a 15 MB budget.
+export function playExplosion() {
+  if (!ctx) return
+  try {
+    const t = ctx.currentTime
+
+    // Body: filtered noise with a fast attack and a long tail.
+    const frames = Math.floor(ctx.sampleRate * 0.9)
+    const buf    = ctx.createBuffer(1, frames, ctx.sampleRate)
+    const d      = buf.getChannelData(0)
+    for (let i = 0; i < frames; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / frames, 2.2)
+    }
+    const src = ctx.createBufferSource(); src.buffer = buf
+    const lp  = ctx.createBiquadFilter(); lp.type = 'lowpass'
+    lp.frequency.setValueAtTime(1800, t)
+    lp.frequency.exponentialRampToValueAtTime(160, t + 0.7)
+    const ng  = ctx.createGain()
+    ng.gain.setValueAtTime(0.32, t)
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.9)
+    src.connect(lp); lp.connect(ng); ng.connect(ctx.destination)
+    src.start(t)
+
+    // Thump: the low end the noise alone can't carry.
+    const osc = ctx.createOscillator(); const og = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(150, t)
+    osc.frequency.exponentialRampToValueAtTime(32, t + 0.35)
+    og.gain.setValueAtTime(0.34, t)
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.45)
+    osc.connect(og); og.connect(ctx.destination)
+    osc.start(t); osc.stop(t + 0.5)
+  } catch (_) {}
+}
+
 export function playBrake() {
   if (!ctx) return
   const now = Date.now()

@@ -15,6 +15,7 @@ import AudioManager      from './AudioManager'
 import ContactZone       from './ContactZone'
 import EnvironmentModels from './EnvironmentModels'
 import Ramps             from './Ramps'
+import ExplosiveCrates   from './ExplosiveCrates'
 import DevStats           from './DevStats'
 import Circuit            from './Circuit'
 import Bowling            from './Bowling'
@@ -47,6 +48,7 @@ export default function Scene({ tierCfg }) {
         <EnvironmentModels maxProps={tierCfg.maxProps} />
       </Suspense>
       <Ramps />
+      <ExplosiveCrates />
       <NameTitle />
       <ZoneDecorations />
       <SignPosts />
