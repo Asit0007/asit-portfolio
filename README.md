@@ -54,7 +54,7 @@ A scrollable résumé asks for thirty seconds of politeness. A drivable one asks
 
 Inspired by the [Bruno Simon folio](https://bruno-simon.com/) school of playable portfolios; the design system is derived from folio-2025's source and documented in [`DESIGN.md`](DESIGN.md).
 
-**By the numbers:** ~10,500 lines of JS/JSX · 36 React components · 3 serverless routes · 48 GLB props · 7 music tracks · 9 race checkpoints · 8 achievements · 0 shadow maps · 0 world boundaries.
+**By the numbers:** ~10,700 lines of JS/JSX · 36 React components · 3 serverless routes · 48 GLB props · 7 music tracks · 9 race checkpoints · 8 achievements · 0 shadow maps · 0 world boundaries.
 
 ---
 
@@ -184,6 +184,14 @@ Drive past the old map edge and the sand simply keeps going — a 3×3 grid of d
 The controls are painted on the asphalt at the crossroads, where white-on-black reads instantly — they used to lie on the orange sand, which is close to the worst contrast this palette can produce. And they're **dynamic bodies**, one per word: the world's first lesson is "hit the letters", so it would be odd for the sentence teaching you to drive to be the one thing bolted down.
 
 </td></tr>
+<tr><td colspan="2" valign="top">
+
+### 💥 Explosive crates
+Eight wooden crates sit on the road shoulders. Hit one above walking pace and it detonates: a fireball, the hardest camera shake in the game, and **an impulse that throws the car** — measured at 8.9 u/s upward, a 2.7-unit apex and about a second of air, landing back on its wheels. They re-arm after seven seconds, so the toy isn't single-use.
+
+The crate is built as boards and a frame rather than painted onto a cube, and merged into **one vertex-coloured geometry** — the mesh is instanced, so every crate in the world is still a single draw call for ~340 triangles uploaded once. It's carpentry rather than a texture for a reason: with no shadow maps a flat face reads as one block of colour whatever is printed on it, so what makes wood read as wood at speed is the *step* between a proud board and the shadowed groove beside it.
+
+</td></tr>
 </table>
 
 Plus: a **map overlay** (`Tab`) showing zones, the real circuit shape and your car; a **NOS gauge**; a **lap timer HUD**; an animated `document.title` that reacts to your speed; and a WebGL context-lost recovery overlay.
@@ -245,6 +253,10 @@ A Rapier **raycast vehicle controller** on a chassis rigid body: four wheels, fr
 The constants at the top of [`Vehicle.jsx`](src/components/Vehicle.jsx) are the entire tuning surface, and the comments there record the non-obvious calls: an anisotropic inertia override to kill wheelies and stoppies, a soft speed cap via force attenuation rather than a hard clamp, *moderate* (not maximal) tire grip because a raycast vehicle with full rotation freedom will trip over its own tires and roll, and a chassis collider kept deliberately above the wheels' contact patch.
 
 The car faces **−Z**; the GLB is rotated `Math.PI` to match, and a `FORWARD_SIGN` constant exists to flip drive direction if the wheel setup ever changes. A procedural `BoxCar` renders while the GLB loads. The camera is a speed-zooming follow-cam in the same `useFrame`, with a brief decaying "establishing" bias when you enter a zone.
+
+> **`CHASSIS_MASS` is not what the chassis weighs.** It reads `2`, but Rapier treats it as mass *added* to what it derives from the collider — `body.mass()` returns **5.67**. Anything applying an impulse to the car must scale by `body.mass()` at the time, not by the constant. The crate blast was tuned against the `2` first and landed at a third of its intended strength, which looked like a physics bug and was arithmetic. `ExplosiveCrates.jsx` therefore states its magnitudes as *velocity changes* and multiplies; a velocity is also a number you can picture, which an impulse is not.
+
+> **The car's wheels are added geometry, not the model's.** `car-1.glb` is a single Draco mesh whose wheels are painted into the bodywork, so there was nothing in it to rotate. Four vertex-coloured alloys are laid over the painted ones — the outer group steers, the inner mesh rolls — taking steer angle and ride height from the vehicle controller, which already knew both. `VIS_LIFT` and `BODY_LIFT` move only what is *drawn*: never the collider, the axles or the suspension, so wheel size is free to change without touching how the car drives.
 
 ### Race → leaderboard flow
 
@@ -452,7 +464,7 @@ A production build, measured (gzip in parentheses):
 | `index.css` | 0.46 KB (<1 KB) | initial |
 | **Initial total** | **~1.31 MB (~377 KB)** | before the start screen paints |
 | `rapier` | 2.08 MB (774 KB) | **lazy** — streams behind the start screen |
-| `Scene` | 72 KB (24 KB) | lazy, with Rapier |
+| `Scene` | 73 KB (24 KB) | lazy, with Rapier |
 
 Static assets total ~15 MB, dominated by 12 MB of music that streams on demand.
 
@@ -572,6 +584,8 @@ Without them every function returns 503 and the UI shows `OFFLINE` — by design
 | Mobile renders a thin strip of the world | The Canvas lost `resize={{ offsetSize: true }}` — R3F is measuring the portrait bounding rect instead of the rotated layout size |
 | Mobile looks blocky / stair-stepped | The canvas is rendering below the screen's density. Check `resolveDpr()` is being used and that `useRenderDpr` is re-running on resize — a flat `dpr` array can't express the pixel budget |
 | Mobile stutters with the HUD on screen | A `backdrop-filter` escaped the `.flat-hud` gate — blurring a live canvas costs a compositor readback every frame |
+| An impulse on the car does almost nothing | It was scaled by `CHASSIS_MASS` (2) instead of `body.mass()` (5.67) — see Vehicle physics |
+| A physics change silently does nothing at all | An exception inside a Rapier collision callback is swallowed with no console error. Run `npm run lint` — `no-undef` catches the common case — then log through the handler top to bottom |
 | The car floats a few cm above a ramp | A ramp collider was built from the merged *visual* geometry; the hull must come from the bare deck, without the kerb/lip paint that sits on top of it |
 | The open desert looks like a flat plane | The dune vertex colours were dropped for a flat `color`. The sand is over-exposed, so lighting alone can't show a slope — see the note in `EndlessDesert.jsx`. Raising `DUNE_HEIGHT` will not fix it |
 | The instructions on the road run off the screen | A layout constant in `RoadInstructions.jsx` grew. Both lines have to finish before x ≈ 15.4 to fit the arrival frame — check it with a screenshot, not with the arithmetic |
