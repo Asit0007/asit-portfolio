@@ -111,8 +111,15 @@ const SUN_DIR = new THREE.Vector3(...SUN_POSITION).normalize()
 // is a colour match and not a seam. Faces turned away from the sun darken;
 // faces turned into it lift. The dark end does the real work — the light end
 // is most of the way into the clip already.
+// Exported because World.jsx's ground plane has to end on exactly this
+// colour — see the rim ramp in GradientFloor. The two surfaces meet along
+// a 400-unit square join, and "they agree there" is worth enforcing by
+// construction rather than by the same hex being typed in two files (same
+// reasoning as the track palette in src/data/track.js).
+export const SAND_FLAT_HEX = '#ee8f42'
+
 const SAND_SHADE = new THREE.Color('#b0551f')
-const SAND_FLAT  = new THREE.Color('#ee8f42')
+const SAND_FLAT  = new THREE.Color(SAND_FLAT_HEX)
 const SAND_LIT   = new THREE.Color('#ffc078')
 // N·L on level ground, and the swing a full-steepness face is worth either
 // side of it — measured from the height field, not guessed.

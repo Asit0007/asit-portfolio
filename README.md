@@ -178,6 +178,8 @@ An in-world billboard reads a Redis counter, incremented once per browser. Like 
 ### 🏜 The desert doesn't end
 Drive past the old map edge and the sand simply keeps going — a 3×3 grid of dune tiles follows the car and rebuilds ahead of it. The height of the sand is a **pure function of world position**, so neighbouring tiles agree exactly along their shared edge and a tile rebuilt on the way back is identical to the one that was there before: no seams, no state, nothing to stream or download. The dunes are real terrain, not scenery — each tile carries a heightfield collider on the same samples as its mesh. Nothing out there exists until the car goes looking for it, so visitors who never reach the edge pay nothing for it. Past 450 units a dismissible panel offers a lift home.
 
+The join back into the built world is a colour match, not a border. The ground plane's outer band ramps to exactly the tone the dunes start from — a *square* fade, because measuring across the join showed the mismatch was entirely at the **corners** (23 luma levels, where the plane's 4-corner gradient runs pale) while the edge midpoints already agreed to within 0.7. Everything you drive on sits inside 131 units and the ramp starts at 150, so the diorama still reads where it was meant to.
+
 </td><td valign="top">
 
 ### 🛣 Instructions on the road
@@ -613,7 +615,6 @@ Without them every function returns 503 and the UI shows `OFFLINE` — by design
 - **Leaderboard anti-cheat is intentionally minimal** — a name cap and time bounds. Someone determined can POST a fake time.
 - **One comment per browser** is enforced client-side via localStorage only.
 - **No tests.** Verification is build + lint + drive.
-- **The dunes meet the built world at a visible colour seam.** The heights taper to zero so there's no step to drive over, but `GradientFloor`'s warm edge vignette was designed for a world that *ended* at that line; against open desert it reads as a hard edge. Fixing it means changing the built world's signature look, so it's an open decision rather than a bug.
 - **Tier 0's 1.2 MP budget is calibrated, not proven on low-end hardware.** It was verified under real iPhone device metrics (DPR 3, forced-landscape) and the resolution ladder was exercised under CPU throttling, but no genuinely old Android has been measured. `pixelBudget` in `usePerformance.js` is the one knob if a weak device still struggles — the ladder will catch it either way, just later.
 - **The 12 MB audio library** is the remaining payload weight; it streams rather than blocking, but a slow connection will notice.
 - `asit-portfolio.vercel.app` belongs to **a different Asit** — the production URL is [asitminz.com](https://asitminz.com). Don't test against that domain.

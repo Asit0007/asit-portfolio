@@ -1,4 +1,5 @@
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { SAND_FLAT_HEX } from './EndlessDesert'
 import { useThree } from '@react-three/fiber'
 import { useMemo } from 'react'
 import * as THREE from 'three'
@@ -62,6 +63,50 @@ function GradientFloor() {
     v.addColorStop(1, 'rgba(150,55,15,0.20)')
     ctx.fillStyle = v
     ctx.fillRect(0, 0, S, S)
+
+    // ── Meeting the dunes ────────────────────────────────────────────────
+    // Everything above was drawn for a world that ENDED at this plane: a lit
+    // diorama with a darker, framed rim. It doesn't end any more
+    // (EndlessDesert.jsx), and the rim became a join instead of an edge.
+    //
+    // Measured across it: at the middle of an edge the two surfaces already
+    // agree to within 0.7 luma levels out of 255 — the dunes' flat tone and
+    // this texture happen to land on the same colour there. At a CORNER the
+    // step is 23 levels, because the 4-corner gradient above runs from
+    // #e8702a to #fccf7a while the sand beyond is one fixed tone, so the
+    // pale corner meets it with nothing in between and reads as a drawn
+    // line. It is a corner problem, not an edge problem, which is why the
+    // fade below is square rather than radial: a radial one would work the
+    // corners and miss the edge midpoints, which is backwards.
+    //
+    // So the outer band ramps to exactly the colour the dunes start from.
+    // Nothing the visitor drives on is inside it — the circuit's outermost
+    // checkpoint is at 131 and the ramp starts at 150 — so the diorama still
+    // reads everywhere it was meant to, and the last 50 units simply agree
+    // with what is on the other side.
+    const HALF      = 200   // the plane is 400 units across
+    const RAMP_FROM = 150   // world units from the centre
+    const sr = parseInt(SAND_FLAT_HEX.slice(1, 3), 16)
+    const sg = parseInt(SAND_FLAT_HEX.slice(3, 5), 16)
+    const sb = parseInt(SAND_FLAT_HEX.slice(5, 7), 16)
+    const img = ctx.getImageData(0, 0, S, S)
+    const px  = img.data
+    for (let y = 0; y < S; y++) {
+      const wy = Math.abs((y + 0.5) / S - 0.5) * 2 * HALF
+      for (let x = 0; x < S; x++) {
+        const wx = Math.abs((x + 0.5) / S - 0.5) * 2 * HALF
+        // Chebyshev distance — the join is a square, so the fade is too.
+        const d = wy > wx ? wy : wx
+        if (d <= RAMP_FROM) continue
+        const u = (d - RAMP_FROM) / (HALF - RAMP_FROM)
+        const t = u * u * (3 - 2 * u)
+        const i = (y * S + x) * 4
+        px[i]     += (sr - px[i]) * t
+        px[i + 1] += (sg - px[i + 1]) * t
+        px[i + 2] += (sb - px[i + 2]) * t
+      }
+    }
+    ctx.putImageData(img, 0, 0)
 
     const tex = new THREE.CanvasTexture(canvas)
     tex.anisotropy = maxAniso
