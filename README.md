@@ -588,6 +588,7 @@ Without them every function returns 503 and the UI shows `OFFLINE` — by design
 | Mobile stutters with the HUD on screen | A `backdrop-filter` escaped the `.flat-hud` gate — blurring a live canvas costs a compositor readback every frame |
 | An impulse on the car does almost nothing | It was scaled by `CHASSIS_MASS` (2) instead of `body.mass()` (5.67) — see Vehicle physics |
 | A physics change silently does nothing at all | An exception inside a Rapier collision callback is swallowed with no console error. Run `npm run lint` — `no-undef` catches the common case — then log through the handler top to bottom |
+| The camera flies across the map after R | A new teleport path moved the body without setting `camSnap` in `Vehicle.jsx` — the smoothing can't tell a teleport from driving fast |
 | The car floats a few cm above a ramp | A ramp collider was built from the merged *visual* geometry; the hull must come from the bare deck, without the kerb/lip paint that sits on top of it |
 | The open desert looks like a flat plane | The dune vertex colours were dropped for a flat `color`. The sand is over-exposed, so lighting alone can't show a slope — see the note in `EndlessDesert.jsx`. Raising `DUNE_HEIGHT` will not fix it |
 | The instructions on the road run off the screen | A layout constant in `RoadInstructions.jsx` grew. Both lines have to finish before x ≈ 15.4 to fit the arrival frame — check it with a screenshot, not with the arithmetic |

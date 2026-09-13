@@ -633,6 +633,9 @@ function VehicleInner(props, ref) {
   // rendered position back is a feedback loop.
   const camBase      = useRef(null)
   const lookY        = useRef(null)
+  // Set when the car is TELEPORTED rather than driven, so the camera cuts
+  // with it instead of flying there. See the camera block.
+  const camSnap      = useRef(false)
   const bodyShakeRef = useRef()
   const wheelRefs    = useRef([])
   const wheelSpin    = useRef(0)
@@ -734,6 +737,7 @@ function VehicleInner(props, ref) {
       body.setLinvel({ x: 0, y: 0, z: 0 }, true)
       body.setAngvel({ x: 0, y: 0, z: 0 }, true)
       body.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
+      camSnap.current = true
     }
 
     const { forward, backward, steer: steerInput, brake, boost } = getInput()
@@ -1059,7 +1063,28 @@ function VehicleInner(props, ref) {
     const zoneBiasT = 1 - (performance.now() - zoneBiasStartRef.current) / ZONE_BIAS_DURATION
     if (zoneBiasT > 0) _ideal.addScaledVector(ZONE_BIAS_OFFSET, zoneBiasT)
 
-    _cam.lerp(_ideal, 1 - Math.exp(-CAM_LERP * dt))
+    // A TELEPORT is a cut, not a camera move. R and the open-desert "drive
+    // me back" both jump the car across the map, and the smoothing below
+    // does not know the difference between that and driving fast — so it
+    // flew the camera the whole way. Measured over the real key press: 29.6
+    // units of camera travel in a single frame from 200 units out, and from
+    // the deep desert 37.6 units and a 151-degree rotation in one frame,
+    // because the camera passes THROUGH its own look target on the way and
+    // the aim swings hardest exactly as it arrives. Nothing readable is on
+    // screen for that second; it is a whip-pan, not a swoop.
+    //
+    // So the teleport frame snaps and every other frame smooths. This is
+    // what the smoothing was always for — a car that drove somewhere — and
+    // a respawn that cuts is what every racing game does.
+    if (camSnap.current) {
+      camSnap.current = false
+      _cam.copy(_ideal)
+      // Drop the damped look height too, or the aim lerps up from wherever
+      // the old ground was and the first frame after the cut tilts.
+      lookY.current = null
+    } else {
+      _cam.lerp(_ideal, 1 - Math.exp(-CAM_LERP * dt))
+    }
     // Bank the SMOOTHED position before the shake goes on. Reading
     // camera.position back at the top of the next frame instead — which is
     // what this used to do — feeds the shake offset into its own smoothing
