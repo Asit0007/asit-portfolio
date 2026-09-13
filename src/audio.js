@@ -109,44 +109,186 @@ export function initAudio() {
   startPlaylist()
 }
 
-// ── Tyre-on-gravel bed ─────────────────────────────────────────────────────
-// Broadband noise on a permanent loop, with the gain and the filter corner
-// ridden from Vehicle.jsx's surface-roughness figure. Synthesising it costs
-// one buffer and one filter; a sample would cost a download, and this is a
-// 15 MB-budget project (see the payload pass in CLAUDE.md).
+// ── Tyre-on-gravel ─────────────────────────────────────────────────────────
+// Three layers, because a tyre on loose stone is three sounds, not one:
+//
+//   body    the low roar of the whole contact patch   — lowpassed noise bed
+//   grit    the continuous hiss of the fine stuff     — bandpassed noise bed
+//   stones  individual pebbles struck and thrown      — scheduled grains
+//
+// This used to be the body layer alone, and that is why it read as a wash
+// rather than as gravel. A noise bed is a TEXTURE, and texture says
+// "surface"; what says "stones" is discrete transients, which cannot be got
+// out of a looping buffer at any gain or filter setting — the loop has no
+// events in it, only colour. So the third layer schedules real ones.
+//
+// The bed also gave itself away by repeating. A 1.5 s buffer looped under a
+// low filter has an audible period — the ear locks onto the same 1.5 s of
+// noise coming round again and hears a pulse that isn't in the physics. The
+// buffer is longer now, and the two beds read it at unrelated rates so they
+// never come round together.
+//
+// Still synthesis, not samples: one buffer and a handful of filters, where a
+// gravel sample would cost a download on a 15 MB budget (see the payload
+// pass in CLAUDE.md).
 //
 // Follows the same rule as every other sound here (DESIGN.md 7): loudness
 // and brightness scale with the physics, not with the input — faster over
-// rougher ground is louder and brighter, and standing still is silent.
+// rougher ground is louder, brighter and busier, and standing still is
+// silent.
+
+// Long enough that the repeat stops being a rhythm. ~750 KB at 48 kHz, once.
+const GRAVEL_BED_SECONDS = 4
+
+// Where the thrown stones land in the stereo field, and roughly how big each
+// one sounds. Fixed lanes rather than a filter per grain: a grain is then two
+// throwaway nodes instead of four, and the pitch/pan pairing is scrambled
+// across the lanes so a run of stones doesn't sweep predictably left to right.
+const STONE_Q = 1.1
+const STONE_LANES = [
+  { freq: 1150, pan: -0.72 },
+  { freq: 3100, pan: -0.28 },
+  { freq: 1750, pan:  0.55 },
+  { freq: 4200, pan: -0.50 },
+  { freq: 2400, pan:  0.20 },
+  { freq: 1400, pan:  0.80 },
+]
+
+function noiseBuffer(seconds, shape) {
+  const frames = Math.floor(ctx.sampleRate * seconds)
+  const buf = ctx.createBuffer(1, frames, ctx.sampleRate)
+  const d = buf.getChannelData(0)
+  shape(d, frames)
+  return buf
+}
+
 function initGravel() {
   if (!ctx) return
   try {
-    const frames = Math.floor(ctx.sampleRate * 1.5)
-    const buf    = ctx.createBuffer(1, frames, ctx.sampleRate)
-    const d      = buf.getChannelData(0)
     // White noise alone hisses. Mixing in a one-pole-smoothed copy of it
     // adds low-frequency body underneath the hiss, which is what turns it
     // from radio static into stones under a tyre.
-    let smooth = 0
-    for (let i = 0; i < frames; i++) {
-      const w = Math.random() * 2 - 1
-      smooth = 0.6 * smooth + 0.4 * w
-      d[i] = w * 0.55 + smooth * 0.85
+    const bed = noiseBuffer(GRAVEL_BED_SECONDS, (d, frames) => {
+      let smooth = 0
+      for (let i = 0; i < frames; i++) {
+        const w = Math.random() * 2 - 1
+        smooth = 0.6 * smooth + 0.4 * w
+        d[i] = w * 0.55 + smooth * 0.85
+      }
+    })
+
+    // Grain source: bright and unsmoothed. These get their weight from the
+    // lane filter and their shape from the envelope, so the raw material
+    // wants to be as broadband as possible.
+    const chip = noiseBuffer(0.25, (d, frames) => {
+      for (let i = 0; i < frames; i++) d[i] = Math.random() * 2 - 1
+    })
+
+    const layer = (rate, offset, filter) => {
+      const src = ctx.createBufferSource()
+      src.buffer = bed
+      src.loop = true
+      src.playbackRate.value = rate
+      const gain = ctx.createGain()
+      gain.gain.value = 0
+      src.connect(filter); filter.connect(gain); gain.connect(ctx.destination)
+      // Start each layer at its own point in the buffer, so the two are never
+      // reading the same samples even for the first pass.
+      src.start(0, offset)
+      return { src, gain }
     }
 
+    const bodyLp = ctx.createBiquadFilter()
+    bodyLp.type = 'lowpass'; bodyLp.frequency.value = 400; bodyLp.Q.value = 0.7
+    const body = layer(1, 0, bodyLp)
+
+    // Deliberately not a whole-number ratio to the body's rate: the point is
+    // that the two loops never line up again.
+    const gritBp = ctx.createBiquadFilter()
+    gritBp.type = 'bandpass'; gritBp.frequency.value = 2200; gritBp.Q.value = 0.75
+    const grit = layer(1.37, GRAVEL_BED_SECONDS * 0.41, gritBp)
+
+    // Lanes stay connected for the life of the page; only the grains that
+    // pass through them are created and thrown away.
+    //
+    // Each lane carries a MAKEUP GAIN, and it is not optional. A bandpass
+    // passes only its own bandwidth out of the grain's full-spectrum noise,
+    // so the narrower the lane the quieter the stone — measured off the
+    // running graph, Q 1.9 was throwing away about 84% of every grain's
+    // amplitude and putting the stones back underneath the bed they were
+    // meant to cut through. sqrt(nyquist / bandwidth) is the amplitude that
+    // loss costs, so undoing it here lets the caller's `amp` mean the peak
+    // that actually comes out, the same in every lane regardless of where
+    // the lane sits.
+    const nyquist = ctx.sampleRate / 2
+    const lanes = STONE_LANES.map(({ freq, pan }) => {
+      const bp = ctx.createBiquadFilter()
+      bp.type = 'bandpass'
+      bp.frequency.value = freq
+      // Also wider than it was. Q 1.9 rang: a stone struck is a click with a
+      // hint of pitch, not a tuned pluck.
+      bp.Q.value = STONE_Q
+      const makeup = ctx.createGain()
+      makeup.gain.value = Math.min(Math.sqrt(nyquist / (freq / STONE_Q)), 8)
+      bp.connect(makeup)
+      let tail = makeup
+      if (ctx.createStereoPanner) {
+        const p = ctx.createStereoPanner()
+        p.pan.value = pan
+        makeup.connect(p)
+        tail = p
+      }
+      tail.connect(ctx.destination)
+      return bp
+    })
+
+    gravel = { body, grit, bodyLp, gritBp, chip, lanes, debt: 0 }
+  } catch (_) {}
+}
+
+// One pebble. Two throwaway nodes through a permanent lane.
+const STONE_MAX_VOICES = 24
+let stoneVoices = 0
+
+function playStone(at, amp) {
+  if (stoneVoices >= STONE_MAX_VOICES) return
+  // Its own try/catch, not the caller's: one grain that fails to schedule
+  // must not take the two beds' gain ramps down with it.
+  try {
+    const { chip, lanes } = gravel
+    const lane = lanes[(Math.random() * lanes.length) | 0]
+    const dur  = 0.030 + Math.random() * 0.045
+
     const src = ctx.createBufferSource()
-    src.buffer = buf
-    src.loop   = true
+    src.buffer = chip
+    // A different slice of the chip each time, and a different rate, so no
+    // two stones are the same stone.
+    src.playbackRate.value = 0.75 + Math.random() * 0.9
+    const g = ctx.createGain()
+    // Attack, then decay to a FIFTIETH of the peak rather than to silence.
+    //
+    // The ratio is what sets an exponential ramp's rate, so ramping all the
+    // way down to 0.0001 packs a 60 dB fall into `dur` and the grain is over
+    // in about five milliseconds however long `dur` says it is. Measured, it
+    // gave a high sample peak on a barely-raised short-window envelope: a
+    // click, which is what a burst of static sounds like, not a stone. 34 dB
+    // across the same window decays at a rate a struck pebble actually has.
+    // The short tail afterwards only exists so the voice reaches silence
+    // without a step at its end.
+    g.gain.setValueAtTime(0.0001, at)
+    g.gain.exponentialRampToValueAtTime(Math.max(amp, 0.0002), at + 0.0015)
+    g.gain.exponentialRampToValueAtTime(Math.max(amp, 0.0002) * 0.02, at + dur)
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur + 0.008)
 
-    const lp = ctx.createBiquadFilter()
-    lp.type = 'lowpass'; lp.frequency.value = 400; lp.Q.value = 0.7
-
-    const gain = ctx.createGain()
-    gain.gain.value = 0
-
-    src.connect(lp); lp.connect(gain); gain.connect(ctx.destination)
-    src.start()
-    gravel = { src, lp, gain }
+    src.connect(g); g.connect(lane)
+    src.onended = () => {
+      stoneVoices--
+      try { src.disconnect(); g.disconnect() } catch (_) {}
+    }
+    // Counted only once the voice is actually running: incrementing before
+    // start() would leak the slot for good if start() threw.
+    src.start(at, Math.random() * 0.15, dur + 0.012)
+    stoneVoices++
   } catch (_) {}
 }
 
@@ -161,23 +303,77 @@ function initGravel() {
 // counter. 20 updates a second is far finer than the ear can follow here.
 const GRAVEL_MIN_GAP = 50   // ms
 
+// Stones per second at full roughness. Speed does most of the work: a tyre
+// crawling over gravel ticks, and the same tyre at speed roars.
+//
+// Deliberately SPARSE. The first pass ran these at 34 a second, and measuring
+// the output showed why that was wrong: at ~30 ms a grain, thirty-four a
+// second keeps about two sounding at all times, and stones that always
+// overlap stop being stones — they average back into exactly the wash the
+// beds were already providing. Fewer and louder is what reads as individual
+// pebbles, and the continuous part of the sound is the beds' job anyway.
+const STONE_RATE_BASE  = 1.5
+const STONE_RATE_SPEED = 0.65
+const STONE_RATE_MAX   = 18
+
 export function updateGravel(level = 0, speed = 0) {
   if (!gravel || !ctx) return
   const l = level > 1 ? 1 : level < 0 ? 0 : level
   if (l === 0 && lastGravel === 0) return
   const now = performance.now()
-  // A fade to silence always goes through, so the bed can never be left
+  // A fade to silence always goes through, so the beds can never be left
   // running by a rate limit.
   if (l !== 0 && now - lastGravelAt < GRAVEL_MIN_GAP) return
+  // The gap that just elapsed is also the window the next batch of stones is
+  // scheduled into, so the grain rate stays honest whatever the frame rate is
+  // doing. Clamped because a backgrounded tab would otherwise come back and
+  // dump a second's worth of pebbles into one instant.
+  const gapMs = lastGravelAt ? Math.min(now - lastGravelAt, 250) : GRAVEL_MIN_GAP
   lastGravelAt = now
   lastGravel = l
   try {
     const t = ctx.currentTime
-    gravel.gain.gain.setTargetAtTime(l * (0.035 + Math.min(speed * 0.004, 0.055)), t, 0.05)
-    gravel.lp.frequency.setTargetAtTime(350 + speed * 55 + l * 500, t, 0.08)
-    // A touch of pitch with speed, so the grain rate tracks the road rather
-    // than sitting at one fixed texture the whole way across a patch.
-    gravel.src.playbackRate.setTargetAtTime(0.8 + Math.min(speed / 22, 0.7), t, 0.1)
+    const fast = Math.min(speed / 18, 1)
+
+    // Body: the roar. Dark, and darker still when the car is slow.
+    //
+    // The two beds are quieter than the old single bed was, on purpose. The
+    // budget didn't grow, the balance moved: measured off the running graph,
+    // the bed sat at 0.024 RMS while a stone peaked at 0.015-0.039, so the
+    // events were UNDER the wash they were supposed to cut through and the
+    // whole thing averaged back out to a hiss. Beds down, stones up, same
+    // total loudness, completely different sound.
+    gravel.body.gain.gain.setTargetAtTime(
+      l * (0.018 + Math.min(speed * 0.0022, 0.030)), t, 0.05)
+    gravel.bodyLp.frequency.setTargetAtTime(350 + speed * 55 + l * 500, t, 0.08)
+    // A touch of pitch with speed, so the texture tracks the road rather
+    // than sitting at one fixed grain the whole way across a patch.
+    gravel.body.src.playbackRate.setTargetAtTime(0.8 + Math.min(speed / 22, 0.7), t, 0.1)
+
+    // Grit: the fine stuff. This is the band the old single-layer bed had no
+    // energy in at all, which is most of why it sounded like wind.
+    gravel.grit.gain.gain.setTargetAtTime(
+      l * (0.007 + Math.min(speed * 0.0015, 0.019)), t, 0.05)
+    gravel.gritBp.frequency.setTargetAtTime(1900 + speed * 95 + l * 400, t, 0.08)
+    gravel.grit.src.playbackRate.setTargetAtTime(1.37 + Math.min(speed / 30, 0.5), t, 0.1)
+
+    // Stones. Carried as a fractional debt so a low rate still fires
+    // occasionally instead of rounding to nothing every window.
+    if (l === 0) { gravel.debt = 0; return }
+    const rate = Math.min(l * (STONE_RATE_BASE + speed * STONE_RATE_SPEED), STONE_RATE_MAX)
+    gravel.debt += rate * (gapMs / 1000)
+    const window = gapMs / 1000
+    // Loud enough to be an EVENT against the beds rather than another
+    // ingredient in them — several times the bed's RMS at the peak of a
+    // grain, which is what a stone hitting a wheel arch actually sounds like.
+    const amp = l * (0.030 + fast * 0.070)
+    while (gravel.debt >= 1) {
+      gravel.debt -= 1
+      // Scattered across the window rather than landing on its edges — evenly
+      // spaced grains would be a machine-gun, which is a rhythm the road does
+      // not have.
+      playStone(t + Math.random() * window, amp * (0.5 + Math.random() * 0.8))
+    }
   } catch (_) {}
 }
 

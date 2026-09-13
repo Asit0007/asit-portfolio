@@ -50,9 +50,11 @@ Built by **Asit Minz** — Cloud & Infrastructure Engineer, Bangalore.
 
 A scrollable résumé asks for thirty seconds of politeness. A drivable one asks for five minutes of curiosity. So the CV lives inside a physics world: you get a car with real suspension, and the experience section is a place you have to *arrive at*. Nothing ever pauses the driving — panels fade in beside you while you keep moving, and if you'd rather ignore the résumé entirely and go set a lap record or knock down ten pins, that's a supported way to use the site.
 
+**But a recruiter with four minutes is not the only visitor, so there are two front doors.** The boot screen offers **GG MODE** — the 3D world — and **OG MODE**, the same career as a written, scrollable portfolio: experience, projects, skills, contact, CV download. Neither is a consolation prize. OG MODE is also where the performance notice points anyone whose device can't render the world, and while it's open the canvas drops to `frameloop="demand"` — someone who came to the résumé *because* the 3D was too slow should not still be paying for the 3D.
+
 Inspired by the [Bruno Simon folio](https://bruno-simon.com/) school of playable portfolios; the design system is derived from folio-2025's source and documented in [`DESIGN.md`](DESIGN.md).
 
-**By the numbers:** ~6,600 lines of JS/JSX · 28 React components · 3 serverless routes · 48 GLB props · 7 music tracks · 9 race checkpoints · 8 achievements · 0 shadow maps.
+**By the numbers:** ~10,500 lines of JS/JSX · 36 React components · 3 serverless routes · 48 GLB props · 7 music tracks · 9 race checkpoints · 8 achievements · 0 shadow maps · 0 world boundaries.
 
 ---
 
@@ -141,7 +143,7 @@ Drive inside a zone's radius and its panel fades in. The résumé content itself
 <tr><td width="50%" valign="top">
 
 ### 🏁 Racing circuit
-A 9-checkpoint wraparound loop with a real asphalt ribbon, raised red/white kerbs, a dashed centreline, a checkered start/finish strip and an overhead gantry aligned to the track tangent. Checkpoints must be hit **in order**, so cutting the course doesn't count. Lap times persist locally; a new personal best prompts you to submit to the **global top-10 leaderboard**.
+A 9-checkpoint wraparound loop with a real asphalt ribbon, raised red/white kerbs, a dashed centreline, a checkered start/finish strip and an overhead gantry aligned to the track tangent. Its palette lives in `src/data/track.js`, so the jump ramps out in the desert are painted from the same asphalt and kerbs rather than from a copied hex string. Checkpoints must be hit **in order**, so cutting the course doesn't count. Lap times persist locally; a new personal best prompts you to submit to the **global top-10 leaderboard**.
 
 </td><td width="50%" valign="top">
 
@@ -163,12 +165,23 @@ Eight one-time unlocks with a toast queue: each of the four résumé zones, **Fu
 <tr><td valign="top">
 
 ### 🎵 Music & SFX
-A shuffled 7-track playlist with a HUD player (`M` to toggle), plus speed-driven engine tone, brake squeal and collision thumps. Tracks stream through `<audio>` rather than decoding as buffers, so pressing START never blocks the main thread.
+A shuffled 7-track playlist with a HUD player (`M` to toggle), plus speed-driven engine tone, brake squeal, collision thumps and a three-layer tyre-on-gravel bed — all synthesised, no SFX downloads. Tracks stream through `<audio>` rather than decoding as buffers, so pressing START never blocks the main thread.
 
 </td><td valign="top">
 
 ### 📊 Live visitor counter
 An in-world billboard reads a Redis counter, incremented once per browser. Like every network-backed feature, it degrades to a quiet `OFFLINE` label rather than an error if the backend isn't reachable.
+
+</td></tr>
+<tr><td valign="top">
+
+### 🏜 The desert doesn't end
+Drive past the old map edge and the sand simply keeps going — a 3×3 grid of dune tiles follows the car and rebuilds ahead of it. The height of the sand is a **pure function of world position**, so neighbouring tiles agree exactly along their shared edge and a tile rebuilt on the way back is identical to the one that was there before: no seams, no state, nothing to stream or download. The dunes are real terrain, not scenery — each tile carries a heightfield collider on the same samples as its mesh. Nothing out there exists until the car goes looking for it, so visitors who never reach the edge pay nothing for it. Past 450 units a dismissible panel offers a lift home.
+
+</td><td valign="top">
+
+### 🛣 Instructions on the road
+The controls are painted on the asphalt at the crossroads, where white-on-black reads instantly — they used to lie on the orange sand, which is close to the worst contrast this palette can produce. And they're **dynamic bodies**, one per word: the world's first lesson is "hit the letters", so it would be odd for the sentence teaching you to drive to be the one thing bolted down.
 
 </td></tr>
 </table>
@@ -270,16 +283,39 @@ sequenceDiagram
 |---|---|---|---|
 | Trees | 20 | 50 | 100 |
 | Props | 6 | 14 | 22 |
-| Device pixel ratio | `1` | `1–1.5` | `1–2` |
-| Fog distance | 80 | 150 | 300 |
-| Antialiasing | off | off | on |
-| Physics timestep | 1/30 | 1/60 | 1/60 |
+| Resolution | 1.2 MP budget (`1–2` dpr) | `1–1.5` dpr | `1–1.5` dpr |
+| Fog distance | 260 | 150 | 300 |
+| Antialiasing | on | on | on |
+| Physics timestep | 1/60 | 1/60 | 1/60 |
 
-Mobile user agents skip measurement and go straight to tier 0. WebGL context attributes (`antialias`, `powerPreference`) can't wait for the async tier, so they come from the synchronous device check at Canvas mount.
+Mobile user agents skip measurement and go straight to tier 0 — settled in the hook's *initial state*, not after mount, because the tier feeds fog and resolution and resolving it late made the world visibly change the moment you pressed START.
+
+**Tier 0 budgets pixels, not device pixel ratio.** A fill-rate-bound scene pays for *shaded pixels*; dpr is only the multiplier, so a flat `dpr: 1` renders a 3× phone at a ninth of its screen resolution and lets the browser upscale the result — which is exactly what "pixelated" looks like, and was never a measurement of what the phone could afford. `resolveDpr()` divides a 1.2 MP budget by the viewport's area instead, so an iPhone 14 lands near 1.9 and an iPad near 1.1 at the same cost. It depends on viewport *area*, so `useRenderDpr` re-asks on resize and orientationchange — R3F's array form only ever clamps `window.devicePixelRatio`, which never changes on rotation.
+
+**The watchdog never stops sampling, and only ever steps down.** Below tier 0 there is no simpler world, so what gives way there is **resolution** (`SCALE_STEPS`) before the "your device is struggling" notice — softening the picture beats deleting more of the world, and the floor of that ladder is still ~2× sharper than the old flat `dpr: 1`.
+
+`antialias` is a WebGL context attribute, fixed at Canvas mount, so it can't be tier-driven — it is simply on everywhere. It used to be off on mobile, which had it backwards: mobile GPUs are tile-based deferred renderers and resolve MSAA in on-chip tile memory, making it far cheaper there than on a desktop immediate-mode GPU.
+
+**`backdrop-filter` over a live canvas is a per-frame compositor readback, not a paint.** Four blurred HUD panels sit on screen the whole time you drive, so `App.jsx` adds a `.flat-hud` class (`isMobile && gameStarted`) that neutralises every one of them while the world is rendering; they already sit on 75–92% opaque grounds. The start screen keeps its blur — the canvas behind it is `frameloop="demand"` and isn't repainting.
 
 > **There are no shadow maps.** Dynamic shadows were removed entirely — the depth-map pass cost far more than the visual payoff. `Lights.jsx` is a static warm sun plus fills, and depth comes from flat colour contrast and fog. Don't reintroduce `castShadow` / `receiveShadow` / `<Canvas shadows>` without revisiting that trade (see `DESIGN.md` §6).
 
+**That trade has a cost, and the dunes are where it came due.** With no shadow maps, shape has to come from colour contrast — and the open desert had none to give: the sand is over-exposed, so a slope simply doesn't change the pixel. Measured on the framebuffer, a frame of open desert had a luminance standard deviation of **0.05 out of 255**, and pushing the terrain to six times its relief still only spread the frame by 14 levels. The range was never missing from the geometry; it was gone in the render. So the dunes are shaded the way the track and the ramps are — **the slope is baked into vertex colours** — and the frame now spans ~108–182 where it spanned 149–155. It looks like a redundant flat colour if you skim it; it is the only reason there is a landscape out there.
+
 The canvas also runs `frameloop="demand"` until the game starts, so nothing simulates behind the start screen. (Rapier's own `paused` prop is *not* used for this — pausing at mount leaves the vehicle controller uninitialised and the car never moves again.)
+
+### Audio — synthesised, not sampled
+
+Everything except the music is generated in Web Audio: engine tone, brake squeal, collision thumps, explosions and the tyre-on-gravel bed. On a 15 MB payload budget, a sound effect you can compute is a sound effect you don't download.
+
+Gravel is the one worth explaining, because it is three layers and the reason is not obvious. A lowpassed noise **body** carries the roar and a bandpassed **grit** bed reads the same buffer at an unrelated rate; on top of those, individual **stone** grains are scheduled through six fixed bandpass + pan lanes. The grains are the whole point — a looping buffer has colour but no *events*, so no gain or filter setting will ever make a bed alone read as stones rather than as wind.
+
+Two things there are load-bearing and easy to undo by accident:
+
+- **Each lane carries a makeup gain of `sqrt(nyquist / bandwidth)`.** A bandpass keeps only its own slice of a full-spectrum grain, so without it the stones land back underneath the bed they exist to cut through.
+- **Grain envelopes decay to `amp * 0.02`, not to zero.** An exponential ramp's rate is set by its *ratio*, so running one down to 0.0001 packs 60 dB into the grain's length and turns every stone into a 5 ms click.
+
+Keep the grain rate sparse (~14/s). Denser and they overlap into another wash, which is the thing the layer exists to avoid.
 
 ### Backend
 
@@ -375,12 +411,16 @@ asit-portfolio/
 ├── src/
 │   ├── App.jsx                   # DOM shell · hotkeys · forced landscape · Canvas
 │   ├── Controls.js               # drei KeyboardControls keymap
-│   ├── audio.js                  # Howler wrapper — playlist + engine/brake/collision
+│   ├── audio.js                  # Howler playlist + synthesised engine/brake/collision/gravel
 │   ├── index.css                 # @font-face + --font-mono + resets (0.46 kB built)
-│   ├── components/               # 28 components
+│   ├── components/               # 36 components
 │   │   ├── Scene.jsx             #   ⚡ lazy boundary — the only path to Rapier
-│   │   ├── Vehicle.jsx           #   raycast vehicle + follow-cam
+│   │   ├── StartScreen.jsx       #   boot screen + the whole OG MODE written portfolio
+│   │   ├── Vehicle.jsx           #   raycast vehicle + follow-cam + the added wheels
 │   │   ├── Circuit.jsx           #   track meshes + race state machine
+│   │   ├── EndlessDesert.jsx     #   dune tiles that follow the car past the map edge
+│   │   ├── ReturnHome.jsx        #   the lift back, once you're a long way out
+│   │   ├── RoadInstructions.jsx  #   controls painted on the asphalt, one body per word
 │   │   ├── Bowling.jsx           #   ball, pins, strike detection, restart sign
 │   │   ├── Whispers.jsx          #   in-canvas markers + out-of-canvas input
 │   │   ├── World / Trees / EnvironmentModels / Lights / Sky / SignPosts / …
@@ -405,14 +445,14 @@ A production build, measured (gzip in parentheses):
 
 | Chunk | Size | When it loads |
 |---|---|---|
-| `three` | 671 KB (172 KB) | initial |
-| `fiber` — R3F + drei | 339 KB (114 KB) | initial |
-| `react` | 144 KB (46 KB) | initial |
-| `index` — app code | 109 KB (31 KB) | initial |
+| `three` | 688 KB (176 KB) | initial |
+| `fiber` — R3F + drei | 347 KB (116 KB) | initial |
+| `react` | 147 KB (47 KB) | initial |
+| `index` — app code | 125 KB (36 KB) | initial |
 | `index.css` | 0.46 KB (<1 KB) | initial |
-| **Initial total** | **~1.26 MB (~364 KB)** | before the start screen paints |
-| `rapier` | 2.03 MB (755 KB) | **lazy** — streams behind the start screen |
-| `Scene` | 45 KB (14 KB) | lazy, with Rapier |
+| **Initial total** | **~1.31 MB (~377 KB)** | before the start screen paints |
+| `rapier` | 2.08 MB (774 KB) | **lazy** — streams behind the start screen |
+| `Scene` | 72 KB (24 KB) | lazy, with Rapier |
 
 Static assets total ~15 MB, dominated by 12 MB of music that streams on demand.
 
@@ -530,6 +570,12 @@ Without them every function returns 503 and the UI shows `OFFLINE` — by design
 | Leaderboard/comments show `OFFLINE` locally | Expected — no Redis credentials in local dev. Use `vercel dev` |
 | Typing in a text box drives the car | The typing guard regressed — check `App.jsx`'s keydown handler and `Vehicle.getInput()` |
 | Mobile renders a thin strip of the world | The Canvas lost `resize={{ offsetSize: true }}` — R3F is measuring the portrait bounding rect instead of the rotated layout size |
+| Mobile looks blocky / stair-stepped | The canvas is rendering below the screen's density. Check `resolveDpr()` is being used and that `useRenderDpr` is re-running on resize — a flat `dpr` array can't express the pixel budget |
+| Mobile stutters with the HUD on screen | A `backdrop-filter` escaped the `.flat-hud` gate — blurring a live canvas costs a compositor readback every frame |
+| The car floats a few cm above a ramp | A ramp collider was built from the merged *visual* geometry; the hull must come from the bare deck, without the kerb/lip paint that sits on top of it |
+| The open desert looks like a flat plane | The dune vertex colours were dropped for a flat `color`. The sand is over-exposed, so lighting alone can't show a slope — see the note in `EndlessDesert.jsx`. Raising `DUNE_HEIGHT` will not fix it |
+| The instructions on the road run off the screen | A layout constant in `RoadInstructions.jsx` grew. Both lines have to finish before x ≈ 15.4 to fit the arrival frame — check it with a screenshot, not with the arithmetic |
+| Words on the road are flung across the map on load | `CHAR_W` or `GAP` went too narrow, the word colliders overlapped, and the solver pushed them apart — widen, don't tighten |
 | Initial bundle suddenly ~2 MB heavier | Something imported `Scene` (or Rapier) statically and collapsed the lazy split — check `manualChunks` order too |
 | Blank screen after a GPU hiccup | WebGL context lost; the overlay in `App.jsx` should appear — reload to recover |
 
@@ -553,6 +599,8 @@ Without them every function returns 503 and the UI shows `OFFLINE` — by design
 - **Leaderboard anti-cheat is intentionally minimal** — a name cap and time bounds. Someone determined can POST a fake time.
 - **One comment per browser** is enforced client-side via localStorage only.
 - **No tests.** Verification is build + lint + drive.
+- **The dunes meet the built world at a visible colour seam.** The heights taper to zero so there's no step to drive over, but `GradientFloor`'s warm edge vignette was designed for a world that *ended* at that line; against open desert it reads as a hard edge. Fixing it means changing the built world's signature look, so it's an open decision rather than a bug.
+- **Tier 0's 1.2 MP budget is calibrated, not proven on low-end hardware.** It was verified under real iPhone device metrics (DPR 3, forced-landscape) and the resolution ladder was exercised under CPU throttling, but no genuinely old Android has been measured. `pixelBudget` in `usePerformance.js` is the one knob if a weak device still struggles — the ladder will catch it either way, just later.
 - **The 12 MB audio library** is the remaining payload weight; it streams rather than blocking, but a slow connection will notice.
 - `asit-portfolio.vercel.app` belongs to **a different Asit** — the production URL is [asitminz.com](https://asitminz.com). Don't test against that domain.
 

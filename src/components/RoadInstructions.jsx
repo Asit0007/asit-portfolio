@@ -26,11 +26,17 @@ const LINE_2 = ['R RESET', 'M MUTE', 'TAB MAP', 'SHIFT BOOST']
 // name letters. Two lanes, one line each, sized so both lines finish inside
 // the frame the visitor sees the moment they arrive — instructions they
 // have to drive off to finish reading are not instructions.
-const START_X = 4
+// Measured, not estimated: at 1440x900 the arrival frame runs out at about
+// x = 16.5, and the first pass (start 4, size 0.55/0.42, gap 1.1) put the
+// end of line 1 at 18.8 and line 2 at 18.0 — so EXPLORE arrived as "EX",
+// TAB MAP as "TAB MA", and SHIFT BOOST was off the edge entirely. Every
+// number below is scaled by the same ~0.84 so the word spacing keeps its
+// proportions (see CHAR_W), and both lines now end before x = 15.4.
+const START_X = 3
 const LINE_1_Z = -1.7
 const LINE_2_Z = 1.7
-const SIZE_1 = 0.55
-const SIZE_2 = 0.42
+const SIZE_1 = 0.46
+const SIZE_2 = 0.35
 // Advance per character, as a fraction of `size`. Deliberately GENEROUS.
 // Text3D builds its glyphs asynchronously from a loaded font, so there is
 // no width to measure at layout time and this has to be an estimate — and
@@ -40,10 +46,10 @@ const SIZE_2 = 0.42
 // world loads and the sentence throws itself across the road. A first pass
 // at 0.62 did exactly that.
 const CHAR_W  = 0.82
-const GAP     = 1.1
+const GAP     = 0.9
 // Even a one-character word gets a slot wide enough to keep its collider
 // clear of its neighbour's.
-const MIN_SLOT = 1.6
+const MIN_SLOT = 1.35
 
 function layout(words, size, z) {
   let x = START_X

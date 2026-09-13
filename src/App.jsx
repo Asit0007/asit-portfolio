@@ -12,7 +12,7 @@ import MusicPlayer    from './components/MusicPlayer'
 import useGameStore   from './store/useGameStore'
 import { keyMap }     from './Controls'
 import { toggleMusic } from './audio'
-import { usePerformanceTier, TIER_CONFIG } from './hooks/usePerformance'
+import { usePerformanceTier, resolveDpr, TIER_CONFIG } from './hooks/usePerformance'
 import { RendererInfoOverlay } from './components/DevStats'
 import BowlingHUD from './components/BowlingHUD'
 import PerfNotice from './components/PerfNotice'
@@ -116,6 +116,29 @@ function useForcedLandscape(isMobile) {
   return { forced, stage }
 }
 
+// The canvas's device-pixel ratio, recomputed whenever the viewport changes
+// size. resolveDpr spends a pixel budget rather than capping dpr (see the
+// comment there), so the answer depends on the current viewport area and has
+// to be re-asked — R3F's own array form only ever clamps window.devicePixelRatio,
+// which never changes on rotation and so could not express this.
+//
+// orientationchange as well as resize: iOS fires resize late (or with the old
+// dimensions) on a device rotation, and this frame is rotated by CSS anyway.
+function useRenderDpr(cfg, scale) {
+  const [dpr, setDpr] = useState(() => resolveDpr(cfg, scale))
+  useEffect(() => {
+    const update = () => setDpr(resolveDpr(cfg, scale))
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('orientationchange', update)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('orientationchange', update)
+    }
+  }, [cfg, scale])
+  return dpr
+}
+
 function useTitleAnimation(vehicleBody) {
   useEffect(() => {
     if (!vehicleBody) return
@@ -155,8 +178,9 @@ export default function App() {
   // sampling and steps it down if this machine can't hold the frame rate,
   // which is the actual repair for a stuttering visit. `downgraded` and
   // `struggling` are what PerfNotice reports to the visitor.
-  const { tier: perfTier, downgraded, struggling } = usePerformanceTier(gameStarted)
+  const { tier: perfTier, scale, downgraded, struggling } = usePerformanceTier(gameStarted)
   const tierCfg  = TIER_CONFIG[perfTier ?? 1]
+  const renderDpr = useRenderDpr(tierCfg, scale)
   const showResume    = useGameStore((s) => s.showResume)
   const setShowResume = useGameStore((s) => s.setShowResume)
 
@@ -214,7 +238,11 @@ export default function App() {
     'app-frame' +
     (forced ? ' forced-landscape' : '') +
     (stage === 'pre' ? ' flip-pre' : '') +
-    (stage === 'pre' || stage === 'flipping' ? ' flip-anim' : '')
+    (stage === 'pre' || stage === 'flipping' ? ' flip-anim' : '') +
+    // Only once the world is actually rendering — see .flat-hud below. The
+    // start screen's blur sits over a frameloop="demand" canvas that is not
+    // repainting, so it costs nothing there and stays.
+    (isMobile && gameStarted ? ' flat-hud' : '')
 
   return (
     <div className={frameClass}>
@@ -225,6 +253,7 @@ export default function App() {
           width: 100%; height: 100%;
           margin: 0; padding: 0;
           overflow: hidden;
+          overscroll-behavior: none;
           background: #0d0500;
         }
         /* Vertical viewport fix for mobile browsers with address bar */
@@ -233,6 +262,12 @@ export default function App() {
           min-height: -webkit-fill-available;
         }
         .app-frame { position: fixed; inset: 0; }
+        /* The canvas is a control surface, not a document. Without this the
+           browser still owns a drag on it and can treat a steering swipe as
+           a pan or a pinch — html/body overflow and user-scalable=no stop
+           the page moving, but not the gesture being taken. R3F listens on
+           pointer events, which this does not affect. */
+        canvas { touch-action: none; }
         /* Mobile portrait → rotate the whole app into landscape. The frame
            is sized to the rotated viewport (100dvh wide, 100dvw tall) and
            swung into place around the top-left corner. */
@@ -251,6 +286,22 @@ export default function App() {
         }
         .app-frame.forced-landscape.flip-anim {
           transition: transform 0.9s cubic-bezier(0.45, 0, 0.55, 1);
+        }
+        /* backdrop-filter over a LIVE WebGL canvas is not a paint, it is a
+           readback: the compositor copies the canvas behind each panel and
+           blurs it again every single frame. Four of these sit on screen the
+           whole time you are driving (map button, music, return-home, lap
+           timer), and inside the forced-landscape rotation iOS samples the
+           backdrop in the untransformed space as well, which smears it.
+           Every one of those panels already sits on a 75-92% opaque ground,
+           so the blur was carrying almost no contrast — dropping it while
+           the world is rendering costs the look nothing and hands the phone
+           back its compositor. */
+        .app-frame.flat-hud *,
+        .app-frame.flat-hud *::before,
+        .app-frame.flat-hud *::after {
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
         }
         @media (max-width: 640px) {
           .hud-full { display: none !important; }
@@ -306,12 +357,25 @@ export default function App() {
               // their machine should not still be paying for the 3D.
               frameloop={gameStarted && !showResume ? 'always' : 'demand'}
               gl={{
-                antialias: !isMobile,
+                // On everything, phones included. This used to be `!isMobile`,
+                // which had it exactly backwards: mobile GPUs are tile-based
+                // deferred renderers, so MSAA resolves inside on-chip tile
+                // memory and costs a fraction of what the same setting costs
+                // a desktop immediate-mode GPU. Turning it off on the devices
+                // where it is cheapest, and which were also rendering at the
+                // lowest resolution, is what put a stair-step on every edge
+                // in the scene.
+                antialias: true,
                 powerPreference: 'high-performance',
                 failIfMajorPerformanceCaveat: false,
               }}
-              dpr={[tierCfg.dpr[0], Math.min(tierCfg.dpr[1], window.devicePixelRatio)]}
-              style={{ width: '100%', height: '100%' }}
+              dpr={renderDpr}
+              // The world takes every touch that isn't on a control. Without
+              // this, a drag that starts on the canvas is also a page gesture:
+              // iOS rubber-bands the whole rotated frame under the visitor's
+              // finger and Android may collapse the URL bar mid-corner, which
+              // resizes the canvas while they are driving.
+              style={{ width: '100%', height: '100%', touchAction: 'none' }}
             >
               {/* Boundary inside the Canvas: catches both the lazy chunk
                   and rapier's WASM init without unmounting the Canvas.

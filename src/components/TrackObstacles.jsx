@@ -1,8 +1,12 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { RigidBody } from '@react-three/rapier'
+import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import * as THREE from 'three'
-import { CHECKPOINTS } from '../data/track'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import {
+  CHECKPOINTS, ASPHALT, KERB_COLORS, LINE_PAINT,
+  ASPHALT_EDGE_SHADE, ASPHALT_WORN_SHADE,
+} from '../data/track'
 
 // Folio-inspired additions layered onto the shared track geometry — a ramp
 // on the longest straight (checkpoints 1→2) and a slalom of swinging bars
@@ -47,9 +51,67 @@ function segmentGeometry(fromId, toId) {
   }
 }
 
+const KERB_STRIPES = 8
+const KERB_WIDTH   = 0.7
+const PAINT_THICK  = 0.05
+
+const _col = new THREE.Color()
+
+function solidColor(geo, colorHex) {
+  const pos = geo.attributes.position
+  const colors = new Float32Array(pos.count * 3)
+  _col.set(colorHex)
+  for (let i = 0; i < pos.count; i++) {
+    colors[i * 3] = _col.r; colors[i * 3 + 1] = _col.g; colors[i * 3 + 2] = _col.b
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  return geo
+}
+
+// The deck slab, carrying the road's across-the-width shading: worn darker
+// down the middle where the tyres run, brighter at the edges. Only the top
+// face gets the gradient — the sides and underside step down from the same
+// asphalt so the slab reads as one material at different angles.
+function rampBody() {
+  const geo = new THREE.BoxGeometry(RAMP_WIDTH, RAMP_THICKNESS, RAMP_LENGTH).toNonIndexed()
+  const pos = geo.attributes.position
+  const colors = new Float32Array(pos.count * 3)
+  const base = new THREE.Color(ASPHALT)
+  const top = RAMP_THICKNESS / 2 - 1e-4
+  for (let i = 0; i < pos.count; i++) {
+    const onDeck = pos.getY(i) > top
+    let shade = 0.68
+    if (onDeck) {
+      const u = Math.min(Math.abs(pos.getX(i)) / (RAMP_WIDTH / 2), 1)
+      shade = THREE.MathUtils.lerp(
+        ASPHALT_WORN_SHADE, ASPHALT_EDGE_SHADE, THREE.MathUtils.smoothstep(u, 0.4, 1),
+      )
+    }
+    _col.copy(base).multiplyScalar(shade)
+    colors[i * 3] = _col.r; colors[i * 3 + 1] = _col.g; colors[i * 3 + 2] = _col.b
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  return geo
+}
+
+// A flat painted patch on the deck. Everything here is in the slab's own
+// local space, so the body quaternion below tilts the paint with the ramp
+// and none of this has to know about the pitch.
+function deckPatch(width, alongLength, x, z, colorHex) {
+  const geo = new THREE.BoxGeometry(width, PAINT_THICK, alongLength).toNonIndexed()
+  geo.translate(x, RAMP_THICKNESS / 2 + PAINT_THICK / 2 - 0.004, z)
+  return solidColor(geo, colorHex)
+}
+
 // A single fixed incline — no custom wedge mesh needed, a plain tilted box
 // collider is enough for raycast-vehicle wheels to climb smoothly. The car
 // drives up in the direction of travel and launches off the raised end.
+//
+// Painted as road, in the circuit's own asphalt and red/white kerbs. It used
+// to be a bright amber slab, which was the one object on the track wearing a
+// colour the track itself never uses — it read as scenery dropped onto the
+// road rather than as part of it. Deck, kerbs and lip line all ride in one
+// geometry's vertex colours: one material, one draw call, same as before.
 function Ramp() {
   const { position, quaternion } = useMemo(() => {
     const { mid, heading } = segmentGeometry(RAMP_FROM_ID, RAMP_TO_ID)
@@ -60,11 +122,36 @@ function Ramp() {
     return { position: [mid[0], RAMP_RISE / 2, mid[1]], quaternion: quat }
   }, [])
 
+  const geometry = useMemo(() => {
+    const parts = [rampBody()]
+    const stripe = RAMP_LENGTH / KERB_STRIPES
+    const edgeX  = RAMP_WIDTH / 2 - KERB_WIDTH / 2
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < KERB_STRIPES; i++) {
+        const z = -RAMP_LENGTH / 2 + (i + 0.5) * stripe
+        parts.push(deckPatch(KERB_WIDTH, stripe * 0.94, side * edgeX, z, KERB_COLORS[i % 2]))
+      }
+    }
+    // Paint line at the launch edge. The car meets this one at racing speed
+    // mid-lap, so where the deck ends is worth stating outright.
+    parts.push(deckPatch(
+      RAMP_WIDTH - KERB_WIDTH * 2 - 0.5, 0.38,
+      0, -RAMP_LENGTH / 2 + 0.45, LINE_PAINT,
+    ))
+    const merged = mergeGeometries(parts)
+    parts.forEach((g) => g.dispose())
+    return merged
+  }, [])
+  useEffect(() => () => geometry.dispose(), [geometry])
+
   return (
-    <RigidBody type="fixed" colliders="cuboid" position={position} quaternion={quaternion}>
-      <mesh>
-        <boxGeometry args={[RAMP_WIDTH, RAMP_THICKNESS, RAMP_LENGTH]} />
-        <meshStandardMaterial color="#e8c060" roughness={0.7} metalness={0.1} />
+    <RigidBody type="fixed" colliders={false} position={position} quaternion={quaternion}>
+      {/* Collider from the slab's dimensions, not from the merged geometry —
+          the paint sits on top of the deck and must not become part of the
+          surface the wheels ride on. */}
+      <CuboidCollider args={[RAMP_WIDTH / 2, RAMP_THICKNESS / 2, RAMP_LENGTH / 2]} />
+      <mesh geometry={geometry}>
+        <meshLambertMaterial vertexColors flatShading />
       </mesh>
     </RigidBody>
   )

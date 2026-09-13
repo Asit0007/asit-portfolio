@@ -14,6 +14,20 @@ import * as THREE from 'three'
 // the curve shape.
 export const PATH_WIDTH = 10
 export const BORDER_WIDTH = 0.6
+
+// ── The track's palette ────────────────────────────────────────────────────
+// Here rather than in Circuit.jsx because the ramps are painted from it too,
+// and "matching the race track" should be enforced by construction rather
+// than by a hex string copied between files that can then drift apart.
+// Circuit.jsx owns how these are laid out; this owns what they are.
+export const ASPHALT = '#413a3e'   // warm dark asphalt (DESIGN.md: never neutral gray)
+export const KERB_COLORS = ['#f5f0e8', '#e03131'] // classic red/white kerb alternation
+export const LINE_PAINT = '#f5f0e8' // centreline dashes, kerb-white
+// The asphalt's own across-the-width shading: worn darker down the middle
+// where the tyres run, lighter at the edges. Ramps reuse it so a ramp deck
+// weathers the same way the road does.
+export const ASPHALT_EDGE_SHADE = 1.04
+export const ASPHALT_WORN_SHADE = 0.85
 export const PATH_SEGMENTS_PER_GAP = 14
 export const CHECK_RADIUS = 14
 

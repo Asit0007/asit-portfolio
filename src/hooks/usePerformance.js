@@ -47,9 +47,27 @@ const COOLDOWN_MS   = 4000
 // average downgrades machines that are performing perfectly well.
 const MAX_SANE_FRAME_MS = 200
 
-// Bottom of the road: already at the simplest tier and still not coping.
-// Nothing left to take away, so this is the one case worth telling the
-// visitor about, and the useful offer is the plain resume, not a refresh.
+// ── Resolution ladder (tier 0 only) ─────────────────────────────────────────
+// Tier 0 is the floor — there is no simpler world to fall back to — so the
+// thing that gives way there is RESOLUTION, not scenery. Each step multiplies
+// the tier's pixel budget, shedding roughly 20% of the shaded pixels while
+// leaving every object, tree and prop exactly where it was. That is far less
+// noticeable than another round of things vanishing from the world, and it
+// is what makes it safe for the budget to start high enough to look sharp.
+//
+// Like the tier itself it only ever steps DOWN, for the same reason: a
+// resolution that climbs back the moment the frame rate recovers will
+// oscillate around the boundary, and a picture that visibly re-sharpens and
+// re-softens every few seconds reads as a fault.
+const SCALE_STEPS = [1, 0.78, 0.6]
+// Not 30. A phone that has settled here is already missing a quarter of its
+// frames, and resolution is the cheapest thing it owns to give up.
+const SHED_FPS    = 45
+
+// Bottom of the road: already at the simplest tier, already at the lowest
+// resolution, and still not coping. Nothing left to take away, so this is the
+// one case worth telling the visitor about, and the useful offer is the plain
+// resume, not a refresh.
 const STRUGGLE_FPS = 20
 const STRUGGLE_MS  = 6000
 
@@ -59,18 +77,20 @@ const STRUGGLE_MS  = 6000
 // on demand is not something a test can do.
 export function createWatchdog(tier) {
   let lowSince = 0
+  let shedSince = 0
   let strugSince = 0
   let cooldownTill = 0
+  let scaleStep = 0
 
   return {
     tier,
+    scale: SCALE_STEPS[0],
     downgraded: false,
     struggling: false,
 
     // Call once the rolling window is full. Returns true if anything changed.
     sample(fps, now) {
       if (now < cooldownTill) return false
-      let changed = false
 
       if (this.tier > 0 && tierForFps(fps) < this.tier) {
         if (!lowSince) lowSince = now
@@ -79,13 +99,35 @@ export function createWatchdog(tier) {
           cooldownTill = now + COOLDOWN_MS
           this.tier -= 1
           this.downgraded = true
-          changed = true
+          // Nothing else this pass: the tier that just changed has not had a
+          // single frame to be measured yet, and the rebuild it triggers is
+          // about to eat one.
+          return true
         }
       } else {
         lowSince = 0
       }
 
-      if (this.tier === 0 && fps < STRUGGLE_FPS) {
+      let changed = false
+
+      // Resolution gives way before the world does, and only at the floor.
+      if (this.tier === 0 && fps < SHED_FPS && scaleStep < SCALE_STEPS.length - 1) {
+        if (!shedSince) shedSince = now
+        else if (now - shedSince > CONFIRM_MS) {
+          shedSince = 0
+          cooldownTill = now + COOLDOWN_MS
+          scaleStep += 1
+          this.scale = SCALE_STEPS[scaleStep]
+          changed = true
+        }
+      } else {
+        shedSince = 0
+      }
+
+      // Only once the ladder is exhausted — there is no point offering the
+      // plain resume while there is still a cheaper picture left to try.
+      const floored = this.tier === 0 && scaleStep === SCALE_STEPS.length - 1
+      if (floored && fps < STRUGGLE_FPS) {
         if (!strugSince) strugSince = now
         else if (now - strugSince > STRUGGLE_MS && !this.struggling) {
           this.struggling = true
@@ -104,10 +146,12 @@ export function createWatchdog(tier) {
   }
 }
 
-// Returns { tier, downgraded, struggling }.
+// Returns { tier, scale, downgraded, struggling }.
 //   tier        current quality tier, or null before the first verdict
+//   scale       multiplier on the tier's pixel budget (tier 0 ladder)
 //   downgraded  the watchdog has stepped the tier down at least once
-//   struggling  at the lowest tier and still below STRUGGLE_FPS
+//   struggling  at the lowest tier and the lowest resolution, still below
+//               STRUGGLE_FPS
 //
 // `active` gates when sampling starts — pass `gameStarted`. Measuring on
 // mount put the whole sample window on top of the boot screen while the 2 MB
@@ -118,7 +162,13 @@ export function createWatchdog(tier) {
 // frameloop="demand" until the game starts: there are no frames to sample
 // until `active` flips.
 export function usePerformanceTier(active = true) {
-  const [tier,       setTier]       = useState(null)
+  // Mobile is decided by the UA, which is knowable at mount — so it is
+  // settled here rather than waiting for `active`. That matters because the
+  // tier feeds the fog distance and the render resolution: resolving it late
+  // meant the world's first painted frames used the desktop mid-tier's
+  // numbers and then visibly changed the moment the visitor pressed START.
+  const [tier,       setTier]       = useState(() => (isMobileDevice() ? 0 : null))
+  const [scale,      setScale]      = useState(SCALE_STEPS[0])
   const [downgraded, setDowngraded] = useState(false)
   const [struggling, setStruggling] = useState(false)
 
@@ -134,10 +184,11 @@ export function usePerformanceTier(active = true) {
     // Mobile skips the opening measurement — the UA is a better signal than
     // any 90 frames sampled through a thermal-throttled first second — but
     // still runs the watchdog below, because tier 0 on a weak phone is
-    // exactly where the struggling notice earns its keep.
+    // exactly where the resolution ladder and the struggling notice earn
+    // their keep. `tier` already holds 0 from the initial state, so there is
+    // nothing to publish here.
     const mobile = isMobileDevice()
     const dog = createWatchdog(mobile ? 0 : null)
-    if (mobile) setTier(0)
 
     let warmup  = WARMUP_FRAMES
     let opening = mobile ? 0 : FIRST_SAMPLE
@@ -145,6 +196,7 @@ export function usePerformanceTier(active = true) {
 
     const publish = () => {
       setTier(dog.tier)
+      setScale(dog.scale)
       setDowngraded(dog.downgraded)
       setStruggling(dog.struggling)
     }
@@ -198,29 +250,81 @@ export function usePerformanceTier(active = true) {
     }
   }, [active])
 
-  return { tier, downgraded, struggling }
+  return { tier, scale, downgraded, struggling }
+}
+
+// ── Resolution ──────────────────────────────────────────────────────────────
+// How many device pixels one CSS pixel becomes.
+//
+// A flat dpr cap is the wrong unit for this scene. What a fill-rate-bound
+// renderer pays for is SHADED PIXELS, and dpr only describes the multiplier —
+// so the "dpr 1" that is honest on a 1x laptop rendered a 3x phone at a ninth
+// of its screen's resolution and let the browser upscale the result. That is
+// precisely what "pixelated" looked like, and it was never a measurement of
+// what the phone could afford.
+//
+// Budgeting the product instead adapts on its own: a small dense screen gets
+// the sharpness its modest pixel count leaves room for, a large one is held
+// to the same total. Tiers with `pixelBudget: null` keep the old clamp
+// untouched — desktop is not the thing that was broken.
+//
+// The viewport's AREA is what the budget is spent on, and the forced-landscape
+// frame only swaps the two axes, so innerWidth x innerHeight is the right
+// number in either orientation with no special case for the rotation.
+export function resolveDpr(cfg, scale = 1) {
+  const device = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1
+  const [floor, ceil] = cfg.dpr
+  if (!cfg.pixelBudget || typeof window === 'undefined') {
+    return Math.min(Math.max(floor, device), ceil)
+  }
+  const cssPixels = window.innerWidth * window.innerHeight
+  if (!cssPixels) return floor
+  // Never supersample: past the screen's own density, extra pixels are
+  // resolved away by the browser and bought nothing.
+  const afford = Math.sqrt((cfg.pixelBudget * scale) / cssPixels)
+  return Math.min(Math.max(floor, Math.min(device, afford)), ceil)
 }
 
 export const TIER_CONFIG = {
   0: { // Mobile / weak GPU
     maxTrees:        20,
     maxProps:        6,
-    dpr:             [1, 1],
-    fog:             80,
-    antialias:       false,
-    physicsStep:     1/30,
+    // Resolution here is a PIXEL BUDGET, not a device-pixel-ratio cap — see
+    // resolveDpr below. `dpr` is only the floor/ceiling the budget is
+    // clamped into; the floor of 1 is what this tier used to render at
+    // flat, so the budget can never make a phone look worse than before.
+    pixelBudget:     1.20e6,
+    dpr:             [1, 2],
+    // Fog buys nothing on this tier. three's fog is a per-fragment colour
+    // mix — it culls no geometry and shades no fewer pixels — and the
+    // camera's far plane is a fixed 600 for every tier, so pulling the haze
+    // in to 80 over a 400-unit world saved zero GPU time and cost the whole
+    // view. Phones now see what desktops see, minus a little depth haze.
+    fog:             260,
+    antialias:       true,
+    // Was 1/30. The car mesh is interpolated to render rate by rapier, but
+    // the camera reads body.translation() raw — so a 30 Hz world under a
+    // 60 Hz render made the camera stair-step against a smoothly moving
+    // car, which is what the shimmer on mobile actually was. Vehicle.jsx
+    // also calls controller.updateVehicle(dt) once per RENDER frame, so a
+    // mismatched step applied its forces twice per world step. Matching the
+    // render rate fixes both, and stepping a world this small at 60 Hz is
+    // cheap next to what it was costing to look wrong.
+    physicsStep:     1/60,
   },
   1: { // Medium
     maxTrees:        50,
     maxProps:        14,
+    pixelBudget:     null,
     dpr:             [1, 1.5],
     fog:             150,
-    antialias:       false,
+    antialias:       true,
     physicsStep:     1/60,
   },
   2: { // High / desktop
     maxTrees:        100,
     maxProps:        22,
+    pixelBudget:     null,
     // Capped at 1.5, not 2. Measured on an M1 against production: the scene
     // is fill-rate bound, not geometry or draw-call bound — at 4.03 MP it
     // ran 49.5 fps, and at 1.52 MP it ran a locked 60 with the same 170ish

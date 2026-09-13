@@ -8,10 +8,9 @@ import { setBestTime } from '../utils/raceStorage'
 import TrackObstacles from './TrackObstacles'
 import {
   CHECKPOINTS, TRACK_SAMPLES, PATH_WIDTH, BORDER_WIDTH, CHECK_RADIUS,
+  ASPHALT, KERB_COLORS as BORDER_COLORS, LINE_PAINT,
+  ASPHALT_EDGE_SHADE, ASPHALT_WORN_SHADE,
 } from '../data/track'
-
-const BORDER_COLORS = ['#f5f0e8', '#e03131'] // classic red/white racing kerb alternation
-const ASPHALT = '#413a3e' // warm dark asphalt (DESIGN.md: never neutral gray)
 
 const _vPos = new THREE.Vector3()
 const _cPos = new THREE.Vector3()
@@ -129,10 +128,10 @@ function TrackPath() {
     // racing line; a slow sine drift along the length breaks up the
     // flat fill so it reads as surface, not vector art.
     const roadProfile = [
-      { o: -PATH_WIDTH / 2, y: 0.03, shade: 1.04 },
-      { o: -PATH_WIDTH * 0.2, y: 0.03, shade: 0.85 },
-      { o:  PATH_WIDTH * 0.2, y: 0.03, shade: 0.85 },
-      { o:  PATH_WIDTH / 2, y: 0.03, shade: 1.04 },
+      { o: -PATH_WIDTH / 2, y: 0.03, shade: ASPHALT_EDGE_SHADE },
+      { o: -PATH_WIDTH * 0.2, y: 0.03, shade: ASPHALT_WORN_SHADE },
+      { o:  PATH_WIDTH * 0.2, y: 0.03, shade: ASPHALT_WORN_SHADE },
+      { o:  PATH_WIDTH / 2, y: 0.03, shade: ASPHALT_EDGE_SHADE },
     ]
     const roadRows = []
     for (let i = 0; i <= N; i++) {
@@ -177,7 +176,7 @@ function TrackPath() {
       details.push(ribbonGeometry(
         [lerpRow(i, 0.2), lerpRow(i, 0.8)],
         dashProfile,
-        '#f5f0e8'
+        LINE_PAINT
       ))
     }
 
