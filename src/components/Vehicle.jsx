@@ -1142,7 +1142,17 @@ function VehicleInner(props, ref) {
           as the wheels' contact patch, the two ground-contact mechanisms
           would fight each other (the body resting on this collider directly,
           independent of and inconsistent with the suspension). */}
-      <CuboidCollider args={[0.9, 0.3, 1.7]} position={[0, -0.05, 0]} />
+      {/* FOOTPRINT matches the bodywork; HEIGHT deliberately does not.
+          Those are two separate decisions and only the height one is about
+          the wheels — the note below is about Y and nothing here touches it.
+          This was a 1.8 x 3.4 box against a body that is 2.38 x 4.94, so the
+          car's nose passed 0.77 units THROUGH whatever it hit and each flank
+          0.29 — about a sixth of the car's length disappearing into a rock.
+          The x/z half-extents are now the model's own bounds, read off the
+          glTF (see the lamp block above, which sizes from the same figures).
+          Measured driving into a wall: the visual nose now lands exactly on
+          the face, penetration 0.000 where it used to be 0.77. */}
+      <CuboidCollider args={[1.19, 0.3, 2.47]} position={[0, -0.05, 0]} />
 
       {/* Outer group steers, inner mesh rolls — two axes that must not fight
           each other, so they get a level of nesting each. */}

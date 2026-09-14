@@ -1,5 +1,6 @@
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { SAND_FLAT_HEX } from './EndlessDesert'
+import { ASPHALT } from '../data/track'
 import { useThree } from '@react-three/fiber'
 import { useMemo } from 'react'
 import * as THREE from 'three'
@@ -181,16 +182,16 @@ function Roads() {
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y, 0]}>
         <planeGeometry args={[8, 220]} />
-        <meshLambertMaterial color="#4a4030" />
+        <meshLambertMaterial color={ASPHALT} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y, 0]}>
         <planeGeometry args={[220, 8]} />
-        <meshLambertMaterial color="#4a4030" />
+        <meshLambertMaterial color={ASPHALT} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]}
         position={[0, Y + 0.001, 0]}>
         <planeGeometry args={[9, 9]} />
-        <meshLambertMaterial color="#4a4030" />
+        <meshLambertMaterial color={ASPHALT} />
       </mesh>
       {[-3.6, 3.6].map((x, i) => (
         <mesh key={`ns-${i}`} rotation={[-Math.PI / 2, 0, 0]}

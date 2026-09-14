@@ -48,9 +48,19 @@ const RAMP_RISE   = 4.0
 //
 // Four sit on the open diagonals, which is the empty desert between the
 // zone plazas and the only large area with nothing else in it. Two more sit
-// squarely ON the far ends of the north and east roads: those roads run to
-// ±110 and dead-end, so a ramp out there is a destination rather than an
-// obstruction, and it is the one place a visitor is already at full speed.
+// beside the far ends of the north and east roads: those roads run to ±110
+// and dead-end, so a ramp out there is a destination rather than something
+// you meet by surprise, and it is the one place a visitor is already at
+// full speed.
+//
+// Those two used to sit squarely ON the tarmac, at (0,-95) and (95,0), and
+// they are off it now — 14 units to the side, which clears the 4-unit road
+// half-width and the ramp's own 5-unit half-width with margin. A ramp is
+// not a hazard from its foot, but it is a solid fixed body from any other
+// angle: measured, a car driving the east road into the ramp's HIGH end
+// stopped dead at road level, which is the worst kind of obstacle because
+// nothing about it reads as a wall. Still reachable at the same speed —
+// the run-up is now a swerve off the dead end rather than a straight line.
 // Every position is checked against the zone plazas, the name letters and
 // the racing circuit.
 export const RAMPS = [
@@ -58,8 +68,8 @@ export const RAMPS = [
   { x:  35, z:  35, heading:  Math.PI * 0.25 },
   { x: -35, z:  35, heading: -Math.PI * 0.25 },
   { x: -35, z: -35, heading: -Math.PI * 0.75 },
-  { x:   0, z: -95, heading:  0 },
-  { x:  95, z:   0, heading:  Math.PI * 0.5 },
+  { x:  14, z: -95, heading:  0 },
+  { x:  95, z:  14, heading:  Math.PI * 0.5 },
 ]
 
 // Conservative circle round the footprint: half the wedge's diagonal, so a

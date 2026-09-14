@@ -325,10 +325,12 @@ export default function ZoneDecorations() {
         <ServerRack position={[-9, 0,  5]} />
         <ServerRack position={[ 9, 0, -5]} />
         <ServerRack position={[ 9, 0,  0]} />
-        <TerraformBlock position={[4, 0, 8]} />
+        {/* Road runs through x in [-4,4] here. These used to start at x=4,
+            i.e. ON the kerb line — shifted out so the whole cluster clears
+            it, the same rule the crates below were already following. */}
         <TerraformBlock position={[6, 0, 8]} />
-        <TerraformBlock position={[5, 0, 6]} />
-        {/* Road runs through x in [-4,4] here — keep crates off it */}
+        <TerraformBlock position={[8, 0, 8]} />
+        <TerraformBlock position={[7, 0, 6]} />
         <Crate position={[ 6,1,-3]} color="#ddd0b8" />
         <Crate position={[ 7,1,-2]} color="#ccbba8" />
         <Crate position={[-6,1, 3]} color="#d5c8b2" />
@@ -339,10 +341,15 @@ export default function ZoneDecorations() {
       <group position={[55, 0.6, 0]}>
         {/* 3D billboard with embedded slideshow */}
         <ProjectBillboard position={[0, 0, -6]} />
-        <DockerStack position={[-8, 0, -4]} />
-        <DockerStack position={[-8, 0,  4]} />
-        <DockerStack position={[ 8, 0,  0]} />
-        {/* Road runs through z in [-4,4] here — keep crates off it */}
+        {/* Road runs through z in [-4,4] here — the note below already said
+            so for the crates, but these three sat on it anyway, one of them
+            (z=0) dead on the centreline. They carry no collider, so the car
+            drove THROUGH a stack of shipping containers rather than into
+            them, which reads as a bug either way. */}
+        <DockerStack position={[-8, 0, -8]} />
+        <DockerStack position={[-8, 0,  8]} />
+        <DockerStack position={[ 8, 0,  8]} />
+        {/* Keep crates off the road too */}
         <Crate position={[4,1, 6]} size={[1.2,1.2,1.2]} color="#0db7ed" />
         <Crate position={[5,1, 7]} size={[0.9,0.9,0.9]} color="#2496ed" />
         <Crate position={[3,1,-6]} size={[1.1,1.1,1.1]} color="#0db7ed" />
@@ -353,8 +360,10 @@ export default function ZoneDecorations() {
         <HeavyBag position={[-4, 0, -6]} />
         <HeavyBag position={[ 4, 0,  6]} />
         <PS2      position={[ 0, 0,  6]} />
-        <Racket   position={[-6, 1.2, 0]} rotation={[0,0.3,0.8]} />
-        <Racket   position={[ 6, 1.2, 2]} rotation={[0,-0.4,0.9]} />
+        {/* Road runs through z in [-4,4] here too. These two were at z=0
+            and z=2 — one of them propped on the centreline. */}
+        <Racket   position={[-6, 1.2, -7]} rotation={[0,0.3,0.8]} />
+        <Racket   position={[ 6, 1.2,  7]} rotation={[0,-0.4,0.9]} />
         <Crate position={[ 5,1,-5]} size={[1.4,1.4,1.4]} color="#cc2200" />
         <Crate position={[-5,1, 5]} size={[1.2,1.2,1.2]} color="#cc2200" />
         <Crate position={[ 0,1,-7]} size={[1.0,1.0,1.0]} color="#444" />
