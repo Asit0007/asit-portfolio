@@ -217,14 +217,22 @@ export default function Trees({ maxTrees = TREE_COUNT }) {
           instances whose positions change and costs a JS↔WASM readback
           every frame for each instance even when nothing moves).
 
-          Deliberately UNCHANGED from the pre-species version: same size,
-          same position, and still independent of each tree's visual scale.
-          Collision feel is gameplay, and the canopy rework is a visual
-          change — bundling a physics change into it would make any
-          regression impossible to attribute. */}
+          SCALED WITH THE TREE, which it was not before. A flat 0.35 half-
+          width sat under trunks drawn anywhere from 0.65x to 1.47x, so the
+          car stopped 0.18 units short of a small tree's bark — visibly
+          floating away from it — and ended 0.08 INSIDE a big one. Measured
+          by driving into the smallest and largest trunks in the world.
+          0.27 rather than the trunk's 0.30 base radius because the trunk
+          TAPERS (CylinderGeometry 0.15 top, 0.30 bottom) and a car meets it
+          around 0.6 up, not at the ground. That lands every size within
+          0.03 of its own bark. */}
       <RigidBody type="fixed" colliders={false}>
-        {visibleTrees.map(({ x, z }, i) => (
-          <CuboidCollider key={i} args={[0.35, 1.75, 0.35]} position={[x, 1.75, z]} />
+        {visibleTrees.map(({ x, z, scale }, i) => (
+          <CuboidCollider
+            key={i}
+            args={[0.27 * scale, 1.75 * scale, 0.27 * scale]}
+            position={[x, 1.75 * scale, z]}
+          />
         ))}
       </RigidBody>
     </group>
