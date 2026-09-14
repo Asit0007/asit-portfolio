@@ -145,7 +145,12 @@ const PIN_LOCAL_POSITIONS = [
 // actual mechanic (its ball is "just another dynamic rigid body the
 // player's car rolls into," no throw/grab). Like folio, it sits well up
 // the lane so there's a run-up before impact.
-const BALL_LOCAL   = [20, 0]  // east of the pins, up the lane's run-up
+// ON THE FOUL LINE (FOUL_LINE_X = 24), not 4 units past it. It used to sit
+// at 20, which is on the oiled lane itself — the ball had already been
+// bowled before anyone touched it, and the approach behind it was the part
+// of the alley you never used. Starting on the line gives the car the whole
+// run-up to push from, which is what the approach is for.
+const BALL_LOCAL   = [24, 0]
 const BALL_RADIUS  = 0.85
 const BALL_START_Y = BALL_RADIUS
 

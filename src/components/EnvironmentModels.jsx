@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { triggerShake } from '../utils/cameraShake'
 import useGameStore from '../store/useGameStore'
 import { isNearTrack } from '../data/track'
+import { isOnRoad } from '../data/roads'
 import { SCATTER_DATA } from './World'
 import { NAME_KEEPOUT } from './NameTitle'
 import { isOnRamp } from './Ramps'
@@ -124,7 +125,7 @@ function joltCar(scale) {
 // gravel at all, since pavement is the one surface that has to stay smooth.
 const ZONE_CENTERS = [[0, -55], [55, 0], [-55, 0], [0, 55], [0, 0]]
 function isOpenGround(x, z) {
-  if (Math.abs(x) < 8 || Math.abs(z) < 8) return false
+  if (isOnRoad(x, z, 4)) return false
   if (ZONE_CENTERS.some(([zx, zz]) => Math.abs(x - zx) < 22 && Math.abs(z - zz) < 22)) return false
   if (isNearTrack(x, z, 6)) return false
   if (isOnRamp(x, z, 3)) return false
@@ -522,7 +523,11 @@ function HobbiesZoneProps() {
         <SolidModel path="/models/snowman.glb"          position={[-46, 0.6,  12]} scale={0.9} />
         <SolidModel path="/models/snowman.glb"          position={[-46, 0.6, -12]} scale={0.7}
           rotation={[0, 1.2, 0]} />
-        <SolidModel path="/models/fantasy-tower.glb"   position={[-70, 0.6,  0]}
+        {/* Was at z=0 — standing in the middle of the west trunk road. These
+            landmark props are hand-placed and so bypass the scatter's
+            isOnRoad() check; anything added here has to clear the tarmac by
+            hand. */}
+        <SolidModel path="/models/fantasy-tower.glb"   position={[-70, 0.6,  9]}
           scale={0.8} rotation={[0, Math.PI / 2, 0]} />
       </group>
     </Suspense>

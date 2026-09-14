@@ -365,7 +365,8 @@ export default function ZoneDecorations() {
         <Racket   position={[-6, 1.2, -7]} rotation={[0,0.3,0.8]} />
         <Racket   position={[ 6, 1.2,  7]} rotation={[0,-0.4,0.9]} />
         <Crate position={[ 5,1,-5]} size={[1.4,1.4,1.4]} color="#cc2200" />
-        <Crate position={[-5,1, 5]} size={[1.2,1.2,1.2]} color="#cc2200" />
+        {/* was (-5,1,5) -> world (-60,5), on the new bowling spur at x=-58 */}
+        <Crate position={[-9,1, 5]} size={[1.2,1.2,1.2]} color="#cc2200" />
         <Crate position={[ 0,1,-7]} size={[1.0,1.0,1.0]} color="#444" />
       </group>
     </group>

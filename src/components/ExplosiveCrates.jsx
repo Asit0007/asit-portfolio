@@ -50,7 +50,7 @@ const CRATES = [
   { x:  80, z:   7 },
   { x: -30, z:   7 },
   { x: -80, z:  -7 },
-  { x:  50, z: -50 },
+  { x:  55, z: -45 },   // shoulder of the new SE diagonal, not its centreline
 ]
 
 // ── The box itself ────────────────────────────────────────────────────────

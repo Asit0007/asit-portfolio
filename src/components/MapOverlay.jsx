@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import useGameStore from '../store/useGameStore'
 import { TRACK_SAMPLES, PATH_WIDTH } from '../data/track'
+import { ROADS } from '../data/roads'
 
 const WORLD_SIZE = 320 // matches the ±160 world boundary (World.jsx Boundaries())
 const MAP_SIZE   = 340
@@ -52,19 +53,29 @@ export default function MapOverlay({ vehicleRef }) {
         ctx.beginPath(); ctx.moveTo(0,pos); ctx.lineTo(MAP_SIZE,pos); ctx.stroke()
       }
 
-      // Roads
+      // Roads — drawn from the same ROADS list World.jsx builds the tarmac
+      // from, so the map cannot show a road that isn't there or miss one
+      // that is. It used to hardcode the two trunks as a crosshair, which
+      // stopped being the whole network the moment spurs were added.
+      const roadPath = () => {
+        ctx.beginPath()
+        for (const { from, to } of ROADS) {
+          ctx.moveTo(cx + from[0] * scale, cz + from[1] * scale)
+          ctx.lineTo(cx + to[0] * scale, cz + to[1] * scale)
+        }
+      }
+      ctx.lineCap = 'round'
       ctx.strokeStyle = 'rgba(160,130,60,0.5)'
       ctx.lineWidth = 6
-      ctx.beginPath(); ctx.moveTo(cx,8); ctx.lineTo(cx,MAP_SIZE-8); ctx.stroke()
-      ctx.beginPath(); ctx.moveTo(8,cz); ctx.lineTo(MAP_SIZE-8,cz); ctx.stroke()
+      roadPath(); ctx.stroke()
 
       // Road dashes
       ctx.strokeStyle = 'rgba(240,200,80,0.35)'
       ctx.lineWidth = 1.5
       ctx.setLineDash([8,6])
-      ctx.beginPath(); ctx.moveTo(cx,8); ctx.lineTo(cx,MAP_SIZE-8); ctx.stroke()
-      ctx.beginPath(); ctx.moveTo(8,cz); ctx.lineTo(MAP_SIZE-8,cz); ctx.stroke()
+      roadPath(); ctx.stroke()
       ctx.setLineDash([])
+      ctx.lineCap = 'butt'
 
       // Racing circuit — the real track shape from track.js
       const trackPath = () => {

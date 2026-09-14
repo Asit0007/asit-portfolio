@@ -1,6 +1,7 @@
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { SAND_FLAT_HEX } from './EndlessDesert'
 import { ASPHALT } from '../data/track'
+import { ROAD_SEGMENTS, ROAD_WIDTH } from '../data/roads'
 import { useThree } from '@react-three/fiber'
 import { useMemo } from 'react'
 import * as THREE from 'three'
@@ -178,49 +179,51 @@ function TilePaths() {
 
 function Roads() {
   const Y = 0.06
+  // Every segment is drawn from ROAD_SEGMENTS, so the tarmac the visitor
+  // sees and the keep-out the scatter obeys are the same list. A segment is
+  // one plane rotated onto its heading; the trunks additionally get the
+  // yellow centre dashes, which are what make a road read as a ROAD rather
+  // than a path, and are not worth the draw calls on every short spur.
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y, 0]}>
-        <planeGeometry args={[8, 220]} />
-        <meshLambertMaterial color={ASPHALT} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y, 0]}>
-        <planeGeometry args={[220, 8]} />
-        <meshLambertMaterial color={ASPHALT} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, Y + 0.001, 0]}>
+      {ROAD_SEGMENTS.map(({ id, center, length, heading }) => (
+        <group key={id} position={[center[0], Y, center[1]]} rotation={[0, heading, 0]}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[ROAD_WIDTH, length]} />
+            <meshLambertMaterial color={ASPHALT} />
+          </mesh>
+          {/* Edge lines, inset from the kerb like the trunks always had */}
+          {[-ROAD_WIDTH / 2 + 0.4, ROAD_WIDTH / 2 - 0.4].map((x, i) => (
+            <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.005, 0]}>
+              <planeGeometry args={[0.18, length]} />
+              <meshLambertMaterial color="#e8c878" />
+            </mesh>
+          ))}
+        </group>
+      ))}
+
+      {/* The crossroads itself — one patch over the junction so the two
+          trunks don't show a seam where they overlap. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y + 0.001, 0]}>
         <planeGeometry args={[9, 9]} />
         <meshLambertMaterial color={ASPHALT} />
       </mesh>
-      {[-3.6, 3.6].map((x, i) => (
-        <mesh key={`ns-${i}`} rotation={[-Math.PI / 2, 0, 0]}
-          position={[x, Y + 0.005, 0]}>
-          <planeGeometry args={[0.18, 220]} />
-          <meshLambertMaterial color="#e8c878" />
-        </mesh>
-      ))}
-      {[-3.6, 3.6].map((z, i) => (
-        <mesh key={`ew-${i}`} rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, Y + 0.005, z]}>
-          <planeGeometry args={[220, 0.18]} />
-          <meshLambertMaterial color="#e8c878" />
-        </mesh>
-      ))}
-      {Array.from({ length: 26 }, (_, i) => (
-        <mesh key={`dns-${i}`} rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, Y + 0.01, -100 + i * 8]}>
-          <planeGeometry args={[0.25, 4]} />
-          <meshLambertMaterial color="#f0d060" />
-        </mesh>
-      ))}
-      {Array.from({ length: 26 }, (_, i) => (
-        <mesh key={`dew-${i}`} rotation={[-Math.PI / 2, 0, 0]}
-          position={[-100 + i * 8, Y + 0.01, 0]}>
-          <planeGeometry args={[4, 0.25]} />
-          <meshLambertMaterial color="#f0d060" />
-        </mesh>
-      ))}
+
+      {/* Centre dashes, trunks only. */}
+      {ROAD_SEGMENTS.filter((r) => r.trunk).map(({ id, center, length, heading }) => {
+        const n = Math.floor(length / 8)
+        return (
+          <group key={`d-${id}`} position={[center[0], Y + 0.01, center[1]]} rotation={[0, heading, 0]}>
+            {Array.from({ length: n }, (_, i) => (
+              <mesh key={i} rotation={[-Math.PI / 2, 0, 0]}
+                position={[0, 0, -length / 2 + 4 + i * 8]}>
+                <planeGeometry args={[0.25, 4]} />
+                <meshLambertMaterial color="#f0d060" />
+              </mesh>
+            ))}
+          </group>
+        )
+      })}
     </group>
   )
 }
@@ -230,11 +233,13 @@ function Roads() {
 // as anyone keeps driving — so there is nothing left to wall off. Hitting an
 // invisible wall was the worst edge this world had.
 
+// Hand-placed, so these do NOT go through isOnRoad() — check new entries
+// against src/data/roads.js by hand.
 export const SCATTER_DATA = [
-  { x: -32, z: -28, sx: 1.2, sy: 0.8,  sz: 1.0, ry: 0.4  },
+  { x: -26, z: -28, sx: 1.2, sy: 0.8,  sz: 1.0, ry: 0.4  }, // clear of the x=-35 spur
   { x:  42, z: -22, sx: 0.9, sy: 1.2,  sz: 0.9, ry: 1.1  },
   { x: -46, z:  26, sx: 1.4, sy: 0.7,  sz: 1.2, ry: 2.3  },
-  { x:  32, z:  42, sx: 1.0, sy: 1.0,  sz: 1.1, ry: 0.8  },
+  { x:  26, z:  42, sx: 1.0, sy: 1.0,  sz: 1.1, ry: 0.8  }, // clear of the x=35 spur
   { x: -62, z: -48, sx: 1.1, sy: 1.4,  sz: 0.8, ry: 1.6  },
   { x:  66, z:  38, sx: 0.8, sy: 0.9,  sz: 1.3, ry: 2.8  },
   { x: -10, z:  80, sx: 1.3, sy: 0.6,  sz: 1.0, ry: 0.2  }, // nudged clear of the big wraparound track (src/data/track.js)

@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { isNearTrack } from '../data/track'
+import { isOnRoad } from '../data/roads'
 import { isOnRamp } from './Ramps'
 import { isOnName } from './NameTitle'
 
@@ -80,7 +81,11 @@ function randomTreePositions() {
     const radius = 22 + Math.random() * 72
     const x = Math.cos(angle) * radius
     const z = Math.sin(angle) * radius
-    if (Math.abs(x) < 6 || Math.abs(z) < 6) continue
+    // Margin covers the canopy, not just the trunk: a tree that misses the
+    // kerb by nothing still hangs over the road. Asks the shared network
+    // (src/data/roads.js) rather than re-deriving where the tarmac is, so
+    // the diagonals and the spurs are honoured too.
+    if (isOnRoad(x, z, 5)) continue
     if (zoneCenters.some(([zx,zz]) =>
       Math.abs(x-zx) < 20 && Math.abs(z-zz) < 20)) continue
     if (isNearTrack(x, z, 6)) continue
