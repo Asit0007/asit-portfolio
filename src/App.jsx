@@ -17,6 +17,7 @@ import { RendererInfoOverlay } from './components/DevStats'
 import BowlingHUD from './components/BowlingHUD'
 import PerfNotice from './components/PerfNotice'
 import ReturnHome from './components/ReturnHome'
+import StuckPrompt   from './components/StuckPrompt'
 import { WhisperInput } from './components/Whispers'
 
 // Scene is the only import path to @react-three/rapier and the world
@@ -398,6 +399,7 @@ export default function App() {
           <AchievementSystem />
           <WhisperInput />
           {!showResume && <ReturnHome />}
+          {!showResume && <StuckPrompt />}
           {!showResume && (
             <PerfNotice
               downgraded={downgraded}

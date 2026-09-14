@@ -138,6 +138,14 @@ const ROLL_INERTIA   = 1.2  // local Z — cornering lean / bump response
 // pitch torque ~30% for free. Also a real muscle car's mass sits low.
 const CHASSIS_COM    = { x: 0, y: -0.12, z: 0 }
 
+// ── Stuck detection ─────────────────────────────────────────────────────
+// Below this the car is not making progress. Deliberately above zero: a car
+// grinding against a rock still reports a little speed as it scrubs.
+const STUCK_SPEED   = 0.9
+// cos of the tilt past which the car counts as over. 0.35 is about 70
+// degrees — well past any slope or ramp landing it could be on legitimately.
+const STUCK_UPRIGHT = 0.35
+
 // ── Camera ──────────────────────────────────────────────────────────────────
 // Camera sits at +Z (south) relative to car
 // Car faces -Z (north) → _fwd = (0,0,-1)
@@ -636,6 +644,10 @@ function VehicleInner(props, ref) {
   // Set when the car is TELEPORTED rather than driven, so the camera cuts
   // with it instead of flying there. See the camera block.
   const camSnap      = useRef(false)
+  // performance.now() of when the car first looked stuck, or 0. Read by
+  // StuckPrompt through a window global for the usual reason — this changes
+  // every frame and must not re-render React (see CLAUDE.md on __globals).
+  const stuckSince   = useRef(0)
   const bodyShakeRef = useRef()
   const wheelRefs    = useRef([])
   const wheelSpin    = useRef(0)
@@ -740,6 +752,24 @@ function VehicleInner(props, ref) {
       camSnap.current = true
     }
 
+    // Stand the car up WHERE IT IS — the other half of getting unstuck.
+    // A full reset costs the visitor everything they drove to get here, and
+    // most stuck cars are only on their roof or beached on something; they
+    // do not need to go home, they need to be the right way up. Position is
+    // kept, rotation is levelled, and the small lift is what gets the body
+    // off whatever it is resting on so the wheels can find ground again.
+    // No camSnap: the car barely moves, so the follow-cam has nothing to
+    // catch up with.
+    if (typeof window !== 'undefined' && window.__uprightCar) {
+      window.__uprightCar = false
+      const p = body.translation()
+      body.setTranslation({ x: p.x, y: p.y + 1.2, z: p.z }, true)
+      body.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
+      body.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      body.setAngvel({ x: 0, y: 0, z: 0 }, true)
+      stuckSince.current = 0
+    }
+
     const { forward, backward, steer: steerInput, brake, boost } = getInput()
     const gameStarted = useGameStore.getState().gameStarted
 
@@ -771,6 +801,30 @@ function VehicleInner(props, ref) {
     _vel.set(lv.x, lv.y, lv.z)
     const fwdSpeed = _fwd.dot(_vel)
     lastSpeed.current = Math.sqrt(lv.x * lv.x + lv.z * lv.z)
+
+    // ── Stuck? ──────────────────────────────────────────────────────────
+    // Two ways to be stuck, and they need different tests.
+    //
+    // BEACHED is the one that needs care: the car is upright and the wheels
+    // are turning, so nothing about the physics looks wrong — it is just
+    // resting on something with the tyres in the air. Speed alone can't see
+    // that, because a car legitimately sits still all the time. What makes
+    // it stuck is that the visitor is ASKING it to move and it isn't, so the
+    // test is input AND no motion, held for long enough that pushing a crate
+    // or nosing into a kerb doesn't trip it.
+    //
+    // FLIPPED is simpler and doesn't need input at all — nobody rests on
+    // their roof on purpose, and asking them to prove it by holding the
+    // throttle would be silly.
+    const upDot = 1 - 2 * (rot.x * rot.x + rot.z * rot.z)
+    const asking = forward || backward || Math.abs(steerInput) > 0.2
+    const crawling = lastSpeed.current < STUCK_SPEED
+    if (gameStarted && (upDot < STUCK_UPRIGHT || (asking && crawling))) {
+      if (!stuckSince.current) stuckSince.current = performance.now()
+    } else {
+      stuckSince.current = 0
+    }
+    if (typeof window !== 'undefined') window.__stuckSince = stuckSince.current
 
     // Engine force — soft speed cap via force attenuation (force fades out
     // as speed passes the target, rather than hard-clamping velocity, which
