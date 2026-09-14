@@ -11,6 +11,59 @@ const PLAYLIST = [
   '/sounds/bg6.mp3',
 ].filter(Boolean)
 
+// ── Music levelling ───────────────────────────────────────────────────────
+// The seven tracks were NOT mastered together, and until now they all played
+// at one flat volume, so the spread went straight to the listener. Measured
+// with ffmpeg's EBU R128 meter (see the Cpaudio skill):
+//
+//   track    integrated   true peak
+//   bg          -8.1        +1.5      <- loudest
+//   bg1        -18.7        -3.3      <- quietest
+//   bg2        -12.7        +0.9
+//   bg3         -8.7        +0.8
+//   bg4        -17.0        -1.2
+//   bg5        -11.3        +0.3
+//   bg6        -10.4        +2.2      <- worst peak
+//
+// 10.6 LUFS between loudest and quietest is roughly a doubling of perceived
+// loudness — shuffle from bg1 into bg and the visitor reaches for the volume.
+// And FIVE of seven peak above 0 dBTP, which is real audible distortion on
+// playback, not a theoretical margin: those are inter-sample peaks that clip
+// when the decoder reconstructs them.
+//
+// Both are fixed by attenuating per track rather than re-encoding. The files
+// are already lossy at 112 kb/s and a second encode would add generation loss
+// to solve a problem that is purely a gain constant. Playing a file quieter
+// also pulls its inter-sample peaks down with it, so the clipping goes away
+// for free.
+//
+// -16 LUFS is the target because it is the loudest one that leaves EVERY
+// track's peak under 0 dBTP: bg1 is the binding constraint, needing +2.7 dB,
+// which takes its -3.3 peak to -0.6. Aim at -12 instead and bg1 clips at
+// +3.4. BASE is 0.33 rather than the old flat 0.22 so the AVERAGE loudness
+// across the playlist lands where it already was — the quiet tracks come up,
+// the loud ones come down, and the set as a whole is unchanged.
+const TRACK_LUFS = {
+  '/sounds/bg.mp3':  -8.1,
+  '/sounds/bg1.mp3': -18.7,
+  '/sounds/bg2.mp3': -12.7,
+  '/sounds/bg3.mp3':  -8.7,
+  '/sounds/bg4.mp3': -17.0,
+  '/sounds/bg5.mp3': -11.3,
+  '/sounds/bg6.mp3': -10.4,
+}
+const MUSIC_TARGET_LUFS = -16
+const MUSIC_BASE_VOLUME = 0.33
+
+// Re-measure with the Cpaudio skill and update TRACK_LUFS if a track is ever
+// added or replaced; an unmeasured track falls back to the base volume, which
+// is only correct if it happens to sit at the target.
+function trackVolume(src) {
+  const lufs = TRACK_LUFS[src]
+  if (lufs === undefined) return MUSIC_BASE_VOLUME
+  return MUSIC_BASE_VOLUME * Math.pow(10, (MUSIC_TARGET_LUFS - lufs) / 20)
+}
+
 let ctx         = null
 let engine      = null
 let gravel      = null
@@ -57,7 +110,7 @@ function playNextTrack() {
 
 function loadAndPlay(src) {
   currentHowl = new Howl({
-    src: [src], volume: 0.22,
+    src: [src], volume: trackVolume(src),
     // Stream through an <audio> element instead of Howler's default Web
     // Audio path. The default (html5: false) XHRs the whole file as an
     // arraybuffer and runs decodeAudioData over it before a single note
