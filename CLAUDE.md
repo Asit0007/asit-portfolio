@@ -23,7 +23,9 @@ npm run lint      # eslint over src/ and api/ (flat config at eslint.config.js)
 
 Lint policy: `catch (_) {}` and empty catch blocks are allowed by config — they're the codebase's graceful-degradation contract, not oversights. The react-hooks compiler rules (`set-state-in-effect`, `immutability`, `refs`) and `react-refresh/only-export-components` are demoted to warnings because they flag long-standing working patterns; keep the error count at zero.
 
-There are no tests. Local dev has no Redis credentials by default, so leaderboard/comments/visitor APIs return null and the UI shows its offline states — that's expected. To exercise the API routes locally you need `vercel dev` plus `vercel env pull` (requires `vercel login`; the CLI in dependencies is v32).
+There are no tests. Local dev has no Redis credentials by default, so leaderboard/comments/visitor APIs return null and the UI shows its offline states — that's expected. To exercise the API routes locally you need `vercel dev` plus `vercel env pull` (requires `vercel login`; the CLI is **v59**, upgraded from v32 on 2026-09-14 — v32 rejected a perfectly good session with "The specified token is not valid", so an auth error from this CLI is worth re-testing on a current version before assuming the login has expired).
+
+`vercel` sits in **`dependencies`**, not `devDependencies`. That is the wrong section for a deploy tool and it is now 26 MB of it, but it costs nothing on Vercel itself, which installs devDependencies for the build anyway — so this is a tidiness item, not a build-time one. Its transitive tree is also where every `npm audit` advisory in this project lives (36 of them, one critical in `tar`); none of it reaches the browser bundle, which is three/react/rapier/fiber only.
 
 ## Big-picture architecture
 
