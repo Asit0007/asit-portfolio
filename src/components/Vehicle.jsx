@@ -138,6 +138,9 @@ const ROLL_INERTIA   = 1.2  // local Z — cornering lean / bump response
 // pitch torque ~30% for free. Also a real muscle car's mass sits low.
 const CHASSIS_COM    = { x: 0, y: -0.12, z: 0 }
 
+// Scratch for the per-wheel height deltas — four numbers, reused each frame.
+const _steps = new Float64Array(4)
+
 // ── Stuck detection ─────────────────────────────────────────────────────
 // Below this the car is not making progress. Deliberately above zero: a car
 // grinding against a rock still reports a little speed as it scrubs.
@@ -279,25 +282,33 @@ const BUMP_DV       = 1.1
 //
 // Sand, asphalt and the circuit are all one flat collider here, so this
 // reads exactly 0 on them — measured in the running game, not assumed. That
-// clean zero is what makes the constant below safe to set low.
+// clean zero is what makes the constant below safe to set low. Ramps and
+// dunes read 0 too, which they did NOT before: see the note at the
+// subtraction below for why a gradient is not a texture.
 //
-// And it IS deliberately low. Tracing a wheel's line across the heightfield
-// offline puts the per-tyre slope near 0.04; logging the same crossing in
-// the running game puts it nearer 0.28, because the contact point is not a
-// point sliding along fixed geometry — the chassis pitches and rolls, the
-// ray origins move with it, and each hit lands somewhere slightly different.
-// Rather than pick a threshold that only works if one of those two numbers
-// is right, 0.10 sits below both, so gravel reads strongly either way. The
-// cost is that the roughest and mildest gravel feel similar, which is a
-// cheap price when gravel is the only rough surface in the world — and
-// partial contact still grades down, because the average is per tyre.
+// The threshold is set from measurement, and it had to be RE-measured when
+// the figure above changed from "how far each wheel moved" to "how much the
+// wheels disagreed" — a smaller number for the same gravel. Logged in the
+// running game, driving each surface:
+//
+//   surface                median      p90       max
+//   flat road              0.0000    0.0000    0.0856
+//   ramp, whole run        0.0000    0.0008    0.1327   <- was ~0.25 throughout
+//   gravel, whole crossing 0.0090    0.0339    0.0927
+//
+// 0.022 puts gravel at full rumble by its p90 and ~40% at its median, while
+// a ramp run sits ~40x below the threshold for 90% of its samples. Both
+// max columns are single-frame spikes — the ramp's is the LANDING after the
+// jump and the road's is the suspension settling, and both are genuine
+// bumps that should be felt. Re-measure all three surfaces if this is ever
+// retuned; the numbers are meaningless without the ramp row beside them.
 //
 // One known limit: past ~25 u/s a wheel covers more than a whole 0.42 cell
 // of the gravel heightfield per frame, so consecutive samples stop being
 // correlated and the figure under-reads — a boost run over gravel rumbles
 // at about two thirds of a cruise. Fixing it would mean teaching this file
 // the heightfield's cell size, which is a worse trade than the error.
-const ROUGH_FULL_SLOPE = 0.10  // per-tyre slope counting as full rumble
+const ROUGH_FULL_SLOPE = 0.022 // per-tyre DISAGREEMENT counting as full rumble
 const ROUGH_RELEASE    = 7     // per second, once the wheels find smooth ground
 const ROUGH_MIN_SPEED  = 1.5   // below this the slope figure is division noise
 const ROUGH_FADE_SPEED = 11    // rumble is at full strength from here up
@@ -934,22 +945,46 @@ function VehicleInner(props, ref) {
     // ── Surface roughness → vibration ─────────────────────────────────────
     // See ROUGH_FULL_SLOPE above for what is being measured and why it is
     // divided by distance rather than by time.
-    let stepSum = 0
-    let contacts = 0
+    // Signed, because what matters is how the wheels DISAGREE — see below.
+    const steps = _steps
+    let nSteps = 0
     if (canQueryWheels) {
       for (let i = 0; i < 4; i++) {
         if (!controller.wheelIsInContact(i)) { wheelGroundY.current[i] = null; continue }
         const cp = controller.wheelContactPoint(i)
         if (!cp) { wheelGroundY.current[i] = null; continue }
-        contacts++
         const prev = wheelGroundY.current[i]
         wheelGroundY.current[i] = cp.y
         // A wheel that was airborne last frame has no previous height to
         // difference against — landing is a bump, not a rough surface, and
         // BUMP_DV above already covers it.
-        if (prev !== null) stepSum += Math.abs(cp.y - prev)
+        if (prev !== null) steps[nSteps++] = cp.y - prev
       }
     }
+    // A SLOPE IS NOT A ROUGH SURFACE, and the absolute height change cannot
+    // tell them apart. Driving a ramp, every wheel climbs at the same steady
+    // rate, so |dy|/distance returns the ramp's own gradient: 0.23 for the
+    // circuit's ramp, 0.25 for the open-world ones, against a threshold of
+    // 0.10 — pinned at full rumble, with the gravel bed playing, on painted
+    // asphalt. The dunes did the same thing.
+    //
+    // Roughness is the wheels DISAGREEING with each other, not all of them
+    // going up together. Differencing each wheel against the mean removes
+    // whatever the whole car is doing — climbing, descending, pitching — and
+    // leaves only the part of the surface that is different under one tyre
+    // than the next, which is what gravel is and what a ramp is not. Still
+    // no collision events, no material tags, no per-surface bookkeeping.
+    //
+    // One wheel alone cannot tell a slope from a stone, so it reports
+    // nothing rather than guessing.
+    let stepSum = 0
+    if (nSteps > 1) {
+      let mean = 0
+      for (let i = 0; i < nSteps; i++) mean += steps[i]
+      mean /= nSteps
+      for (let i = 0; i < nSteps; i++) stepSum += Math.abs(steps[i] - mean)
+    }
+    const contacts = nSteps
     const here = body.translation()
     const prevP = prevPos.current
     const travelled = prevP
