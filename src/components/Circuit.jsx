@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { ribbonGeometry } from '../utils/ribbon'
 import useGameStore from '../store/useGameStore'
 import { setBestTime } from '../utils/raceStorage'
 import TrackObstacles from './TrackObstacles'
@@ -40,43 +41,6 @@ const PERPS = LOOP.map((_, i) => {
 // rows: [{ x, z, nx, nz, shade }] along the curve; profile: [{ o, y, shade }]
 // lateral cross-section ordered by increasing o (the quad winding assumes
 // this — it's what keeps faces pointing up).
-function ribbonGeometry(rows, profile, colorHex) {
-  const R = rows.length
-  const P = profile.length
-  const positions = new Float32Array(R * P * 3)
-  const colors = new Float32Array(R * P * 3)
-  const base = new THREE.Color(colorHex)
-  for (let r = 0; r < R; r++) {
-    const row = rows[r]
-    for (let j = 0; j < P; j++) {
-      const { o, y, shade = 1 } = profile[j]
-      const k = (r * P + j) * 3
-      const s = shade * (row.shade ?? 1)
-      positions[k]     = row.x + row.nx * o
-      positions[k + 1] = y
-      positions[k + 2] = row.z + row.nz * o
-      colors[k]     = base.r * s
-      colors[k + 1] = base.g * s
-      colors[k + 2] = base.b * s
-    }
-  }
-  const indices = []
-  for (let r = 0; r < R - 1; r++) {
-    for (let j = 0; j < P - 1; j++) {
-      const a = r * P + j
-      const b = a + 1
-      const c = a + P
-      const d = c + 1
-      indices.push(a, c, b, b, c, d)
-    }
-  }
-  const geo = new THREE.BufferGeometry()
-  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-  geo.setIndex(indices)
-  geo.computeVertexNormals()
-  return geo
-}
 
 const sampleRow = (i, shade = 1) => ({
   x: LOOP[i % N].x, z: LOOP[i % N].z,

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import useGameStore from '../store/useGameStore'
 import { TRACK_SAMPLES, PATH_WIDTH } from '../data/track'
-import { ROADS } from '../data/roads'
+import { ROADS, CIRCUS_R } from '../data/roads'
 
 const WORLD_SIZE = 320 // matches the ±160 world boundary (World.jsx Boundaries())
 const MAP_SIZE   = 340
@@ -59,15 +59,26 @@ export default function MapOverlay({ vehicleRef }) {
       // stopped being the whole network the moment spurs were added.
       const roadPath = () => {
         ctx.beginPath()
-        for (const { from, to } of ROADS) {
-          ctx.moveTo(cx + from[0] * scale, cz + from[1] * scale)
-          ctx.lineTo(cx + to[0] * scale, cz + to[1] * scale)
+        for (const { points } of ROADS) {
+          points.forEach(([x, z], i) => {
+            const px = cx + x * scale, pz = cz + z * scale
+            if (i === 0) ctx.moveTo(px, pz)
+            else ctx.lineTo(px, pz)
+          })
         }
       }
       ctx.lineCap = 'round'
       ctx.strokeStyle = 'rgba(160,130,60,0.5)'
       ctx.lineWidth = 6
       roadPath(); ctx.stroke()
+
+      // The circus at the crossroads — a disc, so it reads as the junction
+      // everything radiates from rather than four lines meeting.
+      ctx.fillStyle = 'rgba(160,130,60,0.5)'
+      ctx.beginPath(); ctx.arc(cx, cz, CIRCUS_R * scale, 0, Math.PI * 2); ctx.fill()
+      ctx.strokeStyle = 'rgba(240,200,80,0.3)'
+      ctx.lineWidth = 1.2
+      ctx.beginPath(); ctx.arc(cx, cz, (CIRCUS_R - 1.1) * scale, 0, Math.PI * 2); ctx.stroke()
 
       // Road dashes
       ctx.strokeStyle = 'rgba(240,200,80,0.35)'

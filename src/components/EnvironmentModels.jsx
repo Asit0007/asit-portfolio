@@ -518,16 +518,20 @@ function HobbiesZoneProps() {
   return (
     <Suspense fallback={null}>
       <group>
-        <SolidModel path="/models/treasure-chest.glb" position={[-68, 0.6,  6]}
+        {/* Nudged east: the bowling branch now leaves the west radial at
+            (-72, 0) and this was sitting in its mouth. */}
+        <SolidModel path="/models/treasure-chest.glb" position={[-62, 0.6,  9]}
           scale={0.9} rotation={[0, Math.PI / 2, 0]} />
-        <SolidModel path="/models/snowman.glb"          position={[-46, 0.6,  12]} scale={0.9} />
-        <SolidModel path="/models/snowman.glb"          position={[-46, 0.6, -12]} scale={0.7}
+        <SolidModel path="/models/snowman.glb"          position={[-39, 0.6,  10]} scale={0.9} />
+        <SolidModel path="/models/snowman.glb"          position={[-39, 0.6, -10]} scale={0.7}
           rotation={[0, 1.2, 0]} />
-        {/* Was at z=0 — standing in the middle of the west trunk road. These
-            landmark props are hand-placed and so bypass the scatter's
+        {/* Was at z=0 — standing in the middle of the west trunk road, then
+            at z=9 — grazing the bowling branch that now curves north from
+            (-72, 0) (measured clearance 4.04 against the 4.18 needed).
+            These landmark props are hand-placed and so bypass the scatter's
             isOnRoad() check; anything added here has to clear the tarmac by
-            hand. */}
-        <SolidModel path="/models/fantasy-tower.glb"   position={[-70, 0.6,  9]}
+            hand — see src/data/roads.js for the current network. */}
+        <SolidModel path="/models/fantasy-tower.glb"   position={[-64, 0.6,  9]}
           scale={0.8} rotation={[0, Math.PI / 2, 0]} />
       </group>
     </Suspense>

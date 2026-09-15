@@ -24,3 +24,9 @@ dist-ssr
 *.sw?
 .vercel
 .env*.local
+
+# Claude Design canvas scratch — exploration material for design work,
+# not a project asset (the seeded .html payload alone is ~2.6MB). The
+# actual deliverable is the published artifact and/or what it inspired
+# in src/; this directory stays local.
+design/

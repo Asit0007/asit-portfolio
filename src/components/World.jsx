@@ -1,10 +1,18 @@
 import { RigidBody, CuboidCollider } from '@react-three/rapier'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { SAND_FLAT_HEX } from './EndlessDesert'
-import { ASPHALT } from '../data/track'
-import { ROAD_SEGMENTS, ROAD_WIDTH } from '../data/roads'
+import { ASPHALT, ASPHALT_EDGE_SHADE, ASPHALT_WORN_SHADE } from '../data/track'
+import { ROADS, ROAD_HALF, CIRCUS_R, roadRows } from '../data/roads'
+import { ribbonGeometry } from '../utils/ribbon'
 import { useThree } from '@react-three/fiber'
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import * as THREE from 'three'
+
+// Road paint. Warm sand-yellow edge lines and a brighter centre dash — the
+// public-highway vocabulary, deliberately not the circuit's white kerb
+// paint, so a road still reads as a road where the two cross.
+const EDGE_LINE  = '#e8c878'
+const DASH_PAINT = '#f0d060'
 
 function GradientFloor() {
   // Was a 2x2 DataTexture (pure 4-corner gradient) — perfectly flat sand.
@@ -178,54 +186,96 @@ function TilePaths() {
 }
 
 function Roads() {
-  const Y = 0.06
-  // Every segment is drawn from ROAD_SEGMENTS, so the tarmac the visitor
-  // sees and the keep-out the scatter obeys are the same list. A segment is
-  // one plane rotated onto its heading; the trunks additionally get the
-  // yellow centre dashes, which are what make a road read as a ROAD rather
-  // than a path, and are not worth the draw calls on every short spur.
+  const { surface, markings } = useMemo(() => {
+    const Y = 0.06
+    const surfaces = []
+    const marks = []
+
+    // Asphalt, shaded across the width exactly as the circuit and the ramps
+    // are — the worn middle and lighter edges come from track.js so a road
+    // meeting the track does not change colour at the join.
+    const roadProfile = [
+      { o: -ROAD_HALF,        y: Y, shade: ASPHALT_EDGE_SHADE },
+      { o: -ROAD_HALF * 0.45, y: Y, shade: ASPHALT_WORN_SHADE },
+      { o:  ROAD_HALF * 0.45, y: Y, shade: ASPHALT_WORN_SHADE },
+      { o:  ROAD_HALF,        y: Y, shade: ASPHALT_EDGE_SHADE },
+    ]
+    const edgeProfile = (side) => [
+      { o: side * (ROAD_HALF - 0.55), y: Y + 0.006 },
+      { o: side * (ROAD_HALF - 0.37), y: Y + 0.006 },
+    ]
+
+    for (const { points, trunk } of ROADS) {
+      const rows = roadRows(points)
+      surfaces.push(ribbonGeometry(rows, roadProfile, ASPHALT))
+      for (const side of [-1, 1]) marks.push(ribbonGeometry(rows, edgeProfile(side), EDGE_LINE))
+      if (!trunk) continue
+      // Centre dashes: two rows per dash, stepped along the polyline.
+      for (let i = 0; i + 1 < rows.length; i++) {
+        const a = rows[i], b = rows[i + 1]
+        const len = Math.hypot(b.x - a.x, b.z - a.z)
+        const n = Math.max(1, Math.round(len / 8))
+        for (let k = 0; k < n; k++) {
+          const t0 = (k + 0.15) / n, t1 = (k + 0.65) / n
+          const at = (t) => ({
+            x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, nx: a.nx, nz: a.nz,
+          })
+          marks.push(ribbonGeometry([at(t0), at(t1)],
+            [{ o: -0.13, y: Y + 0.012 }, { o: 0.13, y: Y + 0.012 }], DASH_PAINT))
+        }
+      }
+    }
+
+    // The circus: a paved disc at the crossroads with a painted rim. Drawn
+    // as a disc rather than a ribbon because that is what it is — the thing
+    // the radials leave from, and the ground the car spawns on.
+    const disc = new THREE.CircleGeometry(CIRCUS_R, 64)
+    disc.rotateX(-Math.PI / 2)
+    disc.translate(0, Y + 0.002, 0)
+    // mergeGeometries needs every input to carry the SAME attributes and
+    // returns null when they don't — silently, so the whole group vanishes
+    // and the console only complains later about a missing boundingSphere.
+    // CircleGeometry ships a uv the ribbons have no use for.
+    disc.deleteAttribute('uv')
+    surfaces.push(colouredGeometry(disc, ASPHALT, ASPHALT_WORN_SHADE))
+
+    const rim = []
+    const STEPS = 64
+    for (let i = 0; i <= STEPS; i++) {
+      const a = (i / STEPS) * Math.PI * 2
+      rim.push({ x: Math.cos(a) * (CIRCUS_R - 1.1), z: Math.sin(a) * (CIRCUS_R - 1.1),
+                 nx: Math.cos(a), nz: Math.sin(a) })
+    }
+    marks.push(ribbonGeometry(rim, [{ o: -0.14, y: Y + 0.014 }, { o: 0.14, y: Y + 0.014 }], EDGE_LINE))
+
+    return { surface: mergeGeometries(surfaces), markings: mergeGeometries(marks) }
+  }, [])
+
+  useEffect(() => () => { surface.dispose(); markings.dispose() }, [surface, markings])
+
   return (
     <group>
-      {ROAD_SEGMENTS.map(({ id, center, length, heading }) => (
-        <group key={id} position={[center[0], Y, center[1]]} rotation={[0, heading, 0]}>
-          <mesh rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[ROAD_WIDTH, length]} />
-            <meshLambertMaterial color={ASPHALT} />
-          </mesh>
-          {/* Edge lines, inset from the kerb like the trunks always had */}
-          {[-ROAD_WIDTH / 2 + 0.4, ROAD_WIDTH / 2 - 0.4].map((x, i) => (
-            <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.005, 0]}>
-              <planeGeometry args={[0.18, length]} />
-              <meshLambertMaterial color="#e8c878" />
-            </mesh>
-          ))}
-        </group>
-      ))}
-
-      {/* The crossroads itself — one patch over the junction so the two
-          trunks don't show a seam where they overlap. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y + 0.001, 0]}>
-        <planeGeometry args={[9, 9]} />
-        <meshLambertMaterial color={ASPHALT} />
+      <mesh geometry={surface}>
+        <meshLambertMaterial vertexColors />
       </mesh>
-
-      {/* Centre dashes, trunks only. */}
-      {ROAD_SEGMENTS.filter((r) => r.trunk).map(({ id, center, length, heading }) => {
-        const n = Math.floor(length / 8)
-        return (
-          <group key={`d-${id}`} position={[center[0], Y + 0.01, center[1]]} rotation={[0, heading, 0]}>
-            {Array.from({ length: n }, (_, i) => (
-              <mesh key={i} rotation={[-Math.PI / 2, 0, 0]}
-                position={[0, 0, -length / 2 + 4 + i * 8]}>
-                <planeGeometry args={[0.25, 4]} />
-                <meshLambertMaterial color="#f0d060" />
-              </mesh>
-            ))}
-          </group>
-        )
-      })}
+      <mesh geometry={markings}>
+        <meshLambertMaterial vertexColors />
+      </mesh>
     </group>
   )
+}
+
+// Flat vertex colour over a whole geometry — the disc has no profile to
+// shade across, so it gets one tone rather than the ribbon treatment.
+function colouredGeometry(geo, hex, shade = 1) {
+  const c = new THREE.Color(hex)
+  const n = geo.attributes.position.count
+  const arr = new Float32Array(n * 3)
+  for (let i = 0; i < n; i++) {
+    arr[i * 3] = c.r * shade; arr[i * 3 + 1] = c.g * shade; arr[i * 3 + 2] = c.b * shade
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(arr, 3))
+  return geo
 }
 
 // The world used to end in four invisible walls at +-160. It doesn't end
@@ -237,14 +287,14 @@ function Roads() {
 // against src/data/roads.js by hand.
 export const SCATTER_DATA = [
   { x: -26, z: -28, sx: 1.2, sy: 0.8,  sz: 1.0, ry: 0.4  }, // clear of the x=-35 spur
-  { x:  42, z: -22, sx: 0.9, sy: 1.2,  sz: 0.9, ry: 1.1  },
-  { x: -46, z:  26, sx: 1.4, sy: 0.7,  sz: 1.2, ry: 2.3  },
-  { x:  26, z:  42, sx: 1.0, sy: 1.0,  sz: 1.1, ry: 0.8  }, // clear of the x=35 spur
+  { x:  30, z: -22, sx: 0.9, sy: 1.2,  sz: 0.9, ry: 1.1  }, // clear of the ring road
+  { x: -46, z:  36, sx: 1.4, sy: 0.7,  sz: 1.2, ry: 2.3  }, // clear of the ring road
+  { x:  22, z:  30, sx: 1.0, sy: 1.0,  sz: 1.1, ry: 0.8  }, // inside the ring road
   { x: -62, z: -48, sx: 1.1, sy: 1.4,  sz: 0.8, ry: 1.6  },
   { x:  66, z:  38, sx: 0.8, sy: 0.9,  sz: 1.3, ry: 2.8  },
   { x: -10, z:  80, sx: 1.3, sy: 0.6,  sz: 1.0, ry: 0.2  }, // nudged clear of the big wraparound track (src/data/track.js)
   { x:  46, z: -55, sx: 0.7, sy: 1.1,  sz: 0.9, ry: 3.1  },
-  { x: -72, z:  12, sx: 1.5, sy: 0.8,  sz: 1.2, ry: 1.9  },
+  { x: -95, z:  12, sx: 1.5, sy: 0.8,  sz: 1.2, ry: 1.9  }, // clear of the bowling branch
   { x:  22, z: -72, sx: 1.0, sy: 1.3,  sz: 0.7, ry: 0.6  },
   { x:  62, z: -16, sx: 0.9, sy: 0.7,  sz: 1.4, ry: 2.1  },
   { x: -16, z:  62, sx: 1.2, sy: 1.0,  sz: 0.8, ry: 1.4  },

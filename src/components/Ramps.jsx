@@ -63,11 +63,17 @@ const RAMP_RISE   = 4.0
 // the run-up is now a swerve off the dead end rather than a straight line.
 // Every position is checked against the zone plazas, the name letters and
 // the racing circuit.
+// The four inner headings are NOT free: each ramp stands on the ring road
+// (src/data/roads.js) and its heading is the ring's TANGENT there, so the
+// road runs onto the ramp instead of across it. heading = PI - atan2(z, x).
+// Change the ring and these change with it — a ramp crossed sideways is a
+// wall at road level, which is the whole reason the two outer ones were
+// moved off the tarmac.
 export const RAMPS = [
-  { x:  35, z: -35, heading:  Math.PI * 0.75 },
-  { x:  35, z:  35, heading:  Math.PI * 0.25 },
-  { x: -35, z:  35, heading: -Math.PI * 0.25 },
-  { x: -35, z: -35, heading: -Math.PI * 0.75 },
+  { x:  35, z: -35, heading: -Math.PI * 0.75 },
+  { x:  35, z:  35, heading:  Math.PI * 0.75 },
+  { x: -35, z:  35, heading:  Math.PI * 0.25 },
+  { x: -35, z: -35, heading: -Math.PI * 0.25 },
   { x:  14, z: -95, heading:  0 },
   { x:  95, z:  14, heading:  Math.PI * 0.5 },
 ]

@@ -322,32 +322,43 @@ export default function ZoneDecorations() {
       <group position={[0, 0.6, -55]}>
         <ServerRack position={[-9, 0, -5]} />
         <ServerRack position={[-9, 0,  0]} />
-        <ServerRack position={[-9, 0,  5]} />
+        {/* was (-9,0,5) -> world (-9,-50): 1.3 units inside the ring's
+            outer edge. Pushed out to clear it (world (-12,-55)). */}
+        <ServerRack position={[-12, 0,  0]} />
         <ServerRack position={[ 9, 0, -5]} />
         <ServerRack position={[ 9, 0,  0]} />
         {/* Road runs through x in [-4,4] here. These used to start at x=4,
             i.e. ON the kerb line — shifted out so the whole cluster clears
-            it, the same rule the crates below were already following. */}
-        <TerraformBlock position={[6, 0, 8]} />
-        <TerraformBlock position={[8, 0, 8]} />
-        <TerraformBlock position={[7, 0, 6]} />
+            it, the same rule the crates below were already following.
+            The ring road arrived later and clipped this whole cluster a
+            second time (world radius ~47-49 against the ring's 49.5) — all
+            five pieces below are pushed onto the far side of the zone
+            (negative local z) to clear it too. */}
+        <TerraformBlock position={[6, 0, -2]} />
+        <TerraformBlock position={[8, 0, -2]} />
+        <TerraformBlock position={[7, 0, -4]} />
         <Crate position={[ 6,1,-3]} color="#ddd0b8" />
         <Crate position={[ 7,1,-2]} color="#ccbba8" />
-        <Crate position={[-6,1, 3]} color="#d5c8b2" />
-        <Crate position={[-7,1, 4]} color="#c8bba2" />
+        <Crate position={[-6,1,-2]} color="#d5c8b2" />
+        <Crate position={[-7,1,-3]} color="#c8bba2" />
       </group>
 
       {/* ── PROJECTS ZONE [55, 0, 0] ─────────────────────────────────── */}
       <group position={[55, 0.6, 0]}>
         {/* 3D billboard with embedded slideshow */}
-        <ProjectBillboard position={[0, 0, -6]} />
+        {/* was z=-6 -> its west support leg (local x=-2.2) landed at
+            world (52.8,-6), 3.3 units inside the ring road's edge. Pushed
+            further into the zone to clear it. */}
+        <ProjectBillboard position={[0, 0, -13]} />
         {/* Road runs through z in [-4,4] here — the note below already said
             so for the crates, but these three sat on it anyway, one of them
             (z=0) dead on the centreline. They carry no collider, so the car
             drove THROUGH a stack of shipping containers rather than into
             them, which reads as a bug either way. */}
-        <DockerStack position={[-8, 0, -8]} />
-        <DockerStack position={[-8, 0,  8]} />
+        {/* both were at local x=-8 -> world x=47, 2.2 units inside the
+            ring's edge. Pulled toward the zone centre to clear it. */}
+        <DockerStack position={[-12, 0, -7]} />
+        <DockerStack position={[-12, 0,  7]} />
         <DockerStack position={[ 8, 0,  8]} />
         {/* Keep crates off the road too */}
         <Crate position={[4,1, 6]} size={[1.2,1.2,1.2]} color="#0db7ed" />
@@ -358,13 +369,21 @@ export default function ZoneDecorations() {
       {/* ── HOBBIES ZONE [-55, 0, 0] ─────────────────────────────────── */}
       <group position={[-55, 0.6, 0]}>
         <HeavyBag position={[-4, 0, -6]} />
-        <HeavyBag position={[ 4, 0,  6]} />
+        {/* was (4,0,6) -> world (-51,6), 2.2 units inside the ring. */}
+        <HeavyBag position={[-1, 0,  8]} />
         <PS2      position={[ 0, 0,  6]} />
         {/* Road runs through z in [-4,4] here too. These two were at z=0
-            and z=2 — one of them propped on the centreline. */}
+            and z=2 — one of them propped on the centreline — and the
+            second pass (below) then landed one of them on the ring instead
+            (was (6,7) -> world (-49,7), 4.0 units inside it). */}
         <Racket   position={[-6, 1.2, -7]} rotation={[0,0.3,0.8]} />
-        <Racket   position={[ 6, 1.2,  7]} rotation={[0,-0.4,0.9]} />
-        <Crate position={[ 5,1,-5]} size={[1.4,1.4,1.4]} color="#cc2200" />
+        <Racket   position={[-1, 1.2, -8]} rotation={[0,-0.4,0.9]} />
+        {/* was (5,-5) -> world (-50,-5), 3.3 units inside the ring; then
+            (-3,-3) -> world (-58,-3), which cleared the ring but landed
+            1 unit inside the WEST RADIAL instead (|z|=3 against its own
+            4-unit half-width) — the same mistake twice, checking one road
+            and not all of them. */}
+        <Crate position={[-3,1,-8]} size={[1.4,1.4,1.4]} color="#cc2200" />
         {/* was (-5,1,5) -> world (-60,5), on the new bowling spur at x=-58 */}
         <Crate position={[-9,1, 5]} size={[1.2,1.2,1.2]} color="#cc2200" />
         <Crate position={[ 0,1,-7]} size={[1.0,1.0,1.0]} color="#444" />
