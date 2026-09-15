@@ -40,6 +40,7 @@ An interactive 3D desert world where every landmark is a section of my CV — pl
 - [Troubleshooting](#troubleshooting)
 - [Design system](#design-system)
 - [Known limitations](#known-limitations)
+- [Roadmap](#roadmap)
 - [Credits & license](#credits--license)
 
 ---
@@ -54,7 +55,7 @@ A scrollable résumé asks for thirty seconds of politeness. A drivable one asks
 
 Inspired by the [Bruno Simon folio](https://bruno-simon.com/) school of playable portfolios; the design system is derived from folio-2025's source and documented in [`DESIGN.md`](DESIGN.md).
 
-**By the numbers:** ~10,700 lines of JS/JSX · 36 React components · 3 serverless routes · 48 GLB props · 7 music tracks · 9 race checkpoints · 8 achievements · 0 shadow maps · 0 world boundaries.
+**By the numbers:** ~11,400 lines of JS/JSX · 37 React components · 3 serverless routes · 48 GLB props · 7 music tracks · 9 race checkpoints · 8 achievements · 0 shadow maps · 0 world boundaries.
 
 ---
 
@@ -165,7 +166,7 @@ Eight one-time unlocks with a toast queue: each of the four résumé zones, **Fu
 <tr><td valign="top">
 
 ### 🎵 Music & SFX
-A shuffled 7-track playlist with a HUD player (`M` to toggle), plus speed-driven engine tone, brake squeal, collision thumps and a three-layer tyre-on-gravel bed — all synthesised, no SFX downloads. Tracks stream through `<audio>` rather than decoding as buffers, so pressing START never blocks the main thread.
+A shuffled 7-track playlist with a HUD player (`M` to toggle), plus speed-driven engine tone, brake squeal, collision thumps and a three-layer tyre-on-gravel bed — all synthesised, no SFX downloads. Tracks stream through `<audio>` rather than decoding as buffers, so pressing START never blocks the main thread. They're also **loudness-matched** — the source files spanned 10.6 LUFS and clipped on five of seven, so each track is attenuated to a common −16 LUFS target rather than re-encoded, which cleans up the clipping for free along the way.
 
 </td><td valign="top">
 
@@ -194,9 +195,18 @@ Eight wooden crates sit on the road shoulders. Hit one above walking pace and it
 The crate is built as boards and a frame rather than painted onto a cube, and merged into **one vertex-coloured geometry** — the mesh is instanced, so every crate in the world is still a single draw call for ~340 triangles uploaded once. It's carpentry rather than a texture for a reason: with no shadow maps a flat face reads as one block of colour whatever is printed on it, so what makes wood read as wood at speed is the *step* between a proud board and the shadowed groove beside it.
 
 </td></tr>
+<tr><td colspan="2" valign="top">
+
+### 🗺 One road network, everywhere
+A paved circus at the crossroads, four radials out to the résumé zones, and a **ring road** — radius picked *exactly* so it threads all four inner jump ramps, tangent to each one, rather than crossing them side-on. Every drivable feature (zones, ramps, the bowling approach, the circuit's start/finish) is reachable on tarmac now; off-road is still there as the shortcut, because cutting a corner is half the fun of having a car. `src/data/roads.js` is the one file that knows where the road is — the map, the renderer and the tree/rock scatter all ask it, so nothing spawns on the road and the map never disagrees with what you're driving on.
+
+### 🆘 Stuck? There's a way out
+Beached on a crate with the wheels spinning in the air, or just upside down — a dismissible prompt offers **STAND ME UP** (rights the car exactly where it is, keeping your progress) or **BACK TO START**. Two different tests decide it's actually stuck rather than just parked: tipped past ~70° needs no input at all, but a car sitting upright only counts as stuck if you're holding the throttle and going nowhere for 2.6 seconds straight — long enough that nosing a kerb never falsely triggers it.
+
+</td></tr>
 </table>
 
-Plus: a **map overlay** (`Tab`) showing zones, the real circuit shape and your car; a **NOS gauge**; a **lap timer HUD**; an animated `document.title` that reacts to your speed; and a WebGL context-lost recovery overlay.
+Plus: a **map overlay** (`Tab`) showing zones, the real circuit shape, the road network and your car; a **NOS gauge**; a **lap timer HUD**; an animated `document.title` that reacts to your speed; and a WebGL context-lost recovery overlay.
 
 ---
 
@@ -462,11 +472,11 @@ A production build, measured (gzip in parentheses):
 | `three` | 688 KB (176 KB) | initial |
 | `fiber` — R3F + drei | 347 KB (116 KB) | initial |
 | `react` | 147 KB (47 KB) | initial |
-| `index` — app code | 125 KB (36 KB) | initial |
+| `index` — app code | 127 KB (37 KB) | initial |
 | `index.css` | 0.46 KB (<1 KB) | initial |
-| **Initial total** | **~1.31 MB (~377 KB)** | before the start screen paints |
+| **Initial total** | **~1.31 MB (~378 KB)** | before the start screen paints |
 | `rapier` | 2.08 MB (774 KB) | **lazy** — streams behind the start screen |
-| `Scene` | 73 KB (24 KB) | lazy, with Rapier |
+| `Scene` | 75 KB (25 KB) | lazy, with Rapier |
 
 Static assets total ~15 MB, dominated by 12 MB of music that streams on demand.
 
@@ -619,6 +629,17 @@ Without them every function returns 503 and the UI shows `OFFLINE` — by design
 - **Tier 0's 1.2 MP budget is calibrated, not proven on low-end hardware.** It was verified under real iPhone device metrics (DPR 3, forced-landscape) and the resolution ladder was exercised under CPU throttling, but no genuinely old Android has been measured. `pixelBudget` in `usePerformance.js` is the one knob if a weak device still struggles — the ladder will catch it either way, just later.
 - **The 12 MB audio library** is the remaining payload weight; it streams rather than blocking, but a slow connection will notice.
 - `asit-portfolio.vercel.app` belongs to **a different Asit** — the production URL is [asitminz.com](https://asitminz.com). Don't test against that domain.
+
+---
+
+## Roadmap
+
+Real open items, not aspirational ones — things genuinely in progress or deliberately deferred:
+
+- **The seven music tracks have unknown provenance.** They carry no ID3 tags and no download record even in the pre-optimisation git history, so nothing here can currently prove where they came from. `chromaprint`/`ffmpeg` are installed and a fingerprint-based identification workflow exists (see the `Cpaudio` skill), but running it against AcoustID needs a free API key that hasn't been supplied yet. Until it's identified or replaced, treat the current set as **unverified for redistribution**.
+- **Tier 0's pixel budget is calibrated against real iPhone hardware only** — no old/low-end Android has been measured yet (see Known limitations above). The resolution ladder should catch a struggling device either way, just later than ideal.
+- **Crate blasts only move the car.** A crate detonating near a name letter or a scatter prop doesn't disturb them, which reads a little oddly now that the car itself flies so visibly. Sweeping nearby dynamic bodies into the blast radius is a small, deferred addition.
+- **The wooden crates are deliberately un-marked** — no hazard stencil, at the owner's call, even though the old bright-orange colour used to say "don't touch this" at a glance and quiet timber doesn't. Revisit if it turns out visitors are hitting them by accident rather than on purpose.
 
 ---
 
