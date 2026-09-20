@@ -363,7 +363,8 @@ Redis sorted set `circuit-leaderboard-v2` — keeps the fastest 100, returns the
 
 // POST { "name": "ASIT", "timeMs": 48213 } → 200 (same shape as GET)
 // name  — trimmed, max 12 chars, required
-// timeMs — finite, > 0, ≤ 3_600_000
+// timeMs — finite, ≥ 10_000, ≤ 3_600_000
+// rate  — 10 POSTs / hour / IP
 ```
 
 ### `GET|POST /api/whispers`
@@ -376,12 +377,13 @@ Redis list `whispers` — capped at the 30 newest.
 
 // POST { "message": "nice drift", "x": 12.4, "z": -33.1 } → 200
 // message — trimmed, max 30 chars, required
-// x, z    — finite world coordinates, required
+// x, z    — finite world coordinates, |value| ≤ 2000, required
+// rate    — 3 POSTs / hour / IP
 ```
 
 ### `GET|POST /api/visitors`
 
-Redis counter `total-visitors`. `POST` increments; the client dedupes to once per browser via localStorage.
+Redis counter `total-visitors`. `POST` increments **once per IP per 30 days** — the client also dedupes per browser via localStorage, but the server no longer takes its word for it.
 
 ```jsonc
 // GET / POST → 200
@@ -393,12 +395,17 @@ Redis counter `total-visitors`. `POST` increments; the client dedupes to once pe
 | Code | Meaning |
 |---|---|
 | `200` | OK |
-| `400` | Validation failed (bad name, non-finite time/coords, empty message) |
+| `400` | Validation failed (bad name, out-of-range time/coords, empty message) |
 | `405` | Method not allowed — `Allow` header lists `GET, POST` |
+| `429` | Rate limited — `Retry-After` header, and `retryAfter` seconds in the body |
 | `503` | Redis env vars missing — *this is the "not configured" case, not an outage* |
 | `500` | Redis or handler error |
 
-Validation is intentionally light-touch — a 12-character name cap and time bounds, not real anti-cheat. It's a portfolio leaderboard.
+Validation is intentionally light-touch — a 12-character name cap and range bounds, **not** real anti-cheat. A plausible-but-fake 21-second lap still gets in; catching that needs the server to validate the drive, which is a different project.
+
+What the limits in [`api/_ratelimit.js`](api/_ratelimit.js) *are* for is that these endpoints are unauthenticated **and** were unmetered, which is a public write primitive rather than a light touch: 30 POSTs replaced every comment in the world (the list is `LTRIM`med to 30), 100 POSTs at `timeMs=1` took all 100 slots the sorted set keeps, and `/api/visitors` was a bare `INCR`. Each of those is also a billed Upstash command, so one shell loop drained the free tier and took the other two features down with it.
+
+The limiter is a per-IP fixed window keyed on a truncated SHA-256 of the address — never the address itself — and it **fails open**: if Redis is unreachable the endpoints keep working unmetered, because a comment box that refuses everyone the moment the limiter has a bad day is the worse failure for this site.
 
 ---
 

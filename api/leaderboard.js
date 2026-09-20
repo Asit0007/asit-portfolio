@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis'
+import { rateLimit, tooManyRequests, clientKey } from './_ratelimit'
 
 // Redis.fromEnv() checks UPSTASH_REDIS_REST_URL/TOKEN first, falling back to
 // KV_REST_API_URL/TOKEN — covers whichever naming the Vercel Marketplace
@@ -11,6 +12,16 @@ import { Redis } from '@upstash/redis'
 const LEADERBOARD_KEY = 'circuit-leaderboard-v2'
 const MAX_ENTRIES = 100
 const TOP_N = 10
+// A floor on the absurd, deliberately nowhere near a real lap. The standing
+// record on this track is 23.3s, so 10s leaves better than a 2x margin for a
+// faster driver, a tuned car or a shorter future circuit -- while still rejecting
+// the timeMs=1 submission that used to be accepted and would sit at the top of
+// the board forever. If the track ever gets meaningfully shorter, check this
+// against the live board before trusting it.
+//
+// It is NOT anti-cheat: a plausible-but-fake 21s still gets in. Catching that
+// needs the server to validate the drive, which is a different project.
+const MIN_LAP_MS = 10000
 
 function toEntries(flat) {
   const entries = []
@@ -36,12 +47,18 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
+      // 10 an hour. A lap takes ~25s at record pace, so a human would have to
+      // drive four flawless personal bests in an hour to feel this; 100 scripted
+      // submissions cannot, and 100 is exactly the number of slots the set keeps.
+      const limit = await rateLimit(redis, { key: `lb:${clientKey(req)}`, limit: 10, windowSec: 3600 })
+      if (!limit.ok) return tooManyRequests(res, limit.retryAfter)
+
       const { name, timeMs } = req.body || {}
       const cleanName = typeof name === 'string' ? name.trim().slice(0, 12) : ''
       const cleanTime = Number(timeMs)
       // Minimal sanity validation, matching folio's own light-touch approach
       // (a 3-letter tag requirement) rather than real anti-cheat.
-      if (!cleanName || !Number.isFinite(cleanTime) || cleanTime <= 0 || cleanTime > 3600000) {
+      if (!cleanName || !Number.isFinite(cleanTime) || cleanTime < MIN_LAP_MS || cleanTime > 3600000) {
         return res.status(400).json({ error: 'invalid submission' })
       }
       const member = `${cleanName}#${Date.now()}`
