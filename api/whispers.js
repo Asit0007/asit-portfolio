@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis'
-import { rateLimit, tooManyRequests, clientKey, WORLD_LIMIT } from './_ratelimit'
+import { rateLimit, tooManyRequests, clientKey, WORLD_LIMIT } from './_ratelimit.js'
 
 // Same shape as api/leaderboard.js — see that file for the Redis.fromEnv()
 // env-var-fallback reasoning.

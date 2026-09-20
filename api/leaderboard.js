@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis'
-import { rateLimit, tooManyRequests, clientKey } from './_ratelimit'
+import { rateLimit, tooManyRequests, clientKey } from './_ratelimit.js'
 
 // Redis.fromEnv() checks UPSTASH_REDIS_REST_URL/TOKEN first, falling back to
 // KV_REST_API_URL/TOKEN — covers whichever naming the Vercel Marketplace

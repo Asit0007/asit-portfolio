@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis'
-import { clientKey } from './_ratelimit'
+import { clientKey } from './_ratelimit.js'
 
 // Same shape as api/leaderboard.js / api/whispers.js.
 const VISITORS_KEY = 'total-visitors'
