@@ -114,6 +114,7 @@ function ContactOverlay({ zone }) {
     { icon: '📧', label: 'Email',    value: 'asitminz007@gmail.com', href: 'mailto:asitminz007@gmail.com' },
     { icon: '💼', label: 'LinkedIn', value: 'in/asitminz',           href: 'https://linkedin.com/in/asitminz'  },
     { icon: '🐙', label: 'GitHub',   value: 'Asit0007',              href: 'https://github.com/Asit0007'       },
+    { icon: '✍️', label: 'Blog',     value: 'blogs.asitminz.com',    href: 'https://blogs.asitminz.com'        },
     { icon: '📱', label: 'Phone',    value: '+91-7978004721',         href: 'tel:+917978004721'                 },
   ]
 
@@ -148,7 +149,7 @@ function ContactOverlay({ zone }) {
           Let&apos;s Work Together
         </h2>
         <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginBottom: 18 }}>
-          Open to Cloud &amp; DevOps opportunities
+          Open to cloud, DevOps &amp; AI systems work
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -248,7 +249,7 @@ export default function ZoneOverlay() {
             Asit Minz
           </p>
           <p style={{ color: 'rgba(255,255,255,0.48)', fontSize: 11, marginTop: 4 }}>
-            Infrastructure &amp; Cloud Engineer · Bangalore
+            Building AI systems, from an operator's chair · Bangalore
           </p>
           <p style={{
             color: 'rgba(255,220,100,0.32)', fontSize: 10,
@@ -344,6 +345,7 @@ export default function ZoneOverlay() {
           {[
             { label: 'GitHub',   url: 'https://github.com/Asit0007' },
             { label: 'LinkedIn', url: 'https://linkedin.com/in/asitminz' },
+            { label: 'Blog',     url: 'https://blogs.asitminz.com' },
           ].map(({ label: lbl, url }) => (
             <a
               key={lbl}

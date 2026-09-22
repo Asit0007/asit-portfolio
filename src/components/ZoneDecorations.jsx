@@ -57,13 +57,17 @@ function ServerRack({ position }) {
 }
 
 // ── 3D PROJECT BILLBOARD with embedded HTML slideshow ──────────────────────
+// ContentPipe/CyberPipe are NOT here on purpose — no billboard artwork exists
+// for them yet (/images/contentpipe.webp, /images/cyberpipe.webp don't exist).
+// They're text-only for now: see ZONES.projects.content.points in
+// useGameStore.js (GG MODE panel) and StartScreen.jsx's ProjectCards (OG MODE).
 const PROJECT_SLIDES = [
   {
     title: 'CloudPulse',
     tech: 'Go · AWS ECS Fargate · Terraform · GitHub Actions',
     desc: 'Real-time cloud monitoring dashboard with automated CI/CD pipeline',
     image: '/images/cloudpulse.webp',
-    url: 'https://github.com/Asit0007',
+    url: 'https://github.com/Asit0007/CloudPulse',
     color: '#0db7ed',
   },
   {
@@ -71,7 +75,7 @@ const PROJECT_SLIDES = [
     tech: 'Python · OCI · Docker Compose · Cloudflare Tunnel',
     desc: 'Automated trading system with zero-port-exposure HTTPS via Cloudflare',
     image: '/images/quantbot.webp',
-    url: 'https://github.com/Asit0007',
+    url: 'https://github.com/Asit0007/QuantBot',
     color: '#f59e0b',
   },
   {
@@ -79,7 +83,7 @@ const PROJECT_SLIDES = [
     tech: 'Bash · NGINX · PHP-FPM · Varnish · DigitalOcean',
     desc: '7 idempotent Bash scripts with 3-layer caching for production Magento',
     image: '/images/magento.webp',
-    url: 'https://github.com/Asit0007',
+    url: 'https://github.com/Asit0007/Magento_DeployKit',
     color: '#10b981',
   },
 ]

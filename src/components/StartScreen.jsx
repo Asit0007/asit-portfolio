@@ -9,7 +9,8 @@ const BOOT_LINES = [
   { text: '> azure: connected ✓',               delay: 750,  color: '#10b981' },
   { text: '> aws: connected ✓',                 delay: 1000, color: '#10b981' },
   { text: '> terraform: ready ✓',               delay: 1250, color: '#10b981' },
-  { text: '> select boot mode:',                delay: 1600, color: '#f0c060' },
+  { text: '> llm_chain: ready ✓',               delay: 1550, color: '#10b981' },
+  { text: '> select boot mode:',                delay: 1850, color: '#f0c060' },
 ]
 
 function BootLine({ text, delay, color }) {
@@ -252,7 +253,7 @@ export default function StartScreen() {
             textTransform: 'uppercase',
             margin: 'clamp(6px, 1.5vh, 12px) 0 0',
           }}>
-            Infrastructure & Cloud Engineer · DevOps
+            Building AI Systems · From an Operator's Chair
           </p>
         </div>
 
@@ -317,6 +318,7 @@ export default function StartScreen() {
           {[
             { label: 'GitHub',   url: 'https://github.com/Asit0007'      },
             { label: 'LinkedIn', url: 'https://linkedin.com/in/asitminz' },
+            { label: 'Blog',     url: 'https://blogs.asitminz.com'       },
             { label: 'Email',    url: 'mailto:asitminz007@gmail.com'     },
           ].map(({ label, url }) => (
             <a key={label} href={url} target="_blank" rel="noreferrer"
@@ -487,9 +489,9 @@ function TraditionalPortfolio({ onBack, onGG }) {
                 letterSpacing: '0.18em', textTransform: 'uppercase',
                 margin: '10px 0 18px', lineHeight: 1.5,
               }}>
-                Infrastructure & Cloud Engineer<br />
+                Builder-Explainer of AI Systems<br />
                 <span style={{ color: 'rgba(255,255,255,0.28)', fontSize: '0.85em' }}>
-                  DevOps · SRE · Azure · AWS · Terraform
+                  From an operator's chair — Azure · AWS · Terraform · LLM pipelines
                 </span>
               </p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -502,7 +504,7 @@ function TraditionalPortfolio({ onBack, onGG }) {
                 fontSize: 'clamp(10px, 1.4vw, 12px)',
                 lineHeight: 1.9, maxWidth: 520,
               }}>
-                Senior Engineer at Microland with production experience across Windows/Linux, Azure, VMware, and hybrid infrastructure. Building personal DevOps projects in Go, Python, Terraform, and Docker.
+                Cloud & infrastructure engineer at Microland — hybrid Azure/VMware, ~4 years. Nights and weekends: building AI systems solo, in public, and writing down what actually happens when they run. Production experience, not tutorials.
               </p>
             </div>
 
@@ -533,6 +535,7 @@ function TraditionalPortfolio({ onBack, onGG }) {
                 {[
                   { l: 'GitHub',   u: 'https://github.com/Asit0007'      },
                   { l: 'LinkedIn', u: 'https://linkedin.com/in/asitminz' },
+                  { l: 'Blog',     u: 'https://blogs.asitminz.com'       },
                 ].map(({ l, u }) => (
                   <a key={l} href={u} target="_blank" rel="noreferrer" style={{
                     flex: 1, textAlign: 'center', padding: '5px 0',
@@ -593,16 +596,40 @@ function TraditionalPortfolio({ onBack, onGG }) {
             gap: 14, marginTop: 20,
           }}>
             <ProjectCard
+              title="ContentPipe"
+              period="2026"
+              color="#c84b11"
+              stack={['Node', 'Express', 'Vite/React', 'TypeScript', 'Multi-provider LLM chain']}
+              points={[
+                'News story + source links → researched dossier, script, scene prompts, citations',
+                "Provider chain (DeepSeek → Grok → Groq → Cerebras → OpenRouter free → Mistral → Gemini last) — not locked to one vendor's free-tier quota",
+                'Strict mode for automated callers: quota/overload returns a real 429/503, never silently degraded content',
+              ]}
+              url="https://github.com/Asit0007/ContentPipe"
+            />
+            <ProjectCard
+              title="CyberPipe"
+              period="2026"
+              color="#8a8578"
+              stack={['Python', 'SQLite', 'Telegram']}
+              points={[
+                'Durable job orchestrator that runs ContentPipe unattended',
+                'SQLite-backed state machine, 60-second scheduler — survives crashes, resumes where it left off',
+                'Telegram approve/regenerate checkpoint before a script is considered final',
+              ]}
+              url="https://github.com/Asit0007/CyberPipe"
+            />
+            <ProjectCard
               title="CloudPulse"
               period="May–Jun 2025"
               color="#0db7ed"
-              stack={['Go', 'AWS ECS Fargate', 'Terraform', 'GitHub Actions']}
+              stack={['Go', 'AWS ECS Fargate', 'Terraform', 'Vault', 'Prometheus/Grafana']}
               points={[
                 'Real-time cloud monitoring dashboard with Go REST API',
                 'Automated AWS EC2 provisioning via Terraform + CI/CD',
                 'HashiCorp Vault, Prometheus + Grafana observability',
               ]}
-              url="https://github.com/Asit0007"
+              url="https://github.com/Asit0007/CloudPulse"
             />
             <ProjectCard
               title="QuantBot"
@@ -614,7 +641,7 @@ function TraditionalPortfolio({ onBack, onGG }) {
                 'OCI infrastructure via Terraform: VCN, subnets, compute',
                 'Zero-port-exposure HTTPS using Cloudflare Tunnel',
               ]}
-              url="https://github.com/Asit0007"
+              url="https://github.com/Asit0007/QuantBot"
             />
             <ProjectCard
               title="Magento DeployKit"
@@ -626,7 +653,7 @@ function TraditionalPortfolio({ onBack, onGG }) {
                 '3-layer Varnish/NGINX/PHP-FPM caching architecture',
                 'MySQL privilege separation, DigitalOcean production deploy',
               ]}
-              url="https://github.com/Asit0007"
+              url="https://github.com/Asit0007/Magento_DeployKit"
             />
           </div>
         </section>
@@ -715,6 +742,7 @@ function TraditionalPortfolio({ onBack, onGG }) {
               { icon: '📧', label: 'Email',    value: 'asitminz007@gmail.com',  href: 'mailto:asitminz007@gmail.com', color: '#f43f5e' },
               { icon: '💼', label: 'LinkedIn', value: 'in/asitminz',            href: 'https://linkedin.com/in/asitminz', color: '#0ea5e9' },
               { icon: '🐙', label: 'GitHub',   value: 'Asit0007',               href: 'https://github.com/Asit0007', color: '#8b5cf6' },
+              { icon: '✍️', label: 'Blog',     value: 'blogs.asitminz.com',      href: 'https://blogs.asitminz.com', color: '#c84b11' },
               { icon: '📱', label: 'Phone',    value: '+91-7978004721',          href: 'tel:+917978004721', color: '#10b981' },
             ].map(({ icon, label, value, href, color }) => (
               <a key={label} href={href}
@@ -755,7 +783,7 @@ function TraditionalPortfolio({ onBack, onGG }) {
             }} />
             <div>
               <div style={{ color: '#10b981', fontSize: 'clamp(10px, 1.5vw, 12px)', fontWeight: 700 }}>
-                Available for Cloud & DevOps roles
+                Available for cloud, DevOps & AI-systems work
               </div>
               <div style={{ color: 'rgba(255,255,255,0.28)', fontSize: 'clamp(9px, 1.3vw, 11px)', marginTop: 2 }}>
                 Open to full-time & freelance · Bangalore or remote

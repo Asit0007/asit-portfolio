@@ -31,21 +31,27 @@ const ZONES = {
   projects: {
     id: 'projects',
     label: '🛠️ Projects',
-    sublabel: 'CloudPulse · QuantBot · Magento',
+    sublabel: 'ContentPipe · CyberPipe · CloudPulse · QuantBot · Magento',
     color: '#10b981',
     content: {
       title: 'Personal Projects',
       company: 'Open Source · github.com/Asit0007',
       points: [
+        'ContentPipe: News story → video brief — Node/Express, multi-provider LLM chain (DeepSeek → Grok → Gemini last)',
+        'CyberPipe: Durable job orchestrator for ContentPipe — Python, SQLite state machine, Telegram approval checkpoint',
         'CloudPulse: Real-time cloud dashboard — Go, AWS ECS Fargate, Terraform, GitHub Actions CI/CD',
         'QuantBot: Automated Trading Bot — Python, OCI, Docker Compose, Cloudflare Tunnel HTTPS',
         'Magento DeployKit: 7 Bash scripts, Varnish/NGINX/PHP-FPM 3-layer caching, DigitalOcean',
       ],
-      tags: ['Go', 'Python', 'Docker', 'Terraform', 'GitHub Actions', 'Bash'],
+      tags: ['Node.js', 'LLM chain', 'Go', 'Python', 'Docker', 'Terraform', 'GitHub Actions', 'Bash'],
+      // ContentPipe/CyberPipe intentionally have NO billboard slide below — no
+      // /images/*.webp art exists for them yet. Add one to `slides` once art
+      // exists; until then they're text-only here and in StartScreen.jsx's
+      // OG MODE ProjectCards.
       slides: [
-        { image: '/images/cloudpulse.webp',  title: 'CloudPulse',        url: 'https://github.com/Asit0007' },
-        { image: '/images/quantbot.webp',    title: 'QuantBot',          url: 'https://github.com/Asit0007' },
-        { image: '/images/magento.webp',     title: 'Magento DeployKit', url: 'https://github.com/Asit0007' },
+        { image: '/images/cloudpulse.webp',  title: 'CloudPulse',        url: 'https://github.com/Asit0007/CloudPulse' },
+        { image: '/images/quantbot.webp',    title: 'QuantBot',          url: 'https://github.com/Asit0007/QuantBot' },
+        { image: '/images/magento.webp',     title: 'Magento DeployKit', url: 'https://github.com/Asit0007/Magento_DeployKit' },
       ],
     },
   },
@@ -73,15 +79,16 @@ const ZONES = {
     color: '#f43f5e',
     content: {
       title: 'Get In Touch',
-      company: 'Open to Cloud & DevOps opportunities',
+      company: 'Open to cloud, DevOps & AI-systems work',
       points: [
         '📧 asitminz007@gmail.com',
         '💼 linkedin.com/in/asitminz',
         '🐙 github.com/Asit0007',
+        '✍️ blogs.asitminz.com',
         '📱 +91-7978004721',
         '📍 Bangalore, India',
       ],
-      tags: ['Available', 'Cloud Engineer', 'DevOps', 'Open to Relocate'],
+      tags: ['Available', 'Cloud Engineer', 'AI Systems', 'DevOps', 'Open to Relocate'],
     },
   },
 }

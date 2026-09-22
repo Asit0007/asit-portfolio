@@ -8,7 +8,7 @@ const MAP_SIZE   = 340
 
 const ZONE_INFO = [
   { id:'cloud',    x:0,   z:-55, color:'#f59e0b', icon:'☁️',  label:'Cloud & Infra',  desc:'Microland · Azure · AZ-104', r:22 },
-  { id:'projects', x:55,  z:0,   color:'#10b981', icon:'🛠️',  label:'Projects',       desc:'CloudPulse · QuantBot · Magento', r:22 },
+  { id:'projects', x:55,  z:0,   color:'#10b981', icon:'🛠️',  label:'Projects',       desc:'AI systems · CloudPulse · QuantBot · Magento', r:22 },
   { id:'hobbies',  x:-55, z:0,   color:'#a855f7', icon:'🥊',  label:'Easter Egg',     desc:'Muay Thai · PS2 · Badminton', r:22 },
   { id:'contact',  x:0,   z:55,  color:'#f43f5e', icon:'📬',  label:'Contact',        desc:'asitminz007@gmail.com', r:22 },
   { id:'start',    x:0,   z:0,   color:'#00d4ff', icon:'🚗',  label:'Start',          desc:'Spawn · Instructions', r:12 },

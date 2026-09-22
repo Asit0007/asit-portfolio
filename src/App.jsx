@@ -334,7 +334,7 @@ export default function App() {
       {/* A11y */}
       <div style={{ position:'absolute', width:1, height:1, overflow:'hidden', opacity:0 }}
         aria-label="Asit Minz portfolio">
-        <h1>Asit Minz — Infrastructure & Cloud Engineer, Bangalore</h1>
+        <h1>Asit Minz — Cloud Engineer Building AI Systems, Bangalore</h1>
       </div>
 
       {/* 3D Canvas — always mounted, but idle until gameStarted */}
