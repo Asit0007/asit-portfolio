@@ -47,7 +47,7 @@ An interactive 3D desert world where every landmark is a section of my CV — pl
 
 ## The idea
 
-Built by **Asit Minz** — Cloud & Infrastructure Engineer, Bangalore.
+Built by **Asit Minz** — cloud & infrastructure engineer building AI systems, Bangalore.
 
 A scrollable résumé asks for thirty seconds of politeness. A drivable one asks for five minutes of curiosity. So the CV lives inside a physics world: you get a car with real suspension, and the experience section is a place you have to *arrive at*. Nothing ever pauses the driving — panels fade in beside you while you keep moving, and if you'd rather ignore the résumé entirely and go set a lap record or knock down ten pins, that's a supported way to use the site.
 
@@ -660,7 +660,7 @@ Code is [MIT licensed](LICENSE). The résumé content and personal branding are 
 
 <div align="center">
 
-**Asit Minz** · Cloud & Infrastructure Engineer · Bangalore<br>
-[asitminz.com](https://asitminz.com) · [GitHub](https://github.com/Asit0007) · [LinkedIn](https://linkedin.com/in/asitminz)
+**Asit Minz** · Building AI systems, from an operator's chair · Bangalore<br>
+[asitminz.com](https://asitminz.com) · [Blog](https://blogs.asitminz.com) · [GitHub](https://github.com/Asit0007) · [LinkedIn](https://linkedin.com/in/asitminz)
 
 </div>
