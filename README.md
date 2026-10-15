@@ -51,7 +51,7 @@ Built by **Asit Minz** — cloud & infrastructure engineer building AI systems, 
 
 A scrollable résumé asks for thirty seconds of politeness. A drivable one asks for five minutes of curiosity. So the CV lives inside a physics world: you get a car with real suspension, and the experience section is a place you have to *arrive at*. Nothing ever pauses the driving — panels fade in beside you while you keep moving, and if you'd rather ignore the résumé entirely and go set a lap record or knock down ten pins, that's a supported way to use the site.
 
-**But a recruiter with four minutes is not the only visitor, so there are two front doors.** The boot screen offers **GG MODE** — the 3D world — and **OG MODE**, the same career as a written, scrollable portfolio: experience, projects, skills, contact, CV download. Neither is a consolation prize. OG MODE is also where the performance notice points anyone whose device can't render the world, and while it's open the canvas drops to `frameloop="demand"` — someone who came to the résumé *because* the 3D was too slow should not still be paying for the 3D.
+**But a recruiter with four minutes is not the only visitor, so there are two front doors.** The boot screen offers **GG MODE** — the 3D world — and **OG MODE**, the same career as a written, scrollable page at [`/resume/`](https://asitminz.com/resume/): experience, projects, a skills comparison, contact, CV download. Neither is a consolation prize. OG MODE is also where the performance notice points anyone whose device can't render the world, and because it is a plain static page (`public/resume/index.html`), someone who came to the résumé *because* the 3D was too slow never loads the 3D at all.
 
 Inspired by the [Bruno Simon folio](https://bruno-simon.com/) school of playable portfolios; the design system is derived from folio-2025's source and documented in [`DESIGN.md`](DESIGN.md).
 
@@ -446,7 +446,7 @@ asit-portfolio/
 │   ├── index.css                 # @font-face + --font-mono + resets (0.46 kB built)
 │   ├── components/               # 36 components
 │   │   ├── Scene.jsx             #   ⚡ lazy boundary — the only path to Rapier
-│   │   ├── StartScreen.jsx       #   boot screen + the whole OG MODE written portfolio
+│   │   ├── StartScreen.jsx       #   boot screen; OG MODE sends you to /resume/ (public/resume/index.html)
 │   │   ├── Vehicle.jsx           #   raycast vehicle + follow-cam + the added wheels
 │   │   ├── Circuit.jsx           #   track meshes + race state machine
 │   │   ├── EndlessDesert.jsx     #   dune tiles that follow the car past the map edge

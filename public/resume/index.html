@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asit Minz — Résumé · Cloud &amp; infrastructure engineer building AI systems</title>
+<meta name="description" content="Asit Minz, cloud and infrastructure engineer in Bangalore: production Linux and Windows operations at enterprise scale, Terraform on three clouds, and AI systems that run unattended at zero cost. Production experience, not tutorials.">
+<link rel="canonical" href="https://asitminz.com/resume/">
+<meta property="og:type" content="profile">
+<meta property="og:title" content="Asit Minz — Résumé">
+<meta property="og:description" content="Cloud &amp; infrastructure engineer building and explaining AI systems from an operator's chair. Production experience, not tutorials.">
+<meta property="og:image" content="https://asitminz.com/og-image.jpg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<!-- Fonts and colours are BRAND.md's (Blogs/BRAND.md): DM Serif Display, DM Sans, JetBrains Mono; paper, ink,
+     one ember accent, signal green, wire neutral; no gradients. Layout ideas from apple.com (observed, not copied).
+     Every claim here is a verified fact in JobPipe/config/facts.yaml; nothing its never_claim gate rejects. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" crossorigin>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Person","name":"Asit Minz","jobTitle":"Cloud & Infrastructure Engineer","address":{"@type":"PostalAddress","addressLocality":"Bangalore","addressCountry":"IN"},"url":"https://asitminz.com/","sameAs":["https://github.com/Asit0007","https://linkedin.com/in/asitminz","https://blogs.asitminz.com"],"alumniOf":{"@type":"CollegeOrUniversity","name":"IIIT Bhubaneswar"},"hasCredential":{"@type":"EducationalOccupationalCredential","name":"Microsoft Certified: Azure Administrator Associate (AZ-104)"}}</script>
+<style>
+  :root {
+    --paper:#faf9f6; --paper-deep:#efece4; --ink:#0f0f0e; --ink-mid:#3a3a36; --ink-muted:#7a756a;
+    --ember:#c84b11; --ember-hi:#e0602a; --signal:#1a6b4a; --wire:#8a8578; --rule:#d6d1c4;
+    --night:#141310; --night-card:#1e1c18; --night-text:#ece9e2; --night-dim:#8b8578; --night-rule:#3a362e;
+    --serif:"DM Serif Display", Georgia, serif; --sans:"DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+    --ease:cubic-bezier(.2,.8,.2,1);
+    color-scheme: light dark;   /* the page sets every colour itself; this stops Chrome's auto-dark repainting it */
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:400 17px/1.6 var(--sans); -webkit-font-smoothing:antialiased; }
+  a { color:inherit; }
+  .wrap { max-width:1100px; margin:0 auto; padding:0 24px; }
+  .eyebrow { display:inline-flex; align-items:center; gap:12px; font:500 12px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--ember); margin:0 0 18px; }
+  .eyebrow::before { content:""; width:22px; height:1px; background:currentColor; }
+  .mark { font:700 1em/1 var(--mono); }
+  .mark i { display:inline-block; width:.5em; height:.95em; margin-left:.06em; background:var(--ember); vertical-align:-.12em; }
+  .pill { display:inline-flex; align-items:center; gap:8px; border-radius:999px; padding:11px 22px; font:500 16px/1 var(--sans); text-decoration:none; border:1px solid transparent; transition:background-color .3s, color .3s, border-color .3s, transform .3s var(--ease); white-space:nowrap; }
+  .pill:hover { transform:translateY(-1px); }
+  .pill--fill { background:var(--ember); color:#fff; }
+  .pill--fill:hover { background:#a83d0c; }
+  .pill--line { border-color:currentColor; }
+  .pill--sm { padding:7px 14px; font-size:13px; }
+  .link { color:var(--ember); text-decoration:none; font-weight:500; }
+  .link::after { content:" ›"; }
+  .link:hover { text-decoration:underline; }
+
+  /* top bar, then the floating pill nav once the hero has scrolled away */
+  .top { display:flex; align-items:center; justify-content:space-between; padding:18px 24px; max-width:1100px; margin:0 auto; font-size:14px; }
+  .top a { text-decoration:none; }
+  .top nav { display:flex; gap:22px; color:var(--ink-mid); }
+  .top nav a:hover { color:var(--ember); }
+  .float { position:fixed; z-index:50; top:10px; left:50%; width:min(1024px, calc(100% - 20px)); height:52px; transform:translate(-50%, -140%);
+           display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 10px 0 20px; border-radius:18px;
+           background:rgba(250,249,246,.82); backdrop-filter:saturate(1.6) blur(20px); -webkit-backdrop-filter:saturate(1.6) blur(20px);
+           box-shadow:0 0 0 1px var(--rule), 0 8px 24px rgba(15,15,14,.06); transition:transform .35s var(--ease); }
+  .float.is-on { transform:translate(-50%, 0); }
+  .float__name { font:400 20px/1 var(--serif); text-decoration:none; }
+  .float nav { display:flex; gap:18px; font-size:14px; color:var(--ink-mid); }
+  .float nav a { text-decoration:none; } .float nav a:hover, .float nav a.is-here { color:var(--ember); }
+  .float__cta { display:flex; gap:8px; }
+
+  /* hero */
+  .hero { padding:clamp(48px, 10vw, 120px) 0 clamp(56px, 8vw, 96px); }
+  .hero__name { font:500 clamp(20px, 2.4vw, 26px)/1.2 var(--sans); margin:0 0 10px; }
+  .hero h1 { font:400 clamp(48px, 9vw, 112px)/.98 var(--serif); letter-spacing:-.02em; margin:0 0 28px; max-width:11ch; }
+  .hero h1 em { color:var(--ember); }
+  .hero__sub { font-size:clamp(19px, 2.2vw, 24px); line-height:1.45; color:var(--ink-mid); max-width:36ch; margin:0 0 40px; }
+  .card { display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; max-width:640px; padding:14px 14px 14px 24px;
+          border-radius:20px; background:var(--paper-deep); box-shadow:0 0 0 1px var(--rule); }
+  .card p { margin:0; font-size:15px; line-height:1.5; }
+  .card b { font-weight:600; }
+  .card .ok { color:var(--signal); font-weight:600; }
+  .card__cta { display:flex; gap:8px; }
+
+  /* night sections: apple.com's light/dark alternation, in the brand's warm-dark */
+  .night { background:var(--night); color:var(--night-text); }
+  .night .eyebrow { color:var(--ember-hi); }
+
+  /* intro: big headline, then a dim paragraph whose key phrases light up */
+  .intro { padding:clamp(80px, 12vw, 150px) 0; text-align:center; }
+  .intro h2 { font:400 clamp(44px, 8vw, 96px)/1 var(--serif); letter-spacing:-.02em; margin:0 0 32px; }
+  .intro p { font-size:clamp(19px, 2.3vw, 25px); line-height:1.5; color:var(--night-dim); max-width:38ch; margin:0 auto; }
+  .lit { color:var(--night-dim); transition:color 1s var(--ease); }
+  .intro.is-in .lit { color:var(--night-text); }
+  .no-js .lit, .reduce .lit { color:var(--night-text); }
+
+  .stats { display:grid; grid-template-columns:repeat(4, 1fr); gap:24px; margin-top:clamp(56px, 8vw, 96px); padding-top:40px; border-top:1px solid var(--night-rule); }
+  .stat small { display:block; font:500 11px/1.4 var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--night-dim); }
+  .stat b { display:block; font:400 clamp(34px, 4.4vw, 52px)/1.05 var(--serif); color:var(--night-text); margin:6px 0; }
+  .stat span { font-size:14px; color:var(--night-dim); line-height:1.4; display:block; }
+
+  /* section heads */
+  .section { padding:clamp(72px, 10vw, 120px) 0; }
+  .head { display:flex; align-items:end; justify-content:space-between; gap:24px; flex-wrap:wrap; margin-bottom:40px; }
+  .head h2 { font:400 clamp(36px, 5.4vw, 64px)/1.02 var(--serif); letter-spacing:-.015em; margin:0; }
+
+  /* experience */
+  .role { display:grid; grid-template-columns:240px 1fr; gap:32px; padding:36px 0; border-top:1px solid var(--rule); }
+  .role__when { font:500 13px/1.6 var(--mono); color:var(--ink-muted); }
+  .role__when b { display:block; font:400 24px/1.2 var(--serif); color:var(--ink); letter-spacing:0; margin-bottom:6px; }
+  .role h3 { font:600 21px/1.3 var(--sans); margin:0 0 4px; }
+  .role__path { color:var(--ink-muted); font-size:15px; margin:0 0 18px; }
+  .role ul { margin:0; padding-left:20px; display:grid; gap:8px; }
+  .role li::marker { color:var(--ember); }
+  .awards { margin-top:22px; display:grid; gap:10px; }
+  .award { display:flex; gap:12px; align-items:baseline; font-size:15px; padding:12px 16px; background:var(--paper-deep); border-radius:12px; }
+  .award::before { content:"★"; color:var(--ember); }
+
+  /* project tiles: apple.com's home-page tiles */
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:0 12px; }
+  .tile { grid-column:span 2; min-height:560px; border-radius:28px; padding:clamp(48px, 7vw, 72px) 28px; text-align:center;
+          display:flex; flex-direction:column; align-items:center; background:var(--paper-deep); overflow:hidden; }
+  .tile--half { grid-column:span 1; min-height:520px; }
+  .tile--night { background:var(--night); color:var(--night-text); }
+  .tile--ember { background:var(--ember); color:#fff; }
+  .tile--wire { background:var(--wire); color:var(--ink); }
+  .tile__kind { font:500 12px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase; opacity:.75; margin:0 0 16px; }
+  .tile h3 { font:400 clamp(44px, 6.4vw, 76px)/1 var(--serif); letter-spacing:-.02em; margin:0 0 12px; }
+  .tile--half h3 { font-size:clamp(38px, 4.4vw, 56px); }
+  .tile__sub { font-size:clamp(18px, 2vw, 23px); line-height:1.4; max-width:30ch; margin:0 0 24px; }
+  .tile__cta { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .tile--night .pill--line, .tile--ember .pill--line { color:#fff; }
+  .tile--ember .pill--fill { background:#fff; color:var(--ember); }
+  .tile__fig { margin-top:auto; padding-top:44px; }
+  .tile__fig b { display:block; font:400 clamp(56px, 9vw, 120px)/.95 var(--serif); letter-spacing:-.03em; }
+  .tile--night .tile__fig b { color:var(--ember-hi); }
+  .tile--half .tile__fig b { font-size:clamp(48px, 6vw, 84px); }
+  .tile__fig span { display:block; margin-top:10px; font:500 12px/1.5 var(--mono); letter-spacing:.08em; text-transform:uppercase; opacity:.75; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-top:22px; }
+  .chips span { font:500 11px/1 var(--mono); padding:6px 9px; border-radius:999px; box-shadow:inset 0 0 0 1px currentColor; opacity:.7; }
+
+  /* compare chart: apple.com/iphone/compare in four columns */
+  .compare { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .compare table { width:100%; min-width:820px; border-collapse:collapse; table-layout:fixed; }
+  .compare th, .compare td { padding:18px 14px; text-align:center; vertical-align:top; }
+  .compare thead th { padding-bottom:28px; }
+  .compare thead th:first-child, .compare tbody th { text-align:left; width:180px; }
+  .col__kind { display:block; font:500 11px/1 var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--ember); margin-bottom:10px; }
+  .col__name { display:block; font:400 28px/1.1 var(--serif); margin-bottom:12px; }
+  .compare tbody th { font:500 12px/1.5 var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--ink-muted); }
+  .compare tbody tr { border-top:1px solid var(--rule); }
+  .compare td { font-size:15px; line-height:1.45; }
+  .compare td.none { color:var(--ink-muted); font-size:22px; line-height:1; }
+  .compare .big { display:block; font:400 34px/1.05 var(--serif); margin-bottom:4px; }
+
+  /* skills + credentials */
+  .skills { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
+  .skill { background:#fff; border-radius:20px; padding:28px; box-shadow:0 0 0 1px var(--rule); }
+  .skill h3 { font:400 28px/1.1 var(--serif); margin:0 0 4px; }
+  .skill p { margin:0 0 18px; color:var(--ink-muted); font-size:14px; }
+  .skill ul { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px; }
+  .skill li { font-size:14px; padding:6px 12px; border-radius:999px; background:var(--paper-deep); }
+  .creds { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; }
+  .cred { display:flex; justify-content:space-between; gap:16px; align-items:center; background:#fff; border-radius:16px; padding:18px 22px; box-shadow:0 0 0 1px var(--rule); }
+  .cred b { font-weight:600; }
+  .cred span { font:500 11px/1 var(--mono); letter-spacing:.1em; text-transform:uppercase; padding:6px 9px; border-radius:999px; white-space:nowrap; }
+  .done { color:var(--signal); background:#e3efe8; }
+  .wip { color:var(--ember); background:#f6e3d8; }
+  .plan { color:var(--ink-muted); background:var(--paper-deep); }
+
+  /* contact */
+  .contact { text-align:center; padding:clamp(96px, 14vw, 170px) 0; }
+  .contact h2 { font:400 clamp(52px, 10vw, 128px)/.95 var(--serif); letter-spacing:-.025em; margin:0 0 24px; }
+  .contact p { color:var(--night-dim); font-size:20px; margin:0 0 36px; }
+  .contact .row { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .contact .pill--line { color:var(--night-text); }
+  footer { background:var(--night); color:var(--night-dim); border-top:1px solid var(--night-rule); font-size:13px; }
+  footer .wrap { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; padding:22px 24px; }
+  footer a { color:var(--night-text); }
+
+  /* scroll reveal: in with a short rise, the way apple.com sections arrive */
+  .js .reveal { opacity:0; transform:translateY(28px); transition:opacity .9s var(--ease), transform .9s var(--ease); }
+  .js .reveal.is-in { opacity:1; transform:none; }
+  .reduce .reveal { opacity:1 !important; transform:none !important; transition:none !important; }
+
+  @media (max-width:900px) {
+    .top nav, .float nav { display:none; }
+    .stats { grid-template-columns:1fr 1fr; }
+    .role { grid-template-columns:1fr; gap:12px; }
+    .tile--half { grid-column:span 2; }
+    .skills, .creds { grid-template-columns:1fr; }
+  }
+  @media (max-width:520px) {
+    .tile { min-height:0; border-radius:22px; }
+    .card { padding:16px; }
+    .float__cta .pill--line { display:none; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } .pill, .float { transition:none; } }
+</style>
+<script>document.documentElement.className = matchMedia("(prefers-reduced-motion: reduce)").matches ? "js reduce" : "js";</script>
+</head>
+<body>
+
+<header class="top">
+  <a href="/" class="mark" aria-label="asitminz.com home">asit minz<i></i></a>
+  <nav><a href="#work">Work</a><a href="#projects">Projects</a><a href="#compare">Compare</a><a href="#skills">Skills</a><a href="#contact">Contact</a></nav>
+</header>
+
+<div class="float" id="float" aria-hidden="true">
+  <a class="float__name" href="#top" tabindex="-1">Asit Minz</a>
+  <nav><a href="#work" tabindex="-1">Work</a><a href="#projects" tabindex="-1">Projects</a><a href="#compare" tabindex="-1">Compare</a><a href="#skills" tabindex="-1">Skills</a><a href="#contact" tabindex="-1">Contact</a></nav>
+  <div class="float__cta"><a class="pill pill--line pill--sm" href="mailto:asitminz007@gmail.com" tabindex="-1">Email</a><a class="pill pill--fill pill--sm" href="/resume.pdf" download tabindex="-1">Download PDF</a></div>
+</div>
+
+<main id="top">
+  <section class="hero" id="hero">
+    <div class="wrap">
+      <p class="hero__name">Asit Minz · Cloud &amp; infrastructure engineer</p>
+      <h1>Production experience, <em>not tutorials.</em></h1>
+      <p class="hero__sub">I keep enterprise Linux and Windows estates running for a living, and build AI systems on my own time, then write down what actually happens when they run.</p>
+      <div class="card">
+        <p><b>Bangalore, India</b> · <span class="ok">Open to roles</span><br>AZ-104 Azure Administrator · B.Tech CS, IIIT Bhubaneswar</p>
+        <div class="card__cta"><a class="pill pill--line pill--sm" href="mailto:asitminz007@gmail.com">Email</a><a class="pill pill--fill pill--sm" href="/resume.pdf" download>Download PDF</a></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="night">
+    <div class="wrap intro reveal" id="intro">
+      <p class="eyebrow">The short version</p>
+      <h2>Operator first.</h2>
+      <p>Since 2022 I've been on the team keeping <span class="lit">2,000+ Windows and Linux servers patched every month</span>, on call around the clock under client SLAs. I automate the toil away in PowerShell and Bash. On my own time I build <span class="lit">systems that run unattended at zero cost</span>, and I hold my own documentation to the code: <span class="lit">when a claim is false, I say so in writing.</span></p>
+      <div class="stats">
+        <div class="stat"><small>Monthly</small><b>2,000+</b><span>Windows and Linux servers through a patch cycle with pre and post validation</span></div>
+        <div class="stat"><small>About</small><b>20%</b><span>less manual effort from PowerShell and Bash health-check and patch automation</span></div>
+        <div class="stat"><small>Recurring cost</small><b>$0</b><span>QuantBot on Oracle Cloud's always-free ARM tier</span></div>
+        <div class="stat"><small>Inbound ports</small><b>0</b><span>public HTTPS through a Cloudflare Tunnel, origin IP out of DNS</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="work">
+    <div class="wrap">
+      <div class="head reveal"><div><p class="eyebrow">Experience</p><h2>Where I work.</h2></div></div>
+      <article class="role reveal">
+        <div class="role__when"><b>Microland</b>Sep 2022 – present<br>Bangalore</div>
+        <div>
+          <h3>System Administrator — Wintel &amp; Virtualization, Technology Operations</h3>
+          <p class="role__path">Graduate Engineering Trainee → Senior Engineer RIMS → Senior Engineer Cloud &amp; Data Center → Senior Engineer Wintel &amp; Virtualization → Administrator (promoted 2025)</p>
+          <ul>
+            <li>Ran monthly patch cycles across 2,000+ Windows and Linux servers with pre and post validation reporting.</li>
+            <li>Developed PowerShell and Bash automation for health checks, patch validation and log remediation, cutting manual operational effort by about 20%.</li>
+            <li>Served as L2/L3 on-call engineer for production incidents, with RCA documentation under client SLA; part of 24x7 rotations and after-hours change windows.</li>
+            <li>Administered a RHEL and CentOS fleet, and Windows Server 2016 through 2022, including provisioning, hardening and performance tuning.</li>
+            <li>Managed a subset of Azure VMs in a hybrid estate, working alongside Azure SMEs on networking and compute.</li>
+            <li>Conducted monthly Commvault disaster-recovery drills validating RPO and RTO targets.</li>
+            <li>Coordinated OS-level vulnerability assessments and patch governance with application and security teams; escalated to Microsoft and VMware support with complete diagnostic packages.</li>
+            <li>Authored runbooks and SOPs so the team's operations are repeatable.</li>
+          </ul>
+          <div class="awards">
+            <div class="award">Super Squad and Key Contributor Recognition (2026), from the Chief Human Resource Officer</div>
+            <div class="award">Super Squad Certificate of Recognition (Jan 2025), from the VP of Client Delivery Americas, for the NTTA IT programme</div>
+          </div>
+        </div>
+      </article>
+      <article class="role reveal">
+        <div class="role__when"><b>Microland</b>Mar 2022 – Aug 2022</div>
+        <div>
+          <h3>Graduate Engineering Trainee</h3>
+          <ul><li>Scored 80% or higher across Computer Networks, Operating Systems and Virtualization, and reached full production responsibilities within 3 months.</li></ul>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="projects">
+    <div class="wrap head reveal" style="padding-top:8px"><div><p class="eyebrow">Projects</p><h2>What I build.</h2></div><a class="link" href="https://blogs.asitminz.com">Read the build logs</a></div>
+    <div class="tiles">
+      <article class="tile tile--night reveal">
+        <p class="tile__kind">AI system · 2026</p>
+        <h3>ContentPipe</h3>
+        <p class="tile__sub">A news story and its sources in. A researched, cited, scene-by-scene video brief out.</p>
+        <div class="tile__cta"><a class="pill pill--fill" href="https://github.com/Asit0007/ContentPipe">View on GitHub</a></div>
+        <div class="tile__fig"><b>429, not filler.</b><span>Out of quota, it says so, and resumes from a checkpoint on retry</span>
+          <div class="chips"><span>Node.js</span><span>TypeScript</span><span>Express</span><span>React</span><span>Multi-provider LLM chain</span><span>SSRF-guarded fetch</span></div></div>
+      </article>
+      <article class="tile reveal">
+        <p class="tile__kind">AI system · 2026</p>
+        <h3>CyberPipe</h3>
+        <p class="tile__sub">A durable job orchestrator that drives the whole video pipeline, with a human approving every stage.</p>
+        <div class="tile__cta"><a class="pill pill--fill" href="https://github.com/Asit0007/CyberPipe">View on GitHub</a></div>
+        <div class="tile__fig"><b>Crash. Resume.</b><span>SQLite state machine: a crash or an empty free quota picks up exactly where it stopped</span>
+          <div class="chips"><span>Python</span><span>SQLite WAL</span><span>Telegram approval gates</span><span>launchd</span><span>$0 spend guard</span></div></div>
+      </article>
+      <article class="tile tile--half tile--ember reveal">
+        <p class="tile__kind">Operator track record</p>
+        <h3>CloudPulse</h3>
+        <p class="tile__sub">A Go dashboard for an AWS Free Tier account, provisioned with Terraform.</p>
+        <div class="tile__cta"><a class="pill pill--fill" href="https://blogs.asitminz.com/posts/cloudpulse/">Read the build log</a><a class="pill pill--line" href="https://github.com/Asit0007/CloudPulse">GitHub</a></div>
+        <div class="tile__fig"><b>0 keys</b><span>No long-lived AWS access keys on the host: instance profile + SDK credential chain</span></div>
+      </article>
+      <article class="tile tile--half tile--night reveal">
+        <p class="tile__kind">Operator track record</p>
+        <h3>QuantBot</h3>
+        <p class="tile__sub">A four-service automated BTC-futures system on Oracle Cloud's always-free tier.</p>
+        <div class="tile__cta"><a class="pill pill--fill" href="https://blogs.asitminz.com/posts/quantbot/">Read the build log</a><a class="pill pill--line" href="https://github.com/Asit0007/QuantBot">GitHub</a></div>
+        <div class="tile__fig"><b>$0 / month</b><span>Six Terraform resources, one run; zero inbound ports</span></div>
+      </article>
+      <article class="tile tile--half tile--wire reveal">
+        <p class="tile__kind">Operator track record</p>
+        <h3>Magento DeployKit</h3>
+        <p class="tile__sub">Bash scripts that bring up a nine-service Magento 2 stack on one Debian host. A dev/staging reference build.</p>
+        <div class="tile__cta"><a class="pill pill--fill" href="https://blogs.asitminz.com/posts/magento-deploykit/">Read the build log</a><a class="pill pill--line" href="https://github.com/Asit0007/Magento_DeployKit">GitHub</a></div>
+        <div class="tile__fig"><b>3.0 MB → 77 kB</b><span>Measured page weight, cold to warm, across Varnish, NGINX and PHP-FPM</span></div>
+      </article>
+      <article class="tile tile--half reveal">
+        <p class="tile__kind">This site</p>
+        <h3>A résumé you can drive</h3>
+        <p class="tile__sub">A 3D world in React Three Fiber where each landmark is a section of the CV.</p>
+        <div class="tile__cta"><a class="pill pill--fill" href="/">Drive it</a><a class="pill pill--line" href="https://github.com/Asit0007/asit-portfolio">GitHub</a></div>
+        <div class="tile__fig"><b>~2 MB</b><span>of physics engine kept out of the first load, lazy-loaded behind the start screen</span></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="compare">
+    <div class="wrap">
+      <div class="head reveal"><div><p class="eyebrow">Compare</p><h2>Where each skill was used.</h2></div></div>
+      <div class="compare reveal">
+        <table>
+          <thead><tr>
+            <th scope="col"></th>
+            <th scope="col"><span class="col__kind">Day job</span><span class="col__name">Microland</span><a class="link" href="#work">Experience</a></th>
+            <th scope="col"><span class="col__kind">AWS</span><span class="col__name">CloudPulse</span><a class="link" href="https://github.com/Asit0007/CloudPulse">GitHub</a></th>
+            <th scope="col"><span class="col__kind">Oracle Cloud</span><span class="col__name">QuantBot</span><a class="link" href="https://github.com/Asit0007/QuantBot">GitHub</a></th>
+            <th scope="col"><span class="col__kind">AI systems</span><span class="col__name">ContentPipe + CyberPipe</span><a class="link" href="https://github.com/Asit0007/ContentPipe">GitHub</a></th>
+          </tr></thead>
+          <tbody>
+            <tr><th scope="row">Scale or cost</th><td><span class="big">2,000+</span>servers patched monthly</td><td><span class="big">Free Tier</span>t3.micro EC2</td><td><span class="big">$0</span>always-free ARM</td><td><span class="big">$0</span>hard spend guard</td></tr>
+            <tr><th scope="row">Cloud</th><td>Azure VMs in a hybrid estate</td><td>EC2, CloudWatch, IAM</td><td>VCN, subnet, security list, ARM compute</td><td>Cloudflare Workers AI, Hugging Face Spaces</td></tr>
+            <tr><th scope="row">Infrastructure as code</th><td class="none">–</td><td>Terraform: instance, security group, IAM role and profile</td><td>Terraform: six resources in one apply, cloud-init</td><td class="none">–</td></tr>
+            <tr><th scope="row">CI/CD</th><td class="none">–</td><td>GitHub Actions → Docker Hub → SSH redeploy</td><td>Six-stage GitHub Actions with an open-position safety gate</td><td class="none">–</td></tr>
+            <tr><th scope="row">Containers</th><td class="none">–</td><td>Multi-stage Docker build</td><td>Four-service Docker Compose, one shared volume</td><td class="none">–</td></tr>
+            <tr><th scope="row">Security</th><td>OS vulnerability and patch governance with security teams</td><td>Vault KV v2, policy-scoped token; no static keys</td><td>Zero inbound ports; SSH to one CIDR</td><td>SSRF checks on every redirect hop</td></tr>
+            <tr><th scope="row">Reliability</th><td>L2/L3 on-call, Commvault DR drills</td><td>Fail-closed startup, CloudWatch Agent memory metric</td><td>60 s heartbeat, one alert per stall</td><td>Crash-resume state machine, human approval gates</td></tr>
+            <tr><th scope="row">Languages</th><td>PowerShell, Bash</td><td>Go</td><td>Python</td><td>TypeScript, Python</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="skills" style="background:var(--paper-deep)">
+    <div class="wrap">
+      <div class="head reveal"><div><p class="eyebrow">Skills &amp; credentials</p><h2>Honest levels.</h2></div></div>
+      <div class="skills reveal">
+        <div class="skill"><h3>Strong</h3><p>Daily, in production</p><ul><li>Linux (RHEL/CentOS)</li><li>Windows Server</li><li>Bash</li><li>PowerShell</li><li>Git</li></ul></div>
+        <div class="skill"><h3>Working</h3><p>Built and shipped with</p><ul><li>Active Directory</li><li>Azure</li><li>AWS</li><li>Terraform</li><li>Docker</li><li>Docker Compose</li><li>GitHub Actions</li><li>NGINX</li><li>Python</li><li>Go</li></ul></div>
+        <div class="skill"><h3>Exposure</h3><p>Used, still building depth</p><ul><li>Kubernetes</li><li>OCI</li><li>DigitalOcean</li><li>HashiCorp Vault</li><li>VMware</li><li>MySQL</li><li>Elasticsearch</li><li>Varnish</li><li>React</li><li>Vercel</li><li>Cloudflare Tunnel</li></ul></div>
+      </div>
+      <div class="creds reveal">
+        <div class="cred"><b>Microsoft Certified: Azure Administrator Associate (AZ-104)</b><span class="done">2025</span></div>
+        <div class="cred"><b>HashiCorp Terraform Associate</b><span class="wip">In progress</span></div>
+        <div class="cred"><b>Certified Kubernetes Administrator (CKA)</b><span class="plan">Planned</span></div>
+        <div class="cred"><b>B.Tech, Computer Science · IIIT Bhubaneswar</b><span class="done">2020</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="night contact" id="contact">
+    <div class="wrap reveal">
+      <p class="eyebrow">Contact</p>
+      <h2>Let's talk.</h2>
+      <p>Cloud, infrastructure and AI-systems roles · Bangalore or remote</p>
+      <div class="row">
+        <a class="pill pill--fill" href="mailto:asitminz007@gmail.com">asitminz007@gmail.com</a>
+        <a class="pill pill--line" href="https://linkedin.com/in/asitminz">LinkedIn</a>
+        <a class="pill pill--line" href="https://github.com/Asit0007">GitHub</a>
+        <a class="pill pill--line" href="https://blogs.asitminz.com">Blog</a>
+      </div>
+    </div>
+  </section>
+</main>
+<footer><div class="wrap"><span>© 2026 Asit Minz</span><span>Prefer the interactive version? <a href="/">Drive the 3D portfolio</a></span></div></footer>
+
+<script>
+(() => {
+  const float = document.getElementById('float');
+  const links = [...float.querySelectorAll('a')];
+  // the floating nav takes over once the hero is out of view
+  new IntersectionObserver(([e]) => {
+    const on = !e.isIntersecting;
+    float.classList.toggle('is-on', on);
+    float.setAttribute('aria-hidden', String(!on));
+    links.forEach((a) => a.tabIndex = on ? 0 : -1);
+  }, { rootMargin: '-80px 0px 0px 0px' }).observe(document.getElementById('hero'));
+  // which section is under the nav
+  const navLinks = [...float.querySelectorAll('nav a')];
+  const spy = new IntersectionObserver((es) => es.forEach((e) => {
+    if (e.isIntersecting) navLinks.forEach((a) => a.classList.toggle('is-here', a.hash === '#' + e.target.id));
+  }), { rootMargin: '-45% 0px -50% 0px' });
+  ['work', 'projects', 'compare', 'skills', 'contact'].forEach((id) => spy.observe(document.getElementById(id)));
+  // sections rise in once, as they enter
+  const reveal = new IntersectionObserver((es) => es.forEach((e) => {
+    if (e.isIntersecting) { e.target.classList.add('is-in'); reveal.unobserve(e.target); }
+  }), { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.reveal').forEach((el) => reveal.observe(el));
+})();
+</script>
+<noscript><style>.reveal { opacity:1 !important; transform:none !important; } .intro .lit { color:var(--night-text); }</style></noscript>
+</body>
+</html>
