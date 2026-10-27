@@ -21,11 +21,12 @@ const ZONES = {
       points: [
         'Awarded "Super Squad" Certificate by VP Client Delivery Americas (Jan 2025)',
         'Managed hybrid Azure + On-Prem environments for enterprise clients',
-        'Provisioned VMs, VNETs, VDI desktops and VMware golden images',
+        'Manages Azure VMs with Contributor access: Update Manager patching, Defender for Endpoint fixes',
+        'On-prem Active Directory synced to Entra ID: user accounts and Group Policy',
         'Automated patching and health checks via PowerShell & Bash scripts',
         'Certified: Azure Administrator Associate (AZ-104)',
       ],
-      tags: ['Azure', 'AWS', 'Terraform', 'VMware', 'PowerShell', 'Linux'],
+      tags: ['Azure', 'Active Directory', 'AWS', 'Terraform', 'VMware', 'PowerShell', 'Linux'],
     },
   },
   projects: {
@@ -39,9 +40,9 @@ const ZONES = {
       points: [
         'ContentPipe: News story → video brief — Node/Express, multi-provider LLM chain (DeepSeek → Grok → Gemini last)',
         'CyberPipe: Durable job orchestrator for ContentPipe — Python, SQLite state machine, Telegram approval checkpoint',
-        'CloudPulse: Real-time cloud dashboard — Go, AWS ECS Fargate, Terraform, GitHub Actions CI/CD',
+        'CloudPulse: Real-time cloud dashboard — Go, AWS EC2, Terraform, GitHub Actions CI/CD',
         'QuantBot: Automated Trading Bot — Python, OCI, Docker Compose, Cloudflare Tunnel HTTPS',
-        'Magento DeployKit: 7 Bash scripts, Varnish/NGINX/PHP-FPM 3-layer caching, DigitalOcean',
+        'Magento DeployKit: 7 ordered Bash scripts for a nine-service Magento 2 stack (NGINX, PHP-FPM, Varnish), DigitalOcean',
       ],
       tags: ['Node.js', 'LLM chain', 'Go', 'Python', 'Docker', 'Terraform', 'GitHub Actions', 'Bash'],
       // ContentPipe/CyberPipe intentionally have NO billboard slide below — no

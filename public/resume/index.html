@@ -241,11 +241,12 @@
           <h3>System Administrator — Wintel &amp; Virtualization, Technology Operations</h3>
           <p class="role__path">Graduate Engineering Trainee → Senior Engineer RIMS → Senior Engineer Cloud &amp; Data Center → Senior Engineer Wintel &amp; Virtualization → Administrator (promoted 2025)</p>
           <ul>
+            <li>Manages Azure VMs with Contributor access that host IBM Cognos, IBM Maximo and Microsoft SQL Server: patches them through Azure Update Manager, remediates the vulnerabilities Microsoft Defender for Endpoint reports, and builds new VMs in the yearly provisioning cycle.</li>
+            <li>Creates user accounts and manages Group Policy Objects in on-premises Active Directory, which syncs automatically to Microsoft Entra ID.</li>
             <li>Ran monthly patch cycles across 2,000+ Windows and Linux servers with pre and post validation reporting.</li>
             <li>Developed PowerShell and Bash automation for health checks, patch validation and log remediation, cutting manual operational effort by about 20%.</li>
             <li>Served as L2/L3 on-call engineer for production incidents, with RCA documentation under client SLA; part of 24x7 rotations and after-hours change windows.</li>
             <li>Administered a RHEL and CentOS fleet, and Windows Server 2016 through 2022, including provisioning, hardening and performance tuning.</li>
-            <li>Managed a subset of Azure VMs in a hybrid estate, working alongside Azure SMEs on networking and compute.</li>
             <li>Conducted monthly Commvault disaster-recovery drills validating RPO and RTO targets.</li>
             <li>Coordinated OS-level vulnerability assessments and patch governance with application and security teams; escalated to Microsoft and VMware support with complete diagnostic packages.</li>
             <li>Authored runbooks and SOPs so the team's operations are repeatable.</li>
@@ -330,11 +331,11 @@
           </tr></thead>
           <tbody>
             <tr><th scope="row">Scale or cost</th><td><span class="big">2,000+</span>servers patched monthly</td><td><span class="big">Free Tier</span>t3.micro EC2</td><td><span class="big">$0</span>always-free ARM</td><td><span class="big">$0</span>hard spend guard</td></tr>
-            <tr><th scope="row">Cloud</th><td>Azure VMs in a hybrid estate</td><td>EC2, CloudWatch, IAM</td><td>VCN, subnet, security list, ARM compute</td><td>Cloudflare Workers AI, Hugging Face Spaces</td></tr>
+            <tr><th scope="row">Cloud</th><td>Azure VMs with Contributor access, Azure Update Manager</td><td>EC2, CloudWatch, IAM</td><td>VCN, subnet, security list, ARM compute</td><td>Cloudflare Workers AI, Hugging Face Spaces</td></tr>
             <tr><th scope="row">Infrastructure as code</th><td class="none">–</td><td>Terraform: instance, security group, IAM role and profile</td><td>Terraform: six resources in one apply, cloud-init</td><td class="none">–</td></tr>
             <tr><th scope="row">CI/CD</th><td class="none">–</td><td>GitHub Actions → Docker Hub → SSH redeploy</td><td>Six-stage GitHub Actions with an open-position safety gate</td><td class="none">–</td></tr>
             <tr><th scope="row">Containers</th><td class="none">–</td><td>Multi-stage Docker build</td><td>Four-service Docker Compose, one shared volume</td><td class="none">–</td></tr>
-            <tr><th scope="row">Security</th><td>OS vulnerability and patch governance with security teams</td><td>Vault KV v2, policy-scoped token; no static keys</td><td>Zero inbound ports; SSH to one CIDR</td><td>SSRF checks on every redirect hop</td></tr>
+            <tr><th scope="row">Security</th><td>Defender for Endpoint remediation, OS patch governance</td><td>Vault KV v2, policy-scoped token; no static keys</td><td>Zero inbound ports; SSH to one CIDR</td><td>SSRF checks on every redirect hop</td></tr>
             <tr><th scope="row">Reliability</th><td>L2/L3 on-call, Commvault DR drills</td><td>Fail-closed startup, CloudWatch Agent memory metric</td><td>60 s heartbeat, one alert per stall</td><td>Crash-resume state machine, human approval gates</td></tr>
             <tr><th scope="row">Languages</th><td>PowerShell, Bash</td><td>Go</td><td>Python</td><td>TypeScript, Python</td></tr>
           </tbody>
@@ -348,7 +349,7 @@
       <div class="head reveal"><div><p class="eyebrow">Skills &amp; credentials</p><h2>Honest levels.</h2></div></div>
       <div class="skills reveal">
         <div class="skill"><h3>Strong</h3><p>Daily, in production</p><ul><li>Linux (RHEL/CentOS)</li><li>Windows Server</li><li>Bash</li><li>PowerShell</li><li>Git</li></ul></div>
-        <div class="skill"><h3>Working</h3><p>Built and shipped with</p><ul><li>Active Directory</li><li>Azure</li><li>AWS</li><li>Terraform</li><li>Docker</li><li>Docker Compose</li><li>GitHub Actions</li><li>NGINX</li><li>Python</li><li>Go</li></ul></div>
+        <div class="skill"><h3>Working</h3><p>Built and shipped with</p><ul><li>Active Directory (on-premises)</li><li>Group Policy</li><li>Azure</li><li>Azure Update Manager</li><li>Microsoft Defender for Endpoint</li><li>AWS</li><li>Terraform</li><li>Docker</li><li>Docker Compose</li><li>GitHub Actions</li><li>NGINX</li><li>Python</li><li>Go</li></ul></div>
         <div class="skill"><h3>Exposure</h3><p>Used, still building depth</p><ul><li>Kubernetes</li><li>OCI</li><li>DigitalOcean</li><li>HashiCorp Vault</li><li>VMware</li><li>MySQL</li><li>Elasticsearch</li><li>Varnish</li><li>React</li><li>Vercel</li><li>Cloudflare Tunnel</li></ul></div>
       </div>
       <div class="creds reveal">

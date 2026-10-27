@@ -64,7 +64,7 @@ function ServerRack({ position }) {
 const PROJECT_SLIDES = [
   {
     title: 'CloudPulse',
-    tech: 'Go · AWS ECS Fargate · Terraform · GitHub Actions',
+    tech: 'Go · AWS EC2 · Terraform · GitHub Actions',
     desc: 'Real-time cloud monitoring dashboard with automated CI/CD pipeline',
     image: '/images/cloudpulse.webp',
     url: 'https://github.com/Asit0007/CloudPulse',
@@ -81,7 +81,7 @@ const PROJECT_SLIDES = [
   {
     title: 'Magento DeployKit',
     tech: 'Bash · NGINX · PHP-FPM · Varnish · DigitalOcean',
-    desc: '7 idempotent Bash scripts with 3-layer caching for production Magento',
+    desc: '7 ordered Bash scripts that bring up a nine-service Magento 2 stack',
     image: '/images/magento.webp',
     url: 'https://github.com/Asit0007/Magento_DeployKit',
     color: '#10b981',
